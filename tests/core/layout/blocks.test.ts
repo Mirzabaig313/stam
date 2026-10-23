@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
 import { applyCommand } from "@/core/commands/apply";
-import { buildBlockTree } from "@/core/layout/blocks";
+import { buildBlockTree, unreachableFrom } from "@/core/layout/blocks";
 import type { Block, BlockMember } from "@/core/layout/types";
 
 import {
+  allFamilies,
   docOf,
   famCousinMarriage,
   famRemarriage,
@@ -312,5 +313,14 @@ describe("buildBlockTree", () => {
 
   test("throws for a root that is not in the document", () => {
     expect(() => buildBlockTree(famSimple(), "nobody", NONE)).toThrow();
+  });
+});
+
+describe("unreachableFrom", () => {
+  test.each(allFamilies)("is the family view's unreachable list from every root: %s", (_, make) => {
+    const doc = make();
+    for (const rootId of Object.keys(doc.persons)) {
+      expect(unreachableFrom(doc, rootId)).toEqual(buildBlockTree(doc, rootId, NONE).unreachable);
+    }
   });
 });

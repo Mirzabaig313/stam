@@ -13,6 +13,7 @@ import {
   stackUnder,
 } from "./contour";
 import { barOffset, bracketRise, bracketStart, childEdge, unionBracket, unionLine } from "./edges";
+import { boundsOf, emptyLayout } from "./result";
 import type { Block, LayoutEdge, LayoutNode, LayoutResult } from "./types";
 
 const NONE: ReadonlySet<string> = new Set();
@@ -82,16 +83,7 @@ export function layoutFamily(
   doc: TreeDocument,
   opts: { rootId: string; collapsed?: ReadonlySet<string> },
 ): LayoutResult {
-  if (!Object.hasOwn(doc.persons, opts.rootId)) {
-    return {
-      nodes: [],
-      edges: [],
-      bounds: { x: 0, y: 0, width: 0, height: 0 },
-      generationCount: 0,
-      primaryNode: {},
-      unreachable: Object.keys(doc.persons),
-    };
-  }
+  if (!Object.hasOwn(doc.persons, opts.rootId)) return emptyLayout(doc);
   const tree = buildBlockTree(doc, opts.rootId, opts.collapsed ?? NONE);
 
   // Blocks in pre-order, so every parent comes before its children.
@@ -280,26 +272,4 @@ function placeGroups(groups: Group[]): {
 
   const levels = Math.max(pivot, groups.length - 1 - pivot) + 1;
   return { x, pivot, levels, contour: placed };
-}
-
-function boundsOf(nodes: LayoutNode[], edges: LayoutEdge[]): LayoutResult["bounds"] {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-  for (const node of nodes) {
-    minX = Math.min(minX, node.x);
-    minY = Math.min(minY, node.y);
-    maxX = Math.max(maxX, node.x + CARD_W);
-    maxY = Math.max(maxY, node.y + CARD_H);
-  }
-  for (const edge of edges) {
-    for (const [x, y] of edge.points) {
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
-    }
-  }
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }

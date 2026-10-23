@@ -42,10 +42,16 @@ function sweep(segments: Segment[], conflict: (a: Segment, b: Segment) => boolea
   }
 }
 
-/** R12: no child edge meets a child edge of another union. */
-export function expectNoCrossingChildEdges(layout: LayoutResult): void {
+/**
+ * R12: no child edge meets a child edge of another union. `groupOf` says which edges may share
+ * lines (by default, those of one union).
+ */
+export function expectNoCrossingChildEdges(
+  layout: LayoutResult,
+  groupOf: (edge: LayoutEdge) => string = (e) => e.unionId,
+): void {
   const childEdges = layout.edges.filter((e) => e.kind === "child");
-  sweep(segmentsOf(childEdges), (a, b) => a.edge.unionId !== b.edge.unionId);
+  sweep(segmentsOf(childEdges), (a, b) => groupOf(a.edge) !== groupOf(b.edge));
 }
 
 /** Over-brackets (union edges with more than two points) never meet each other. */

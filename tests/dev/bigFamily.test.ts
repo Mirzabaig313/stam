@@ -1,8 +1,9 @@
 import { describe, expect, test } from "bun:test";
 
 import { layoutFamily } from "@/core/layout/family";
+import { layoutPedigree } from "@/core/layout/pedigree";
 import { validate } from "@/core/model/validate";
-import { bigFamily, chainFamily, remarriedFamily } from "@/dev/bigFamily";
+import { ancestorFamily, bigFamily, chainFamily, remarriedFamily } from "@/dev/bigFamily";
 
 describe("bigFamily", () => {
   test("has exactly the people asked for, all reachable from the root", () => {
@@ -61,5 +62,17 @@ describe("benchmark shapes", () => {
     expect(layout.unreachable).toEqual([]);
     expect(doc.unionOrder[doc.rootPersonId!]).toHaveLength(3);
     expect(remarriedFamily(1000)).toEqual(doc);
+  });
+
+  test("ancestorFamily is a full pedigree of exactly the people asked for", () => {
+    const doc = ancestorFamily(1001);
+    expect(validate(doc)).toEqual([]);
+    expect(Object.keys(doc.persons)).toHaveLength(1001);
+    const layout = layoutPedigree(doc, { focusId: doc.rootPersonId! });
+    expect(layout.unreachable).toEqual([]);
+    expect(layout.nodes).toHaveLength(1001);
+    // The focus and nine generations above: 1 + 2 + … + 256 = 511 < 1001 ≤ 1023.
+    expect(layout.generationCount).toBe(10);
+    expect(ancestorFamily(1001)).toEqual(doc);
   });
 });

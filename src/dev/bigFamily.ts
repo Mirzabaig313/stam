@@ -74,14 +74,15 @@ class FamilyBuilder {
       this.pick(SURNAMES),
       year,
     );
+    const union = this.union([personId, spouseId]);
+    union.start = { year: start };
+    return union;
+  }
+
+  /** A married union of existing persons, with no children yet. */
+  union(partners: [string] | [string, string]): Union {
     const id = `u${this.unionCount++}`;
-    const union: Union = {
-      id,
-      partners: [personId, spouseId],
-      status: "married",
-      start: { year: start },
-      children: [],
-    };
+    const union: Union = { id, partners, status: "married", children: [] };
     this.unions[id] = union;
     for (const partner of union.partners) (this.unionOrder[partner] ??= []).push(id);
     return union;
@@ -184,4 +185,31 @@ export function remarriedFamily(people: number, seed = 42): TreeDocument {
     }
   }
   return b.finish(`remarried-${people}-${seed}`, `Remarried family of ${people}`, rootId);
+}
+
+/**
+ * A pedigree of exactly `people` persons: the focus (the root, born last) and their ancestors,
+ * filled generation by generation, every person getting a father and a mother. Stresses the
+ * pedigree, hourglass and fan layouts.
+ */
+export function ancestorFamily(people: number, seed = 42): TreeDocument {
+  const b = new FamilyBuilder(seed);
+  const lastYear = 2000;
+  let rootId: string | undefined;
+  const queue: { personId: string; year: number }[] = [];
+  if (people > 0) {
+    rootId = b.person("male", "Khan", lastYear);
+    queue.push({ personId: rootId, year: lastYear });
+  }
+  for (let next = 0; next < queue.length && b.count < people; next++) {
+    const { personId, year } = queue[next]!;
+    const parentYear = year - GENERATION_YEARS;
+    const father = b.person("male", b.persons[personId]!.lastName, parentYear);
+    const partners: [string] | [string, string] =
+      b.count < people ? [father, b.person("female", b.pick(SURNAMES), parentYear + 2)] : [father];
+    const union = b.union(partners);
+    union.children.push({ personId, type: "biological" });
+    for (const p of partners) queue.push({ personId: p, year: parentYear });
+  }
+  return b.finish(`ancestors-${people}-${seed}`, `Ancestors of ${people}`, rootId);
 }

@@ -112,6 +112,16 @@ export function buildBlockTree(
 }
 
 /**
+ * The people the family view drawn from `rootId` can't reach, in document order: what
+ * `buildBlockTree(...).unreachable` says, without laying anything out.
+ */
+export function unreachableFrom(doc: TreeDocument, rootId: string): string[] {
+  if (!Object.hasOwn(doc.persons, rootId)) return Object.keys(doc.persons);
+  const connected = connectedSet(doc, rootId);
+  return Object.keys(doc.persons).filter((id) => !connected.has(id));
+}
+
+/**
  * Everyone the walk places when nothing is collapsed: the root's blood line and the partners in
  * their unions (a partner's other family is not drawn).
  */
