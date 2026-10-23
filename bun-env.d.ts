@@ -1,0 +1,19 @@
+// Ambient module declarations for assets imported from TypeScript.
+
+declare module "*.svg" {
+  /**
+   * A path to the SVG file
+   */
+  const path: `${string}.svg`;
+  export = path;
+}
+
+declare module "*.css" {}
+
+declare module "*.module.css" {
+  /**
+   * A record of class names to their corresponding CSS module classes
+   */
+  const classes: { readonly [key: string]: string };
+  export = classes;
+}
