@@ -1,0 +1,952 @@
+// Bun Snapshot v1, https://bun.sh/docs/test/snapshots
+
+exports[`layoutFamily famSimple snapshot 1`] = `
+{
+  "bounds": {
+    "height": 240,
+    "width": 620,
+    "x": 0,
+    "y": 0,
+  },
+  "edges": [
+    {
+      "id": "union:u1",
+      "kind": "union",
+      "points": [
+        [
+          294,
+          36,
+        ],
+        [
+          326,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "u1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u1:c1",
+      "kind": "child",
+      "points": [
+        [
+          310,
+          36,
+        ],
+        [
+          310,
+          96,
+        ],
+        [
+          90,
+          96,
+        ],
+        [
+          90,
+          168,
+        ],
+      ],
+      "unionId": "u1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u1:c2",
+      "kind": "child",
+      "points": [
+        [
+          310,
+          36,
+        ],
+        [
+          310,
+          96,
+        ],
+        [
+          310,
+          96,
+        ],
+        [
+          310,
+          168,
+        ],
+      ],
+      "unionId": "u1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u1:c3",
+      "kind": "child",
+      "points": [
+        [
+          310,
+          36,
+        ],
+        [
+          310,
+          96,
+        ],
+        [
+          530,
+          96,
+        ],
+        [
+          530,
+          168,
+        ],
+      ],
+      "unionId": "u1",
+    },
+  ],
+  "generationCount": 2,
+  "nodes": [
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "dad",
+      "personId": "dad",
+      "x": 114,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "mom",
+      "personId": "mom",
+      "x": 326,
+      "y": 0,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "c1",
+      "personId": "c1",
+      "x": 0,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "c2",
+      "personId": "c2",
+      "x": 220,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "c3",
+      "personId": "c3",
+      "x": 440,
+      "y": 168,
+    },
+  ],
+  "primaryNode": {
+    "c1": "c1",
+    "c2": "c2",
+    "c3": "c3",
+    "dad": "dad",
+    "mom": "mom",
+  },
+  "unreachable": [],
+}
+`;
+
+exports[`layoutFamily famRemarriage snapshot 1`] = `
+{
+  "bounds": {
+    "height": 240,
+    "width": 620,
+    "x": 0,
+    "y": 0,
+  },
+  "edges": [
+    {
+      "id": "union:m1",
+      "kind": "union",
+      "points": [
+        [
+          184,
+          36,
+        ],
+        [
+          216,
+          36,
+        ],
+      ],
+      "status": "divorced",
+      "unionId": "m1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:m1:a1",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          104,
+        ],
+        [
+          90,
+          104,
+        ],
+        [
+          90,
+          168,
+        ],
+      ],
+      "unionId": "m1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:m1:a2",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          104,
+        ],
+        [
+          310,
+          104,
+        ],
+        [
+          310,
+          168,
+        ],
+      ],
+      "unionId": "m1",
+    },
+    {
+      "id": "union:m2",
+      "kind": "union",
+      "points": [
+        [
+          396,
+          36,
+        ],
+        [
+          428,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "m2",
+    },
+    {
+      "childType": "biological",
+      "id": "child:m2:a3",
+      "kind": "child",
+      "points": [
+        [
+          412,
+          36,
+        ],
+        [
+          412,
+          96,
+        ],
+        [
+          530,
+          96,
+        ],
+        [
+          530,
+          168,
+        ],
+      ],
+      "unionId": "m2",
+    },
+  ],
+  "generationCount": 2,
+  "nodes": [
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "wife1",
+      "personId": "wife1",
+      "x": 4,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "ali",
+      "personId": "ali",
+      "x": 216,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "wife2",
+      "personId": "wife2",
+      "x": 428,
+      "y": 0,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "a1",
+      "personId": "a1",
+      "x": 0,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "a2",
+      "personId": "a2",
+      "x": 220,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "a3",
+      "personId": "a3",
+      "x": 440,
+      "y": 168,
+    },
+  ],
+  "primaryNode": {
+    "a1": "a1",
+    "a2": "a2",
+    "a3": "a3",
+    "ali": "ali",
+    "wife1": "wife1",
+    "wife2": "wife2",
+  },
+  "unreachable": [],
+}
+`;
+
+exports[`layoutFamily famHalfSiblings snapshot 1`] = `
+{
+  "bounds": {
+    "height": 240,
+    "width": 620,
+    "x": 0,
+    "y": 0,
+  },
+  "edges": [
+    {
+      "id": "union:u1",
+      "kind": "union",
+      "points": [
+        [
+          184,
+          36,
+        ],
+        [
+          216,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "u1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u1:k1",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          104,
+        ],
+        [
+          90,
+          104,
+        ],
+        [
+          90,
+          168,
+        ],
+      ],
+      "unionId": "u1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u1:k2",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          104,
+        ],
+        [
+          310,
+          104,
+        ],
+        [
+          310,
+          168,
+        ],
+      ],
+      "unionId": "u1",
+    },
+    {
+      "id": "union:u2",
+      "kind": "union",
+      "points": [
+        [
+          396,
+          36,
+        ],
+        [
+          428,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "u2",
+    },
+    {
+      "childType": "biological",
+      "id": "child:u2:k3",
+      "kind": "child",
+      "points": [
+        [
+          412,
+          36,
+        ],
+        [
+          412,
+          96,
+        ],
+        [
+          530,
+          96,
+        ],
+        [
+          530,
+          168,
+        ],
+      ],
+      "unionId": "u2",
+    },
+  ],
+  "generationCount": 2,
+  "nodes": [
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "m1",
+      "personId": "m1",
+      "x": 4,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "f",
+      "personId": "f",
+      "x": 216,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "m2",
+      "personId": "m2",
+      "x": 428,
+      "y": 0,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "k1",
+      "personId": "k1",
+      "x": 0,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "k2",
+      "personId": "k2",
+      "x": 220,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "k3",
+      "personId": "k3",
+      "x": 440,
+      "y": 168,
+    },
+  ],
+  "primaryNode": {
+    "f": "f",
+    "k1": "k1",
+    "k2": "k2",
+    "k3": "k3",
+    "m1": "m1",
+    "m2": "m2",
+  },
+  "unreachable": [],
+}
+`;
+
+exports[`layoutFamily famCousinMarriage snapshot 1`] = `
+{
+  "bounds": {
+    "height": 576,
+    "width": 824,
+    "x": 0,
+    "y": 0,
+  },
+  "edges": [
+    {
+      "id": "union:ug",
+      "kind": "union",
+      "points": [
+        [
+          396,
+          36,
+        ],
+        [
+          428,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "ug",
+    },
+    {
+      "childType": "biological",
+      "id": "child:ug:p1",
+      "kind": "child",
+      "points": [
+        [
+          412,
+          36,
+        ],
+        [
+          412,
+          96,
+        ],
+        [
+          90,
+          96,
+        ],
+        [
+          90,
+          168,
+        ],
+      ],
+      "unionId": "ug",
+    },
+    {
+      "childType": "biological",
+      "id": "child:ug:p2",
+      "kind": "child",
+      "points": [
+        [
+          412,
+          36,
+        ],
+        [
+          412,
+          96,
+        ],
+        [
+          522,
+          96,
+        ],
+        [
+          522,
+          168,
+        ],
+      ],
+      "unionId": "ug",
+    },
+    {
+      "id": "union:up1",
+      "kind": "union",
+      "points": [
+        [
+          180,
+          204,
+        ],
+        [
+          212,
+          204,
+        ],
+      ],
+      "status": "married",
+      "unionId": "up1",
+    },
+    {
+      "childType": "biological",
+      "id": "child:up1:cousin1",
+      "kind": "child",
+      "points": [
+        [
+          196,
+          204,
+        ],
+        [
+          196,
+          264,
+        ],
+        [
+          90,
+          264,
+        ],
+        [
+          90,
+          336,
+        ],
+      ],
+      "unionId": "up1",
+    },
+    {
+      "id": "union:uc",
+      "kind": "union",
+      "points": [
+        [
+          180,
+          372,
+        ],
+        [
+          212,
+          372,
+        ],
+      ],
+      "status": "married",
+      "unionId": "uc",
+    },
+    {
+      "childType": "biological",
+      "id": "child:uc:kid",
+      "kind": "child",
+      "points": [
+        [
+          196,
+          372,
+        ],
+        [
+          196,
+          432,
+        ],
+        [
+          196,
+          432,
+        ],
+        [
+          196,
+          504,
+        ],
+      ],
+      "unionId": "uc",
+    },
+    {
+      "id": "union:up2",
+      "kind": "union",
+      "points": [
+        [
+          612,
+          204,
+        ],
+        [
+          644,
+          204,
+        ],
+      ],
+      "status": "married",
+      "unionId": "up2",
+    },
+    {
+      "childType": "biological",
+      "id": "child:up2:cousin2",
+      "kind": "child",
+      "points": [
+        [
+          628,
+          204,
+        ],
+        [
+          628,
+          264,
+        ],
+        [
+          628,
+          264,
+        ],
+        [
+          628,
+          336,
+        ],
+      ],
+      "unionId": "up2",
+    },
+  ],
+  "generationCount": 4,
+  "nodes": [
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "g1",
+      "personId": "g1",
+      "x": 216,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "g2",
+      "personId": "g2",
+      "x": 428,
+      "y": 0,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "p1",
+      "personId": "p1",
+      "x": 0,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "s1",
+      "personId": "s1",
+      "x": 212,
+      "y": 168,
+    },
+    {
+      "generation": 2,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "cousin1",
+      "personId": "cousin1",
+      "x": 0,
+      "y": 336,
+    },
+    {
+      "generation": 2,
+      "hiddenCount": 0,
+      "kind": "linked",
+      "nodeId": "cousin2~1",
+      "personId": "cousin2",
+      "x": 212,
+      "y": 336,
+    },
+    {
+      "generation": 3,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "kid",
+      "personId": "kid",
+      "x": 106,
+      "y": 504,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "p2",
+      "personId": "p2",
+      "x": 432,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "s2",
+      "personId": "s2",
+      "x": 644,
+      "y": 168,
+    },
+    {
+      "generation": 2,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "cousin2",
+      "personId": "cousin2",
+      "x": 538,
+      "y": 336,
+    },
+  ],
+  "primaryNode": {
+    "cousin1": "cousin1",
+    "cousin2": "cousin2",
+    "g1": "g1",
+    "g2": "g2",
+    "kid": "kid",
+    "p1": "p1",
+    "p2": "p2",
+    "s1": "s1",
+    "s2": "s2",
+  },
+  "unreachable": [],
+}
+`;
+
+exports[`layoutFamily famAdoption snapshot 1`] = `
+{
+  "bounds": {
+    "height": 240,
+    "width": 400,
+    "x": 0,
+    "y": 0,
+  },
+  "edges": [
+    {
+      "id": "union:ua",
+      "kind": "union",
+      "points": [
+        [
+          184,
+          36,
+        ],
+        [
+          216,
+          36,
+        ],
+      ],
+      "status": "married",
+      "unionId": "ua",
+    },
+    {
+      "childType": "biological",
+      "id": "child:ua:k1",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          96,
+        ],
+        [
+          90,
+          96,
+        ],
+        [
+          90,
+          168,
+        ],
+      ],
+      "unionId": "ua",
+    },
+    {
+      "childType": "adopted",
+      "id": "child:ua:k2",
+      "kind": "child",
+      "points": [
+        [
+          200,
+          36,
+        ],
+        [
+          200,
+          96,
+        ],
+        [
+          310,
+          96,
+        ],
+        [
+          310,
+          168,
+        ],
+      ],
+      "unionId": "ua",
+    },
+  ],
+  "generationCount": 2,
+  "nodes": [
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "a",
+      "personId": "a",
+      "x": 4,
+      "y": 0,
+    },
+    {
+      "generation": 0,
+      "hiddenCount": 0,
+      "kind": "spouse",
+      "nodeId": "b",
+      "personId": "b",
+      "x": 216,
+      "y": 0,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "k1",
+      "personId": "k1",
+      "x": 0,
+      "y": 168,
+    },
+    {
+      "generation": 1,
+      "hiddenCount": 0,
+      "kind": "blood",
+      "nodeId": "k2",
+      "personId": "k2",
+      "x": 220,
+      "y": 168,
+    },
+  ],
+  "primaryNode": {
+    "a": "a",
+    "b": "b",
+    "k1": "k1",
+    "k2": "k2",
+  },
+  "unreachable": [
+    "n1",
+    "n2",
+  ],
+}
+`;
