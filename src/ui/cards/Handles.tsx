@@ -44,7 +44,11 @@ export type HandlesProps = {
   /** The card's box on screen, in px from the canvas's top-left corner. */
   rect: Rect;
   onAdd: (role: AddRole, unionId?: string) => void;
+  /** The adds this view can draw (see `quickAddRoles`); every one when left out. */
+  roles?: ReadonlySet<AddRole>;
 };
+
+const EVERY_ROLE: ReadonlySet<AddRole> = new Set(["parent", "child", "spouse", "sibling"]);
 
 type Open = "start" | "end" | "union" | null;
 
@@ -60,7 +64,7 @@ const at = (x: number, y: number, shift = 0): CSSProperties => ({
  * parents), bottom adds a child (asking which union first when there are several), and both sides
  * open a "Spouse" / "Sibling" chooser. Positions are physical screen px, like `rect`.
  */
-export function Handles({ node, rect, onAdd }: HandlesProps) {
+export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps) {
   const { t, i18n } = useTranslation();
   const doc = useEditor((s) => s.doc);
   const [open, setOpen] = useState<Open>(null);
@@ -77,6 +81,7 @@ export function Handles({ node, rect, onAdd }: HandlesProps) {
   if (!doc || !person) return null;
 
   const name = personLabel(person, t);
+  const besideRoles = (["spouse", "sibling"] as const).filter((role) => roles.has(role));
   const parents = parentsOf(doc, node.personId);
   const unionCount = unionsOf(doc, node.personId).length;
   const k = rect.width / CARD_W;
@@ -169,7 +174,7 @@ export function Handles({ node, rect, onAdd }: HandlesProps) {
 
   return (
     <div className="quick-add" data-handles-for={node.nodeId} style={at(rect.x, rect.y)}>
-      {parents.length < 2 && (
+      {parents.length < 2 && roles.has("parent") && (
         <button
           type="button"
           className="quick-add__handle"
@@ -181,26 +186,28 @@ export function Handles({ node, rect, onAdd }: HandlesProps) {
           <span aria-hidden="true">+</span>
         </button>
       )}
-      {sideHandle("start", startAt, rtl ? "Right" : "Left")}
-      {sideHandle("end", endAt, rtl ? "Left" : "Right")}
-      <button
-        ref={(el) => {
-          handleRefs.current.union = el;
-        }}
-        type="button"
-        className="quick-add__handle"
-        onKeyDown={backToCard}
-        style={at(w / 2 - HALF, bottomY)}
-        aria-label={t("handles.addChild", { name })}
-        aria-haspopup={unionCount >= 2 ? "dialog" : undefined}
-        aria-expanded={unionCount >= 2 ? open === "union" : undefined}
-        onClick={() => {
-          if (unionCount >= 2) setOpen(open === "union" ? null : "union");
-          else onAdd("child");
-        }}
-      >
-        <span aria-hidden="true">+</span>
-      </button>
+      {besideRoles.length > 0 && sideHandle("start", startAt, rtl ? "Right" : "Left")}
+      {besideRoles.length > 0 && sideHandle("end", endAt, rtl ? "Left" : "Right")}
+      {roles.has("child") && (
+        <button
+          ref={(el) => {
+            handleRefs.current.union = el;
+          }}
+          type="button"
+          className="quick-add__handle"
+          onKeyDown={backToCard}
+          style={at(w / 2 - HALF, bottomY)}
+          aria-label={t("handles.addChild", { name })}
+          aria-haspopup={unionCount >= 2 ? "dialog" : undefined}
+          aria-expanded={unionCount >= 2 ? open === "union" : undefined}
+          onClick={() => {
+            if (unionCount >= 2) setOpen(open === "union" ? null : "union");
+            else onAdd("child");
+          }}
+        >
+          <span aria-hidden="true">+</span>
+        </button>
+      )}
 
       {(open === "start" || open === "end") && (
         <div
@@ -213,7 +220,7 @@ export function Handles({ node, rect, onAdd }: HandlesProps) {
           onKeyDown={onMenuKey(open)}
           onBlur={onMenuBlur}
         >
-          {(["spouse", "sibling"] as const).map((role) => (
+          {besideRoles.map((role) => (
             <button key={role} type="button" role="menuitem" onClick={() => onAdd(role)}>
               {t(`handles.${role}`)}
             </button>

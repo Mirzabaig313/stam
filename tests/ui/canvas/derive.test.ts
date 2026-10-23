@@ -2,9 +2,11 @@ import { describe, expect, test } from "bun:test";
 
 import { CARD_W } from "@/core/layout/constants";
 import { layoutFamily } from "@/core/layout/family";
-import { dimmedEdgeIds, focusSet, mirrorFrame } from "@/ui/canvas/derive";
+import { layoutPedigree } from "@/core/layout/pedigree";
+import { dimmedEdgeIds, focusSet, mirrorFrame, pathEdgeIds } from "@/ui/canvas/derive";
 import { settledFrame } from "@/ui/canvas/useLayoutTween";
 
+import { famCousinMarriage } from "../../fixtures/families";
 import { cardFamily } from "../cards/fixtures";
 
 describe("focusSet", () => {
@@ -26,6 +28,48 @@ describe("dimmedEdgeIds", () => {
     const dimmed = dimmedEdgeIds(layout.edges, layout.nodes, doc, focusSet(doc, "ali"));
     const kept = layout.edges.map((e) => e.id).filter((id) => !dimmed.has(id));
     expect(kept.toSorted()).toEqual(["child:u1:ali", "child:u3:bilal", "union:u1"]);
+  });
+});
+
+describe("pathEdgeIds", () => {
+  test("a union drawn twice (pedigree collapse, id union:<id>~2) lights both copies by unionId", () => {
+    const doc = famCousinMarriage();
+    const layout = layoutPedigree(doc, { focusId: "kid" });
+    expect(layout.edges.some((e) => e.id === "union:ug~2")).toBe(true);
+    const spouses = pathEdgeIds(layout.edges, layout.nodes, doc, ["g1", "g2"]);
+    expect([...spouses].toSorted()).toEqual(["union:ug", "union:ug~2"]);
+    // cousin1 → p1 → g1 → p2 → cousin2: both child lines out of the twice-drawn union.
+    const cousins = pathEdgeIds(layout.edges, layout.nodes, doc, [
+      "cousin1",
+      "p1",
+      "g1",
+      "p2",
+      "cousin2",
+    ]);
+    expect(cousins.has("union:ug")).toBe(false);
+    const childLines = [...cousins].filter((id) => id.startsWith("child:ug:"));
+    expect(childLines.length).toBe(2);
+  });
+
+  test("a path up and over to a sibling keeps the child lines of both and nothing else", () => {
+    const doc = cardFamily();
+    const layout = layoutFamily(doc, { rootId: "ahmed" });
+    const ids = pathEdgeIds(layout.edges, layout.nodes, doc, ["ali", "ahmed", "omar"]);
+    expect([...ids].toSorted()).toEqual(["child:u1:ali", "child:u1:omar"]);
+  });
+
+  test("a spouse link keeps the union line", () => {
+    const doc = cardFamily();
+    const layout = layoutFamily(doc, { rootId: "ahmed" });
+    const ids = pathEdgeIds(layout.edges, layout.nodes, doc, ["ahmed", "sara"]);
+    expect([...ids]).toEqual(["union:u1"]);
+  });
+
+  test("an empty or one-person path keeps nothing", () => {
+    const doc = cardFamily();
+    const layout = layoutFamily(doc, { rootId: "ahmed" });
+    expect(pathEdgeIds(layout.edges, layout.nodes, doc, []).size).toBe(0);
+    expect(pathEdgeIds(layout.edges, layout.nodes, doc, ["ali"]).size).toBe(0);
   });
 });
 

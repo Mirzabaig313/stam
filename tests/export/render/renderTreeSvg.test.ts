@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { layoutFamily } from "@/core/layout/family";
+import { layoutPedigree } from "@/core/layout/pedigree";
 import type { TreeDocument } from "@/core/model/types";
 import { renderTreeSvg } from "@/export/render/renderTreeSvg";
 import type { ExportInput, ExportOptions } from "@/export/types";
@@ -183,6 +184,14 @@ describe("renderTreeSvg", () => {
     expect(ruled.width).toBeGreaterThan(plain.width);
     const labels = [...parse(ruled.svg).querySelectorAll(".stam-export__ruler text")];
     expect(labels.map((l) => l.textContent)).toEqual(["I", "II", "III"]);
+  });
+
+  test("a pedigree's ruler counts from its top row too", () => {
+    const doc = famCousinMarriage();
+    const layout = layoutPedigree(doc, { focusId: "kid" });
+    const { svg } = renderTreeSvg(inputOf(doc, { layout }), { ...OPTS, showRuler: true }, t);
+    const labels = [...parse(svg).querySelectorAll(".stam-export__ruler text")];
+    expect(labels.map((l) => l.textContent)).toEqual(["I", "II", "III", "IV"]);
   });
 
   test("solid background fills the ground; transparent leaves it out; print is white", () => {

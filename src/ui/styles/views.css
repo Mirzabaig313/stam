@@ -1,0 +1,213 @@
+/* View switcher, focus control, relationship panel and birthdays. Logical properties only. */
+
+.toolbar-views {
+  flex-wrap: wrap;
+}
+
+.view-switcher {
+  display: flex;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.relation-none {
+  display: block;
+}
+
+.view-switcher__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 36px;
+  padding-inline: 10px;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color var(--dur-card) var(--ease);
+}
+
+.view-switcher__button + .view-switcher__button {
+  margin-inline-start: -1px;
+}
+
+.view-switcher__button:hover {
+  background: rgba(17, 19, 17, 0.06);
+}
+
+/* The current view is ink on ground, never the accent (that is for selection and "you"). */
+.view-switcher__button[aria-pressed="true"] {
+  position: relative;
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--ground);
+}
+
+/* Narrow screens keep the icons and the tooltip, and drop the words. */
+@media (max-width: 1100px) {
+  .view-switcher__label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.focus-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.focus-control__name {
+  color: var(--muted);
+}
+
+.focus-control .button {
+  min-block-size: 30px;
+  font-size: 13px;
+}
+
+.fan-generations {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+}
+
+.fan-generations__label {
+  color: var(--muted);
+  margin-inline-end: 4px;
+}
+
+.fan-generations__value {
+  min-inline-size: 1.5em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- relationship panel */
+
+.relation-answer {
+  display: grid;
+  gap: 14px;
+}
+
+.relation-answer:empty {
+  display: none;
+}
+
+.relation-row {
+  display: grid;
+  gap: 4px;
+}
+
+.relation-pick {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+.relation-results {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.relation-result {
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+
+.relation-sentence {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.relation-urdu {
+  margin: 4px 0 0;
+}
+
+.relation-urdu-term {
+  font-size: 1.25em;
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------- birthdays */
+
+.birthdays-button {
+  position: relative;
+}
+
+.birthdays-badge {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-end: 2px;
+  min-inline-size: 16px;
+  padding-inline: 3px;
+  background: var(--ink);
+  color: var(--ground);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.birthdays-panel {
+  inline-size: 320px;
+  max-inline-size: calc(100vw - 2 * var(--gutter));
+  max-block-size: 70dvh;
+  overflow-y: auto;
+}
+
+.birthdays-heading {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.birthdays-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.birthdays-row {
+  display: grid;
+  gap: 2px;
+  inline-size: 100%;
+  padding: 8px 6px;
+  border: 0;
+  border-block-end: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.birthdays-row:hover {
+  background: rgba(17, 19, 17, 0.06);
+}
+
+.birthdays-name {
+  font-weight: 600;
+}

@@ -103,6 +103,17 @@ describe("PersonCard", () => {
     expect(container.querySelector(".stam-card")!.classList).toContain("stam-card--deceased");
   });
 
+  test("RTL: the years are an LTR isolate, still anchored at the card's inline start", () => {
+    const { container } = renderCard("zainab", { dir: "rtl" });
+    const years = container.querySelector(".stam-card__years")!;
+    // The text keeps the page direction (so it anchors on the right); only the run is LTR.
+    expect(years.getAttribute("direction")).toBeNull();
+    const run = years.querySelector("tspan");
+    expect(run?.getAttribute("direction")).toBe("ltr");
+    expect(run?.getAttribute("unicode-bidi")).toBe("isolate");
+    expect(run?.textContent).toBe("1953 – †2019");
+  });
+
   test("living card shows the birth year only and no deceased treatment", () => {
     const { container } = renderCard("ali");
     expect(container.querySelector(".stam-card__years")?.textContent).toBe("1950");

@@ -181,7 +181,7 @@ export function PersonPanel({ personId, onRequestDelete, readOnly = false }: Per
         <button
           type="button"
           className="button"
-          disabled={isRoot}
+          disabled={isRoot || readOnly}
           onClick={() => {
             store.getState().dispatch({ type: "setRoot", personId }, "Set as root");
             store.getState().setViewRoot(null);
@@ -201,6 +201,7 @@ export function PersonPanel({ personId, onRequestDelete, readOnly = false }: Per
         <button
           type="button"
           className="button button-danger"
+          disabled={readOnly}
           onClick={() => onRequestDelete(personId)}
         >
           {t("panel.deleteButton")}

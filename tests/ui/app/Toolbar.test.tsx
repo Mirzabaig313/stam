@@ -382,3 +382,35 @@ describe("download backup", () => {
     expect(screen.queryByRole("button", { name: "Download backup (.json)" })).toBeNull();
   });
 });
+
+describe("fan generations", () => {
+  test("a 2–7 stepper shows in the fan view only, starting at 4", async () => {
+    const { store } = await mountToolbar();
+    expect(screen.queryByRole("group", { name: "Generations" })).toBeNull();
+    act(() => store.getState().setViewMode("fan"));
+    const group = screen.getByRole("group", { name: "Generations" });
+    expect(within(group).getByText("4")).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(within(group).getByRole("button", { name: "More generations" }));
+    expect(store.getState().fanGenerations).toBe(5);
+    await user.click(within(group).getByRole("button", { name: "Fewer generations" }));
+    await user.click(within(group).getByRole("button", { name: "Fewer generations" }));
+    await user.click(within(group).getByRole("button", { name: "Fewer generations" }));
+    expect(store.getState().fanGenerations).toBe(2);
+    const fewer = within(group).getByRole("button", { name: "Fewer generations" });
+    expect((fewer as HTMLButtonElement).disabled).toBe(true);
+    act(() => store.getState().setFanGenerations(7));
+    const more = within(group).getByRole("button", { name: "More generations" });
+    expect((more as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test("zoom and fit stay on in the fan and timeline views", async () => {
+    const { store, calls } = await mountToolbar();
+    act(() => store.getState().setViewMode("timeline"));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Zoom in" }));
+    await user.click(screen.getByRole("button", { name: "Zoom out" }));
+    await user.click(screen.getByRole("button", { name: /^Fit/ }));
+    expect([calls.zoomIn, calls.zoomOut, calls.fit]).toEqual([1, 1, 1]);
+  });
+});

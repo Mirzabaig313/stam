@@ -12,13 +12,13 @@ type UnconnectedListProps = {
 
 /**
  * The popover behind the toolbar's "{n} not connected" badge: everyone the family view can't
- * reach from its root. Clicking a person shows their branch instead.
+ * reach from its root (in every view). Clicking a person shows their branch in the family view.
  */
 export function UnconnectedList({ onPick, onClose }: UnconnectedListProps) {
   const { t } = useTranslation();
   const store = useEditorStore();
   const doc = useEditor((s) => s.doc);
-  const unreachable = useEditor((s) => s.layout?.unreachable);
+  const unreachable = useEditor((s) => s.familyUnreachable);
   const root = useRef<HTMLElement>(null);
   const closeRef = useRef(onClose);
 
@@ -62,6 +62,8 @@ export function UnconnectedList({ onPick, onClose }: UnconnectedListProps) {
                   type="button"
                   className="link-button"
                   onClick={() => {
+                    // Their branch is shown in the family view, whatever view was open.
+                    store.getState().setViewMode("family");
                     store.getState().setViewRoot(id);
                     onPick?.(id);
                     onClose();

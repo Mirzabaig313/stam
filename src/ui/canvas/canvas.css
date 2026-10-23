@@ -53,6 +53,11 @@
   stroke-linejoin: miter;
 }
 
+/* A relationship path: ink at full strength; every other edge is dimmed. */
+.stam-edges--path {
+  opacity: 1;
+}
+
 .stam-edge {
   transition: opacity 250ms var(--_ease);
 }

@@ -60,6 +60,37 @@ export function dimmedEdgeIds(
   return dimmed;
 }
 
+/**
+ * The edges a relationship path runs along: a union line when two neighbours on the path are
+ * partners, a child line when one is the child and the other is a partner of its union.
+ */
+export function pathEdgeIds(
+  edges: readonly LayoutEdge[],
+  nodes: readonly LayoutNode[],
+  doc: TreeDocument,
+  path: readonly string[],
+): Set<string> {
+  const steps = new Set<string>();
+  for (let i = 1; i < path.length; i++) {
+    steps.add(`${path[i - 1]}|${path[i]}`);
+    steps.add(`${path[i]}|${path[i - 1]}`);
+  }
+  const ids = new Set<string>();
+  if (steps.size === 0) return ids;
+  const personOfNode = new Map(nodes.map((n) => [n.nodeId, n.personId]));
+  for (const edge of edges) {
+    const partners = doc.unions[edge.unionId]?.partners ?? [];
+    if (edge.kind === "union") {
+      const [a, b] = partners;
+      if (b !== undefined && steps.has(`${a}|${b}`)) ids.add(edge.id);
+      continue;
+    }
+    const child = personOfNode.get(edge.id.slice(`child:${edge.unionId}:`.length));
+    if (child !== undefined && partners.some((p) => steps.has(`${child}|${p}`))) ids.add(edge.id);
+  }
+  return ids;
+}
+
 /** Flips a frame around x = 0, so the tree reads right to left. */
 export function mirrorFrame(frame: Frame): Frame {
   return {

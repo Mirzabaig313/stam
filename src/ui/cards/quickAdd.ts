@@ -1,7 +1,10 @@
 import type { Command } from "@/core/commands/types";
+import type { LayoutNode } from "@/core/layout/types";
 import { parentsOf, topmostAncestor } from "@/core/model/tree";
 import type { Gender, TreeDocument } from "@/core/model/types";
+import type { ViewMode } from "@/core/views/types";
 import type { EditorStore } from "@/ui/store/editorStore";
+import { isFocusView } from "@/ui/store/viewLayouts";
 
 import { type AddRole, defaultGender } from "./nameEntry";
 
@@ -45,6 +48,34 @@ function addCommand(
   }
 }
 
+const EVERY: ReadonlySet<AddRole> = new Set(["parent", "child", "spouse", "sibling"]);
+const PARENT: ReadonlySet<AddRole> = new Set(["parent"]);
+const CHILD: ReadonlySet<AddRole> = new Set(["child"]);
+const NONE: ReadonlySet<AddRole> = new Set();
+
+/**
+ * The quick-add handles a card offers in a view: only adds the view can draw. The pedigree draws
+ * ancestors (Add parent), the descendants view descendants (Add child); the hourglass is a
+ * pedigree above the focus row and a family view from it down. Fan and timeline are read-only.
+ */
+export function quickAddRoles(
+  view: ViewMode,
+  node: Pick<LayoutNode, "generation">,
+): ReadonlySet<AddRole> {
+  switch (view) {
+    case "family":
+      return EVERY;
+    case "pedigree":
+      return PARENT;
+    case "descendants":
+      return CHILD;
+    case "hourglass":
+      return node.generation < 0 ? PARENT : EVERY;
+    default:
+      return NONE;
+  }
+}
+
 const LABELS: Record<AddRole, string> = {
   first: "Add person",
   child: "Add child",
@@ -59,7 +90,8 @@ const LABELS: Record<AddRole, string> = {
  * the add; the reason is then in the store's `error` and no editor opens.
  *
  * An add still being named is cancelled first. A child's collapsed parents are expanded, and a
- * new person outside the current view moves the view root, so the new card is always drawn.
+ * new person outside the current view is brought into it, so the new card is always drawn: the
+ * family view moves its root, a focus view its focus (never the family view's root).
  */
 export function startAdd(
   store: EditorStore,
@@ -91,7 +123,8 @@ export function startAdd(
 
   const after = store.getState();
   if (after.layout && after.layout.primaryNode[personId] === undefined && after.doc) {
-    after.setViewRoot(topmostAncestor(after.doc, personId));
+    if (isFocusView(after.viewMode)) after.setFocus(personId);
+    else after.setViewRoot(topmostAncestor(after.doc, personId));
   }
   store.getState().startEditing({ personId, role, ...(fromId ? { fromId } : {}) });
   return personId;

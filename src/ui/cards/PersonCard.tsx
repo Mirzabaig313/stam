@@ -25,7 +25,7 @@ import { describePerson, personLabel } from "./describe";
 // SVG text does not ellipsize, so names are measured (canvas 2D, same font as the CSS) and cut
 // with "…". Widths are cached; the cache resets when web fonts finish loading.
 
-type Font = { size: number; weight: number; italic?: boolean };
+export type Font = { size: number; weight: number; italic?: boolean };
 const FAMILY = '"Archivo Variable", system-ui, sans-serif';
 const NAME_FONT: Font = { size: 13, weight: 600 };
 const PLACEHOLDER_FONT: Font = { size: 13, weight: 400, italic: true };
@@ -54,6 +54,15 @@ function subscribeFonts(listener: () => void): () => void {
     });
   }
   return () => fontListeners.delete(listener);
+}
+
+/** Re-renders the caller when web fonts finish loading, so fitted text uses the real metrics. */
+export function useFontEpoch(): number {
+  return useSyncExternalStore(
+    subscribeFonts,
+    () => fontEpoch,
+    () => 0,
+  );
 }
 
 function textWidth(text: string, font: Font): number {
@@ -121,7 +130,8 @@ export function genderMarkPath(gender: Person["gender"], cx: number): string {
 }
 const CHEVRON_INSET = 14;
 
-function initialsOf(person: Person): string {
+/** "AK" for Ali Khan; "?" for an unnamed placeholder. */
+export function initialsOf(person: Person): string {
   if (person.isPlaceholder && !displayName(person)) return "?";
   return [person.firstName, person.lastName]
     .map((part) => Array.from(part.trim())[0] ?? "")
@@ -398,7 +408,11 @@ function PersonCardImpl({
             y={lastLineY}
             fontSize={SMALL_FONT.size}
           >
-            {fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT)}
+            {/* Years read left to right in RTL too ("1913 – †1964", never "1964† – 1913"). The
+                isolate is on the run, not the text, so the line still anchors at the inline start. */}
+            <tspan direction="ltr" unicodeBidi="isolate">
+              {fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT)}
+            </tspan>
           </text>
         )}
         {isStatic ? (

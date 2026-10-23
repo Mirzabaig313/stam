@@ -7,6 +7,7 @@ import { focusCard, nodeIdOf } from "@/ui/keyboard/focusCard";
 import { type ArrowKey, nextFocus } from "@/ui/keyboard/navigation";
 import type { EditorStore } from "@/ui/store/editorStore";
 import { useEditorStore } from "@/ui/store/useEditor";
+import { isReadOnlyView, VIEW_MODES } from "@/ui/store/viewLayouts";
 
 /** True while a form control has the focus: its keys (Backspace, Ctrl+Z, arrows…) are its own. */
 function isTyping(target: EventTarget | null): boolean {
@@ -61,6 +62,9 @@ function reorder(store: EditorStore, personId: string, key: string, dir: "ltr" |
  * - Arrows move the focus between cards (`nextFocus`); Alt+←/→ reorders siblings.
  * - Enter on a focused card selects it, which opens the panel; Esc clears the selection.
  * - Delete or Backspace asks to delete the selected person.
+ * - Alt+1 … Alt+6 switch the view (family, pedigree, descendants, hourglass, fan, timeline).
+ * - Esc closes the relationship calculator (and its path highlight) before it clears the selection.
+ * In the fan and timeline views the arrows and Enter belong to those views' own items.
  * All but search stand down while a text field has the focus; everything stands down while a
  * dialog is open or when a control already handled the key.
  */
@@ -128,9 +132,21 @@ export function useEditorKeys(actions: EditorKeyActions): void {
         s.redo();
         return;
       }
-      if (mod || event.shiftKey) return;
 
-      if (ARROWS.has(event.key)) {
+      // `code`, not `key`: with Alt held, macOS types symbols instead of digits.
+      const digit = /^Digit([1-6])$/.exec(event.code);
+      if (digit && event.altKey && !mod && !event.shiftKey) {
+        const mode = VIEW_MODES[Number(digit[1]) - 1];
+        if (mode) {
+          event.preventDefault();
+          s.setViewMode(mode);
+        }
+        return;
+      }
+      if (mod || event.shiftKey) return;
+      const ownKeys = isReadOnlyView(s.viewMode);
+
+      if (ARROWS.has(event.key) && !ownKeys) {
         const from = currentNode(event.target);
         if (from === null) return;
         event.preventDefault();
@@ -146,7 +162,7 @@ export function useEditorKeys(actions: EditorKeyActions): void {
       }
       if (event.altKey) return;
 
-      if (event.key === "Enter") {
+      if (event.key === "Enter" && !ownKeys) {
         const nodeId = nodeIdOf(event.target);
         if (nodeId === null || !(event.target as Element).matches("[data-node-id] > .stam-card")) {
           return;
@@ -159,6 +175,10 @@ export function useEditorKeys(actions: EditorKeyActions): void {
         return;
       }
       if (event.key === "Escape") {
+        if (s.relation !== null) {
+          s.closeRelation();
+          return;
+        }
         if (s.selectedId !== null) s.select(null);
         return;
       }

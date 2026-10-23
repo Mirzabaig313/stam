@@ -4,12 +4,15 @@ import { Link } from "react-router";
 
 import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
+import { BirthdaysMenu } from "@/ui/birthdays/BirthdaysMenu";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
+import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
 import { downloadBackup } from "./downloadBackup";
 import { Icon, type IconName } from "./Icon";
 import { useRepo } from "./RepoContext";
 import { SaveStatus } from "./SaveStatus";
+import { FanGenerations, FocusControl, ViewSwitcher } from "./ViewSwitcher";
 
 export type ToolbarProps = {
   autosaver: Autosaver;
@@ -19,6 +22,12 @@ export type ToolbarProps = {
   onOpenSearch: () => void;
   onOpenUnconnected: () => void;
   onOpenExport?: () => void;
+  /** Opens (or closes) the "How are we related?" panel. */
+  onToggleRelation?: () => void;
+  /** Selects and centres a person picked from the birthdays panel; without it there is no panel. */
+  onShowPerson?: (personId: string) => void;
+  /** Today, for the birthdays panel; tests pass a fixed date. */
+  today?: () => Date;
 };
 
 function IconButton({
@@ -231,17 +240,24 @@ export function Toolbar({
   onOpenSearch,
   onOpenUnconnected,
   onOpenExport,
+  onToggleRelation,
+  onShowPerson,
+  today,
 }: ToolbarProps) {
   const { t } = useTranslation();
   const store = useEditorStore();
   const canUndo = useEditor((s) => s.canUndo);
   const canRedo = useEditor((s) => s.canRedo);
   const focusMode = useEditor((s) => s.focusMode);
+  const relationOpen = useEditor((s) => s.relation !== null);
+  // Fan and timeline are read-only: nothing to undo. They zoom and fit through their own handle.
+  const readOnlyView = useEditor((s) => isReadOnlyView(s.viewMode));
   // A view root that is the tree root itself has nothing to go back to.
   const viewRootId = useEditor((s) =>
     s.viewRootId !== null && s.viewRootId !== s.doc?.rootPersonId ? s.viewRootId : null,
   );
-  const unconnected = useEditor((s) => s.layout?.unreachable.length ?? 0);
+  // About the family view, also while a focus view (which draws far fewer people) is shown.
+  const unconnected = useEditor((s) => s.familyUnreachable.length);
   const rootName = useEditor((s) => {
     const rootId = s.doc?.rootPersonId;
     const root = rootId === undefined ? undefined : s.doc?.persons[rootId];
@@ -256,6 +272,12 @@ export function Toolbar({
         </Link>
         <TreeName />
         <SaveStatus autosaver={autosaver} />
+      </div>
+
+      <div className="toolbar-group toolbar-views">
+        <ViewSwitcher />
+        <FocusControl />
+        <FanGenerations />
       </div>
 
       {viewRootId !== null && (
@@ -282,14 +304,14 @@ export function Toolbar({
         <IconButton
           icon="undo"
           label={t("toolbar.undo")}
-          disabled={!canUndo}
+          disabled={!canUndo || readOnlyView}
           keepFocus
           onClick={() => store.getState().undo()}
         />
         <IconButton
           icon="redo"
           label={t("toolbar.redo")}
-          disabled={!canRedo}
+          disabled={!canRedo || readOnlyView}
           keepFocus
           onClick={() => store.getState().redo()}
         />
@@ -303,6 +325,15 @@ export function Toolbar({
           pressed={focusMode}
           onClick={() => store.getState().setFocusMode(!focusMode)}
         />
+        {onToggleRelation && (
+          <IconButton
+            icon="relate"
+            label={t("kinship.panel.open")}
+            pressed={relationOpen}
+            onClick={onToggleRelation}
+          />
+        )}
+        {onShowPerson && <BirthdaysMenu today={today} onShow={onShowPerson} />}
         <BackupMenu onOpenExport={onOpenExport} />
       </div>
     </header>

@@ -62,6 +62,19 @@ describe("GenerationRuler", () => {
     ]);
   });
 
+  test("counts from the top row, so ancestor views (negative generations) read I, II, III", () => {
+    const rows = [
+      { generation: -2, y: 0 },
+      { generation: -1, y: 168 },
+      { generation: 0, y: 336 },
+    ];
+    const { container } = render(
+      <GenerationRuler rows={rows} viewport={{ x: 0, y: 0, k: 0.5 }} height={600} />,
+    );
+    const labels = [...container.querySelectorAll(".stam-ruler__label")];
+    expect(labels.map((l) => l.textContent)).toEqual(["I", "II", "III"]);
+  });
+
   test("leaves out rows that are off screen and highlights the active generation", () => {
     const rows = [
       { generation: 0, y: 0 },

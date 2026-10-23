@@ -11,7 +11,7 @@ import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { Handles, MIN_HANDLE_CARD_WIDTH } from "./Handles";
 import { InlineEditor } from "./InlineEditor";
 import type { AddRole } from "./nameEntry";
-import { startAdd } from "./quickAdd";
+import { quickAddRoles, startAdd } from "./quickAdd";
 
 /** The pointer may cross this gap between a card and its handles without hiding them. */
 const LEAVE_GRACE_MS = 250;
@@ -42,6 +42,7 @@ function NodeExtras({ node, rect, active }: { node: LayoutNode; rect: Rect; acti
   const editing = useEditor((s) => s.editing);
   const primary = useEditor((s) => s.layout?.primaryNode[node.personId] === node.nodeId);
   const selected = useEditor((s) => s.selectedId === node.personId);
+  const roles = useEditor((s) => quickAddRoles(s.viewMode, node));
   // One card shows handles at a time. With none pointed at, the selected card shows its own.
   const pointed = useStore(active, (a) => pointedNode(a) === node.nodeId);
   const nothingPointed = useStore(active, (a) => pointedNode(a) === null);
@@ -77,11 +78,12 @@ function NodeExtras({ node, rect, active }: { node: LayoutNode; rect: Rect; acti
 
   const visible =
     node.kind !== "linked" &&
+    roles.size > 0 &&
     rect.width >= MIN_HANDLE_CARD_WIDTH &&
     (pointed || (selected && primary && nothingPointed));
   return (
     <>
-      {visible && <Handles node={node} rect={rect} onAdd={add} />}
+      {visible && <Handles node={node} rect={rect} onAdd={add} roles={roles} />}
       {refused && (
         <p
           className="quick-add__refused"
@@ -100,6 +102,13 @@ export type QuickAddOptions = {
   reveal?: (personId: string) => void;
   /** Px at the bottom of the canvas hidden under something (the panel's bottom sheet). */
   coveredBottom?: () => number;
+  /**
+   * Whether the person's card will be on screen once the camera settles (the canvas's
+   * `isPersonInView`). Re-layout glides the camera to keep the selected card still, which can
+   * carry a new card off screen after the editor first appears; without this, the editor's
+   * current box is used.
+   */
+  isOnScreen?: (personId: string) => boolean;
 };
 
 /**
@@ -107,16 +116,16 @@ export type QuickAddOptions = {
  * or keyboard-focused card, else on the selected one (one card shows handles at a time), and the inline editor over a card being added. When the
  * new card is off screen, `reveal` brings it into view.
  */
-export function useQuickAdd({ reveal, coveredBottom }: QuickAddOptions = {}): {
+export function useQuickAdd({ reveal, coveredBottom, isOnScreen }: QuickAddOptions = {}): {
   renderNodeExtras: (node: LayoutNode, rect: Rect) => ReactNode;
 } {
   const [active] = useState(() =>
     createStore<Active>(() => ({ hovered: null, focused: null, last: "hover", refused: null })),
   );
   const editing = useEditor((s) => s.editing);
-  const latest = useRef({ reveal, coveredBottom });
+  const latest = useRef({ reveal, coveredBottom, isOnScreen });
   useLayoutEffect(() => {
-    latest.current = { reveal, coveredBottom };
+    latest.current = { reveal, coveredBottom, isOnScreen };
   });
 
   // Which card the pointer and the keyboard are on. Cards live in the SVG and handles in the
@@ -159,6 +168,11 @@ export function useQuickAdd({ reveal, coveredBottom }: QuickAddOptions = {}): {
   useEffect(() => {
     if (!editing) return;
     const frame = requestAnimationFrame(() => {
+      const { isOnScreen: judge } = latest.current;
+      if (judge) {
+        if (!judge(editing.personId)) latest.current.reveal?.(editing.personId);
+        return;
+      }
       const canvas = document.querySelector(".stam-canvas");
       if (!canvas) return;
       const form = document.querySelector(`[data-editing-for="${editing.personId}"]`);

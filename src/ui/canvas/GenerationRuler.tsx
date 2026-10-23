@@ -33,6 +33,15 @@ export function toRoman(n: number): string {
 
 export type Row = { generation: number; y: number };
 
+/**
+ * A row's numeral, counted from the top row (`rows` sorted, as `rowsOf` gives them). The family
+ * view starts at generation 0; pedigree and hourglass put ancestors at −1, −2, …, and their top
+ * row reads I all the same.
+ */
+export function rowNumeral(rows: readonly Row[], generation: number): string {
+  return toRoman(generation - (rows[0]?.generation ?? 0) + 1);
+}
+
 /** One row per generation, with the row's top y, sorted by generation. */
 export function rowsOf(nodes: readonly { generation: number; y: number }[]): Row[] {
   const tops = new Map<number, number>();
@@ -79,7 +88,7 @@ export function GenerationRuler({
             className={active ? "stam-ruler__label stam-ruler__label--active" : "stam-ruler__label"}
             style={{ transform: `translateY(${Math.round(centre * 10) / 10}px)` }}
           >
-            {toRoman(generation + 1)}
+            {rowNumeral(rows, generation)}
           </span>
         );
       })}

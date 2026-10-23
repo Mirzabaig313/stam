@@ -20,14 +20,35 @@ function yearOf(date: FuzzyDate | undefined): string {
 }
 
 /**
+ * Everyone's biological parents (as `parentsOf` gives them), in one pass over the unions: for
+ * labelling many people at once without a scan of every union per person.
+ */
+export function biologicalParents(doc: TreeDocument): Map<string, readonly string[]> {
+  const parents = new Map<string, readonly string[]>();
+  for (const union of Object.values(doc.unions)) {
+    for (const child of union.children) {
+      if (child.type === "biological" && !parents.has(child.personId)) {
+        parents.set(child.personId, union.partners);
+      }
+    }
+  }
+  return parents;
+}
+
+/**
  * The screen-reader label of a card, e.g. "Ali Khan, born 1950, son of Ahmed Khan and Sara Khan".
- * `linked` marks a linked copy; `hiddenCount` mentions a collapsed branch.
+ * `linked` marks a linked copy; `hiddenCount` mentions a collapsed branch. `parents` (from
+ * `biologicalParents`) saves looking the parents up.
  */
 export function describePerson(
   doc: TreeDocument,
   personId: string,
   t: TFunction,
-  extra: { linked?: boolean; hiddenCount?: number } = {},
+  extra: {
+    linked?: boolean;
+    hiddenCount?: number;
+    parents?: ReadonlyMap<string, readonly string[]>;
+  } = {},
 ): string {
   const person = doc.persons[personId];
   if (!person) return "";
@@ -38,7 +59,7 @@ export function describePerson(
   const died = yearOf(person.death?.date);
   if (died) parts.push(t("canvas.describe.died", { date: died }));
 
-  const parents = parentsOf(doc, personId)
+  const parents = (extra.parents ? (extra.parents.get(personId) ?? []) : parentsOf(doc, personId))
     .map((id) => doc.persons[id])
     .filter((p): p is Person => p !== undefined)
     .map((p) => personLabel(p, t));

@@ -7,7 +7,7 @@ import type { LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
 import type { ExportInput, ExportOptions, RenderedSvg } from "@/export/types";
 import { Edges } from "@/ui/canvas/Edges";
-import { rowsOf, toRoman } from "@/ui/canvas/GenerationRuler";
+import { rowNumeral, rowsOf } from "@/ui/canvas/GenerationRuler";
 import { PersonCard } from "@/ui/cards/PersonCard";
 
 import { fontFaceCss, fontsFor } from "./fonts";
@@ -204,7 +204,7 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
             y1={geo.treeTop}
             y2={r2(geo.treeTop + geo.treeHeight)}
           />
-          {rowsOf(layout.nodes).map(({ generation, y }) => {
+          {rowsOf(layout.nodes).map(({ generation, y }, _, rows) => {
             const cy = r2(y + geo.dy + CARD_H / 2);
             return (
               <g key={generation}>
@@ -217,7 +217,7 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
                   fontSize={11}
                   fontWeight={600}
                 >
-                  {toRoman(generation + 1)}
+                  {rowNumeral(rows, generation)}
                 </text>
               </g>
             );

@@ -4,14 +4,25 @@ import { applyCommand } from "@/core/commands/apply";
 import { CommandError } from "@/core/commands/errors";
 import { History } from "@/core/commands/history";
 import type { Command, CommandResult } from "@/core/commands/types";
-import { layoutFamily } from "@/core/layout/family";
 import type { LayoutResult } from "@/core/layout/types";
 import { ancestorsOf, partnersOf, topmostAncestor } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
+import type { FanLayout, TimelineLayout, ViewMode } from "@/core/views/types";
 import type { Autosaver } from "@/storage/autosave";
 import type { Journal } from "@/storage/journal";
 import type { SaveGuard } from "@/storage/saveGuard";
 import type { TreeRepo } from "@/storage/treeRepo";
+
+import {
+  clampFanGenerations,
+  computeViews,
+  FAN_GENERATIONS,
+  isFocusView,
+  isReadOnlyView,
+  realLayouts,
+  type ViewInputs,
+  type ViewLayoutFns,
+} from "./viewLayouts";
 
 /** While edits keep arriving, the tree is snapshotted at most this often. */
 export const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
@@ -30,8 +41,27 @@ export type EditorState = {
   collapsed: ReadonlySet<string>;
   focusMode: boolean;
   editing: { personId: string; role: EditingRole; fromId?: string } | null;
-  /** Null while nothing is loaded or the tree has no root person yet. */
+  /** Which view of the tree is shown. */
+  viewMode: ViewMode;
+  /**
+   * The person the pedigree, descendants, hourglass and fan views are drawn around; null means
+   * the view root (see `resolveFocus`).
+   */
+  focusId: string | null;
+  /**
+   * Null while nothing is loaded or the tree has no root person yet. In the fan and timeline
+   * views it stays the family layout (exports use it); the views draw `fanLayout` and
+   * `timelineLayout`.
+   */
   layout: LayoutResult | null;
+  fanLayout: FanLayout | null;
+  timelineLayout: TimelineLayout | null;
+  /** How many generations the fan chart draws, 2–7 (FR-V5). */
+  fanGenerations: number;
+  /** Who the family view can't reach from the view root, in every view (see `computeViews`). */
+  familyUnreachable: string[];
+  /** "How are we related?": the two people being compared (either may still be empty). */
+  relation: { aId: string | null; bId: string | null } | null;
   canUndo: boolean;
   canRedo: boolean;
   /** Code of the last command the model refused; cleared by the next command that works. */
@@ -73,6 +103,19 @@ export type EditorActions = {
    */
   revealPerson(personId: string): boolean;
   setFocusMode(on: boolean): void;
+  /**
+   * Switches the view. Entering a focus view from the family or timeline view focuses the
+   * selected person, if there is one. Fan and timeline are read-only (see `isReadOnlyView`).
+   */
+  setViewMode(mode: ViewMode): void;
+  /** Draws the focus views around this person; ignored for someone who is not in the tree. */
+  setFocus(personId: string): void;
+  /** Sets the fan's generations, clamped to 2–7, and lays the fan out again. */
+  setFanGenerations(generations: number): void;
+  /** Opens the relationship calculator; ids that are not in the tree are left empty. */
+  openRelation(aId?: string | null, bId?: string | null): void;
+  setRelation(patch: Partial<NonNullable<EditorState["relation"]>>): void;
+  closeRelation(): void;
   startEditing(editing: NonNullable<EditorState["editing"]>): void;
   stopEditing(): void;
   /**
@@ -92,6 +135,8 @@ export type EditorDeps = {
   /** Compare-and-swap saves (see `storage/saveGuard`); the editor page's autosaver uses it too. */
   guard?: SaveGuard;
   now?: () => Date;
+  /** The layout functions; tests pass fakes for the views they do not exercise. */
+  layouts?: ViewLayoutFns;
 };
 
 const INITIAL: EditorState = {
@@ -103,22 +148,19 @@ const INITIAL: EditorState = {
   collapsed: new Set(),
   focusMode: false,
   editing: null,
+  viewMode: "family",
+  focusId: null,
   layout: null,
+  fanLayout: null,
+  timelineLayout: null,
+  fanGenerations: FAN_GENERATIONS,
+  familyUnreachable: [],
+  relation: null,
   canUndo: false,
   canRedo: false,
   error: null,
   locked: null,
 };
-
-function computeLayout(
-  doc: TreeDocument | null,
-  viewRootId: string | null,
-  collapsed: ReadonlySet<string>,
-): LayoutResult | null {
-  const rootId = viewRootId ?? doc?.rootPersonId;
-  if (!doc || rootId === undefined) return null;
-  return layoutFamily(doc, { rootId, collapsed });
-}
 
 export function createEditorStore({
   repo,
@@ -126,6 +168,7 @@ export function createEditorStore({
   journal,
   guard,
   now = () => new Date(),
+  layouts = realLayouts,
 }: EditorDeps) {
   const history = new History();
   let lastSnapshotAt = 0;
@@ -146,18 +189,39 @@ export function createEditorStore({
   }
 
   const store = createStore<EditorState & EditorActions>()((set, get) => {
+    /** The layouts of `doc` for the current view, with some inputs overridden. */
+    function relayout(doc: TreeDocument | null, over: Partial<ViewInputs> = {}) {
+      const s = get();
+      const input: ViewInputs = {
+        viewMode: s.viewMode,
+        viewRootId: s.viewRootId,
+        focusId: s.focusId,
+        collapsed: s.collapsed,
+        fanGenerations: s.fanGenerations,
+        ...over,
+      };
+      return computeViews(layouts, doc, input, now());
+    }
+
     /** Installs a changed document: drops references to people who are gone, re-lays out, saves. */
     function commit(doc: TreeDocument): void {
       const s = get();
       const alive = (id: string | null) => (id !== null && doc.persons[id] ? id : null);
       const viewRootId = alive(s.viewRootId);
+      const focusId = alive(s.focusId);
+      const relation = s.relation && {
+        aId: alive(s.relation.aId),
+        bId: alive(s.relation.bId),
+      };
       const editing = s.editing && doc.persons[s.editing.personId] ? s.editing : null;
       set({
         doc,
         viewRootId,
+        focusId,
+        relation,
         selectedId: alive(s.selectedId),
         editing,
-        layout: computeLayout(doc, viewRootId, s.collapsed),
+        ...relayout(doc, { viewRootId, focusId }),
         canUndo: history.canUndo,
         canRedo: history.canRedo,
       });
@@ -184,6 +248,8 @@ export function createEditorStore({
 
     function record(cmd: Command, label: string, write: "push" | "amend"): string[] | null {
       if (get().locked) return null;
+      // Fan and timeline only show the tree; the tree's name is the one thing they let through.
+      if (isReadOnlyView(get().viewMode) && cmd.type !== "renameTree") return null;
       const result = run(cmd);
       if (!result) return null;
       history[write]({ label, patches: result.patches, inversePatches: result.inversePatches });
@@ -196,7 +262,7 @@ export function createEditorStore({
 
     function step(move: "undo" | "redo"): void {
       const doc = get().doc;
-      if (!doc || get().locked) return;
+      if (!doc || get().locked || isReadOnlyView(get().viewMode)) return;
       const next = history[move](doc);
       if (!next) return;
       pendingAdd = false;
@@ -247,7 +313,7 @@ export function createEditorStore({
           status: "ready",
           doc: found.doc,
           recoveredFromSnapshot: found.recoveredFromSnapshot,
-          layout: computeLayout(found.doc, null, INITIAL.collapsed),
+          ...computeViews(layouts, found.doc, { ...INITIAL, collapsed: INITIAL.collapsed }, now()),
         });
         lastSnapshotAt = now().getTime();
         repo.takeSnapshot(found.doc, { ifChanged: true }).catch(() => {});
@@ -269,19 +335,17 @@ export function createEditorStore({
       select: (id) => set({ selectedId: id }),
 
       setViewRoot(id) {
-        const { doc, collapsed } = get();
-        set({ viewRootId: id, layout: computeLayout(doc, id, collapsed) });
+        set({ viewRootId: id, ...relayout(get().doc, { viewRootId: id }) });
       },
 
       toggleCollapse(personId) {
-        const { doc, viewRootId, collapsed } = get();
-        const next = new Set(collapsed);
+        const next = new Set(get().collapsed);
         if (!next.delete(personId)) next.add(personId);
-        set({ collapsed: next, layout: computeLayout(doc, viewRootId, next) });
+        set({ collapsed: next, ...relayout(get().doc, { collapsed: next }) });
       },
 
       revealPerson(personId) {
-        const { doc, layout, viewRootId, collapsed } = get();
+        const { doc, layout, viewRootId, collapsed, viewMode } = get();
         if (!doc?.persons[personId]) return false;
         if (layout?.primaryNode[personId] !== undefined) return true;
         const above = ancestorsOf(doc, personId);
@@ -290,16 +354,68 @@ export function createEditorStore({
         }
         const expanded = new Set([...collapsed].filter((id) => !above.has(id)));
         let rootId = viewRootId;
-        let next = computeLayout(doc, rootId, expanded);
-        if (next?.primaryNode[personId] === undefined) {
-          rootId = topmostAncestor(doc, personId);
-          next = computeLayout(doc, rootId, expanded);
+        let next = relayout(doc, { collapsed: expanded, viewRootId: rootId });
+        let focusId = get().focusId;
+        if (next.layout?.primaryNode[personId] === undefined) {
+          if (isFocusView(viewMode) && viewMode !== "fan") {
+            // These views are drawn around one person: someone not in the picture becomes the focus.
+            focusId = personId;
+          } else {
+            rootId = topmostAncestor(doc, personId);
+          }
+          next = relayout(doc, { collapsed: expanded, viewRootId: rootId, focusId });
         }
-        set({ collapsed: expanded, viewRootId: rootId, layout: next });
-        return next?.primaryNode[personId] !== undefined;
+        set({ collapsed: expanded, viewRootId: rootId, focusId, ...next });
+        return next.layout?.primaryNode[personId] !== undefined;
       },
 
       setFocusMode: (on) => set({ focusMode: on }),
+
+      setViewMode(mode) {
+        const { doc, viewMode, selectedId, focusId } = get();
+        if (!doc || mode === viewMode) return;
+        let nextFocus = focusId;
+        if (isFocusView(mode) && !isFocusView(viewMode)) {
+          nextFocus = selectedId !== null && doc.persons[selectedId] ? selectedId : focusId;
+        }
+        set({
+          viewMode: mode,
+          focusId: nextFocus,
+          // Nothing is edited in the fan and timeline; and an open add belongs to the old view.
+          editing: null,
+          ...relayout(doc, { viewMode: mode, focusId: nextFocus }),
+        });
+      },
+
+      setFocus(personId) {
+        const { doc } = get();
+        if (!doc?.persons[personId]) return;
+        set({ focusId: personId, ...relayout(doc, { focusId: personId }) });
+      },
+
+      setFanGenerations(generations) {
+        const fanGenerations = clampFanGenerations(generations);
+        if (fanGenerations === get().fanGenerations) return;
+        set({ fanGenerations, ...relayout(get().doc, { fanGenerations }) });
+      },
+
+      openRelation(aId = null, bId = null) {
+        const { doc } = get();
+        const known = (id: string | null) => (id !== null && doc?.persons[id] ? id : null);
+        set({ relation: { aId: known(aId), bId: known(bId) } });
+      },
+      setRelation(patch) {
+        const { doc, relation } = get();
+        if (!relation) return;
+        const known = (id: string | null) => (id !== null && doc?.persons[id] ? id : null);
+        set({
+          relation: {
+            aId: "aId" in patch ? known(patch.aId ?? null) : relation.aId,
+            bId: "bId" in patch ? known(patch.bId ?? null) : relation.bId,
+          },
+        });
+      },
+      closeRelation: () => set({ relation: null }),
       startEditing: (editing) => set({ editing }),
       stopEditing: () => set({ editing: null }),
 

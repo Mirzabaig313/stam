@@ -156,6 +156,25 @@ export function famAdoption(): TreeDocument {
   );
 }
 
+/**
+ * `a`+`b` adopted `k2`, whose birth parents are not recorded; `a`'s own parents are `ga`+`gb`.
+ * `k1` is the couple's biological child.
+ */
+export function famAdoptedOnly(): TreeDocument {
+  return docOf(
+    [
+      person("ga", "Aziz", "Khan", "male"),
+      person("gb", "Shamim", "Khan", "female"),
+      person("a", "Usman", "Aziz", "male"),
+      person("b", "Lubna", "Aziz", "female"),
+      person("k1", "Hira", "Aziz", "female"),
+      person("k2", "Zaid", "Aziz", "male"),
+    ],
+    [union("ug", ["ga", "gb"], ["a"]), union("ua", ["a", "b"], ["k1", ["k2", "adopted"]])],
+    "ga",
+  );
+}
+
 export const allFamilies: [string, () => TreeDocument][] = [
   ["famSimple", famSimple],
   ["famRemarriage", famRemarriage],

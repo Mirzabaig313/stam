@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { createTree } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
-import { startAdd } from "@/ui/cards/quickAdd";
+import type { AddRole } from "@/ui/cards/nameEntry";
+import { quickAddRoles, startAdd } from "@/ui/cards/quickAdd";
 import { createEditorStore } from "@/ui/store/editorStore";
 
 import { makeEditorEnv } from "../../fixtures/editorEnv";
@@ -54,5 +55,69 @@ describe("startAdd", () => {
     const second = startAdd(store, "child", "c2")!;
     expect(store.getState().doc!.persons[first]).toBeUndefined();
     expect(store.getState().editing?.personId).toBe(second);
+  });
+});
+
+describe("startAdd in the focus views", () => {
+  // [view, focus, role, from]: every add is drawn and the family view's root never moves.
+  test.each([
+    ["pedigree", "dad", "parent", "dad"],
+    ["pedigree", "c1", "sibling", "c1"],
+    ["pedigree", "c1", "spouse", "c1"],
+    ["descendants", "c1", "child", "c1"],
+    ["descendants", "c1", "spouse", "c1"],
+    ["descendants", "c1", "sibling", "c1"],
+    ["hourglass", "c1", "child", "c1"],
+    ["hourglass", "c1", "spouse", "c1"],
+    ["hourglass", "c1", "sibling", "c1"],
+    ["hourglass", "c1", "parent", "dad"],
+  ] as const)("%s around %s: add %s of %s", async (view, focus, role, from) => {
+    const store = await storeWith(famSimple());
+    store.getState().select(focus);
+    store.getState().setViewMode(view);
+    const id = startAdd(store, role, from)!;
+    expect(id).not.toBeNull();
+    const s = store.getState();
+    expect(s.viewMode).toBe(view);
+    expect(s.layout!.primaryNode[id]).toBeDefined();
+    expect(s.viewRootId).toBeNull();
+    expect(s.editing?.personId).toBe(id);
+  });
+
+  test("a new person the focus view can't draw becomes the focus", async () => {
+    const store = await storeWith(famSimple());
+    store.getState().select("c1");
+    store.getState().setViewMode("pedigree");
+    const id = startAdd(store, "sibling", "c1")!;
+    expect(store.getState().focusId).toBe(id);
+  });
+});
+
+describe("quickAddRoles", () => {
+  const all: AddRole[] = ["parent", "child", "spouse", "sibling"];
+  const roles = (view: Parameters<typeof quickAddRoles>[0], generation: number) =>
+    all.filter((r) => quickAddRoles(view, { generation }).has(r));
+
+  test("the family view offers every handle", () => {
+    expect(roles("family", 0)).toEqual(all);
+    expect(roles("family", 3)).toEqual(all);
+  });
+
+  test("the pedigree only adds parents, the descendants view only children", () => {
+    expect(roles("pedigree", 0)).toEqual(["parent"]);
+    expect(roles("pedigree", -2)).toEqual(["parent"]);
+    expect(roles("descendants", 0)).toEqual(["child"]);
+    expect(roles("descendants", 2)).toEqual(["child"]);
+  });
+
+  test("the hourglass adds parents above the focus row, anything on it and below", () => {
+    expect(roles("hourglass", -1)).toEqual(["parent"]);
+    expect(roles("hourglass", 0)).toEqual(all);
+    expect(roles("hourglass", 1)).toEqual(all);
+  });
+
+  test("fan and timeline offer nothing", () => {
+    expect(roles("fan", 0)).toEqual([]);
+    expect(roles("timeline", 0)).toEqual([]);
   });
 });

@@ -178,6 +178,8 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
   const layout = useEditor((e) => e.layout);
   const viewRootId = useEditor((e) => e.viewRootId);
   const selectedId = useEditor((e) => e.selectedId);
+  // Fan and timeline have no export of their own yet: the family view goes out instead.
+  const fallsBack = useEditor((e) => e.viewMode === "fan" || e.viewMode === "timeline");
   const visibleRect = getVisibleRect?.();
   const hasSelection = selectedId !== null && !!doc?.persons[selectedId];
   // Only what the estimate reads is a dependency, so typing a title never lays the family out again.
@@ -306,6 +308,12 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
             </label>
           ))}
         </fieldset>
+
+        {!isJson && fallsBack && (
+          <p className="notice" role="note">
+            {t("export.viewFallback")}
+          </p>
+        )}
 
         {!isJson && (
           <fieldset className="export-group">

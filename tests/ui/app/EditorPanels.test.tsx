@@ -121,6 +121,19 @@ describe("EditorPage unconnected list", () => {
     expect(screen.getByRole("button", { name: "6 not connected. Show them." })).toBeTruthy();
   });
 
+  test("a focus view counts from the family view; a pick switches to the family view", async () => {
+    const { user } = await renderEditor(khansAndStrangers());
+    await user.click(screen.getByRole("button", { name: /^Pedigree/ }));
+    // The pedigree of Ahmed draws only him, but the badge is about the family view.
+    await user.click(screen.getByRole("button", { name: "2 not connected. Show them." }));
+    const list = screen.getByRole("region", { name: "Not connected" });
+    await user.click(within(list).getByRole("button", { name: "Idris Lone" }));
+    const family = screen.getByRole("button", { name: /^Family/ });
+    expect(family.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: /Back to/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "6 not connected. Show them." })).toBeTruthy();
+  });
+
   test("clicking the badge again closes the list", async () => {
     const { user } = await renderEditor(khansAndStrangers());
     const badge = screen.getByRole("button", { name: "2 not connected. Show them." });

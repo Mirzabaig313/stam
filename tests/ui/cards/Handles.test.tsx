@@ -166,6 +166,27 @@ describe("quick-add handles", () => {
     await waitFor(() => expect(nameInput()).toBeTruthy());
   });
 
+  test("isOnScreen, when given, decides instead of the editor's current box (mid-glide)", async () => {
+    const reveal = mock((_personId: string) => {});
+    let onScreen = false;
+    const { store, user } = await renderEditorCanvas(famSimple(), {
+      quickAdd: { reveal, isOnScreen: () => onScreen },
+    });
+    hover("c1");
+    await user.click(screen.getByRole("button", { name: "Add child of Ali Khan" }));
+    const id = store.getState().editing!.personId;
+    await waitFor(() => expect(reveal).toHaveBeenCalledWith(id));
+
+    await user.keyboard("{Escape}");
+    reveal.mockClear();
+    onScreen = true;
+    hover("c2");
+    await user.click(screen.getByRole("button", { name: "Add child of Zainab Khan" }));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(reveal).not.toHaveBeenCalled();
+  });
+
   test("a new card under a bottom sheet is revealed, a new card in view is not", async () => {
     const reveal = mock((_personId: string) => {});
     // The editor box: wherever it is, the sheet covers all but the top 100 px of the canvas.
@@ -197,5 +218,46 @@ describe("quick-add handles", () => {
     } finally {
       HTMLElement.prototype.getBoundingClientRect = original;
     }
+  });
+});
+
+describe("quick-add handles in the focus views", () => {
+  test("the pedigree offers only Add parent", async () => {
+    const { store } = await renderEditorCanvas(famSimple());
+    act(() => {
+      store.getState().select("dad");
+      store.getState().setViewMode("pedigree");
+      store.getState().select(null);
+    });
+    hover("dad");
+    expect(handleNames("dad")).toEqual(["Add parent of Ahmed Khan"]);
+  });
+
+  test("the descendants view offers only Add child", async () => {
+    const { store } = await renderEditorCanvas(famSimple());
+    act(() => {
+      store.getState().select("dad");
+      store.getState().setViewMode("descendants");
+      store.getState().select(null);
+    });
+    hover("c1");
+    expect(handleNames("c1")).toEqual(["Add child of Ali Khan"]);
+  });
+
+  test("the hourglass: Add parent only above the focus row, every handle on it", async () => {
+    const { store } = await renderEditorCanvas(famSimple());
+    act(() => {
+      store.getState().select("c1");
+      store.getState().setViewMode("hourglass");
+      store.getState().select(null);
+    });
+    hover("dad");
+    expect(handleNames("dad")).toEqual(["Add parent of Ahmed Khan"]);
+    hover("c1");
+    expect(handleNames("c1")).toEqual([
+      "Add spouse or sibling on the left of Ali Khan",
+      "Add spouse or sibling on the right of Ali Khan",
+      "Add child of Ali Khan",
+    ]);
   });
 });

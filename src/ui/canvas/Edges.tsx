@@ -104,6 +104,11 @@ export type EdgesProps = {
   lod: Lod;
   /** Edge ids drawn faded (focus mode). */
   dimmedIds?: ReadonlySet<string> | null;
+  /**
+   * A relationship path: these edges are drawn at full ink strength, in a group of their own (the
+   * others sit in the faded group, and should be in `dimmedIds`).
+   */
+  highlightIds?: ReadonlySet<string> | null;
 };
 
 /**
@@ -111,18 +116,33 @@ export type EdgesProps = {
  * the ground, see canvas.css), so lines that share a run (a union's drop to its sibling bar) do not darken where they overlap.
  * Below full detail, lines are 1 screen px and married couples get a single line.
  */
-export function Edges({ edges, lod, dimmedIds }: EdgesProps) {
+export function Edges({ edges, lod, dimmedIds, highlightIds }: EdgesProps) {
   const detailed = lod === "full";
+  const lit = (edge: { id: string }) => highlightIds?.has(edge.id) ?? false;
+  const draw = (list: typeof edges) =>
+    list.map((edge) => (
+      <EdgePath
+        key={edge.id}
+        edge={edge}
+        detailed={detailed}
+        dimmed={dimmedIds?.has(edge.id) ?? false}
+      />
+    ));
+  if (!highlightIds) {
+    return (
+      <g className="stam-edges" fill="none">
+        {draw(edges)}
+      </g>
+    );
+  }
   return (
-    <g className="stam-edges" fill="none">
-      {edges.map((edge) => (
-        <EdgePath
-          key={edge.id}
-          edge={edge}
-          detailed={detailed}
-          dimmed={dimmedIds?.has(edge.id) ?? false}
-        />
-      ))}
-    </g>
+    <>
+      <g className="stam-edges" fill="none">
+        {draw(edges.filter((e) => !lit(e)))}
+      </g>
+      <g className="stam-edges stam-edges--path" fill="none">
+        {draw(edges.filter(lit))}
+      </g>
+    </>
   );
 }

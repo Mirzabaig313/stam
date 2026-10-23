@@ -22,7 +22,7 @@ import type { TreeDocument } from "@/core/model/types";
 import { type CardNode, type DragRole, PersonCard } from "@/ui/cards/PersonCard";
 import type { DropTarget } from "@/ui/dnd/resolveDrop";
 
-import { dimmedEdgeIds, focusSet, mirrorFrame } from "./derive";
+import { dimmedEdgeIds, focusSet, mirrorFrame, pathEdgeIds } from "./derive";
 import { Edges } from "./Edges";
 import { GenerationRuler, rowsOf } from "./GenerationRuler";
 import { Minimap } from "./Minimap";
@@ -70,6 +70,16 @@ export type CanvasProps = {
   dir: "ltr" | "rtl";
   onSelect: (personId: string | null) => void;
   onToggleCollapse: (personId: string) => void;
+  /**
+   * People on a relationship path, from A to B: their cards and the edges between them are drawn
+   * in full ink and everything else is dimmed to 0.25. Empty or absent: no highlight.
+   */
+  highlightPath?: readonly string[];
+  /**
+   * Shift+click on a card. When given, the click goes here instead of `onSelect` (the relationship
+   * calculator's "second person").
+   */
+  onShiftSelect?: (personId: string) => void;
   /** "↑ View family" on a spouse card: called with the spouse's topmost biological ancestor. */
   onViewFamily: (personId: string) => void;
   photoUrl: (photoId: string) => string | undefined;
@@ -111,6 +121,11 @@ export type CanvasHandle = {
    * bottom are covered (a bottom sheet): the card is centred in the area above them.
    */
   centerOnPerson(personId: string, options?: { bottomInset?: number }): void;
+  /**
+   * Whether the person's card is wholly on screen (above `bottomInset`) once the camera has
+   * arrived: judged on the camera's goal, so a glide in progress already counts.
+   */
+  isPersonInView(personId: string, options?: { bottomInset?: number }): boolean;
   worldToScreen(p: Point): Point;
   screenToWorld(p: Point): Point;
 };
@@ -160,10 +175,22 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     () => (focusMode && selectedId && doc.persons[selectedId] ? focusSet(doc, selectedId) : null),
     [focusMode, selectedId, doc],
   );
-  const dimmedEdges = useMemo(
-    () => (focus ? dimmedEdgeIds(layout.edges, layout.nodes, doc, focus) : null),
-    [focus, layout, doc],
+  const pathPeople = useMemo(
+    () =>
+      props.highlightPath && props.highlightPath.length > 0 ? new Set(props.highlightPath) : null,
+    [props.highlightPath],
   );
+  const pathEdges = useMemo(
+    () =>
+      pathPeople && props.highlightPath
+        ? pathEdgeIds(layout.edges, layout.nodes, doc, props.highlightPath)
+        : null,
+    [pathPeople, props.highlightPath, layout, doc],
+  );
+  const dimmedEdges = useMemo(() => {
+    if (pathEdges) return new Set(layout.edges.map((e) => e.id).filter((id) => !pathEdges.has(id)));
+    return focus ? dimmedEdgeIds(layout.edges, layout.nodes, doc, focus) : null;
+  }, [pathEdges, focus, layout, doc]);
 
   const edgeBoxes = useMemo(
     () =>
@@ -197,12 +224,41 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
   // ---- Camera -----------------------------------------------------------------------------
   const centreOf = (node: LayoutNode): Point => [flipX(node.x + CARD_W / 2), node.y + CARD_H / 2];
 
+  /**
+   * The canvas's size right now. A side panel that opens in the same commit as a "show this
+   * person" request narrows the canvas before the resize observer reports it.
+   */
+  const liveSize = () => {
+    const box = containerRef.current?.getBoundingClientRect();
+    return box && box.width > 0 && box.height > 0 ? { width: box.width, height: box.height } : size;
+  };
+
   const centerOnPerson = (personId: string, options: { bottomInset?: number } = {}) => {
     const nodeId = propsRef.current.layout.primaryNode[personId];
     const node = nodeId ? nodeById.get(nodeId) : undefined;
-    const inset = Math.min(Math.max(options.bottomInset ?? 0, 0), size.height);
-    const area = { width: size.width, height: size.height - inset };
+    const now = liveSize();
+    const inset = Math.min(Math.max(options.bottomInset ?? 0, 0), now.height);
+    const area = { width: now.width, height: now.height - inset };
     if (node) setViewport(centerOn(goal(), centreOf(node), area), true);
+  };
+
+  const isPersonInView = (personId: string, options: { bottomInset?: number } = {}) => {
+    const current = propsRef.current.layout;
+    const nodeId = current.primaryNode[personId];
+    const node = nodeId === undefined ? undefined : current.nodes.find((n) => n.nodeId === nodeId);
+    if (!node) return false;
+    const v = goal();
+    const xs = [flipX(node.x), flipX(node.x + CARD_W)].map((x) => x * v.k + v.x);
+    const top = node.y * v.k + v.y;
+    const bottom = (node.y + CARD_H) * v.k + v.y;
+    const now = liveSize();
+    const inset = Math.min(Math.max(options.bottomInset ?? 0, 0), now.height);
+    return (
+      Math.min(...xs) >= 0 &&
+      Math.max(...xs) <= now.width &&
+      top >= 0 &&
+      bottom <= now.height - inset
+    );
   };
 
   useImperativeHandle(ref, () => ({
@@ -211,6 +267,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
       setViewport(zoomAt(goal(), [size.width / 2, size.height / 2], 1 / ZOOM_STEP), true),
     fit: () => setViewport(fitBounds(bounds, size), true),
     centerOnPerson,
+    isPersonInView,
     worldToScreen: ([x, y]) => {
       const v = viewportRef.current;
       return [flipX(x) * v.k + v.x, y * v.k + v.y];
@@ -292,6 +349,20 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
   );
 
   // Keyboard focus on a card at the screen edge brings the card into the middle.
+  // Shift+click on a card picks the second person for "How are we related?", not a selection.
+  const onClickCapture = (e: MouseEvent<SVGSVGElement>) => {
+    const pick = propsRef.current.onShiftSelect;
+    if (!e.shiftKey || !pick) return;
+    const target = e.target as Element;
+    if (!target.closest(".stam-card")) return;
+    const nodeId = target.closest("[data-node-id]")?.getAttribute("data-node-id");
+    const personId = nodeId ? nodeById.get(nodeId)?.personId : undefined;
+    if (personId === undefined) return;
+    e.stopPropagation();
+    e.preventDefault();
+    pick(personId);
+  };
+
   const onFocus = (e: FocusEvent<SVGSVGElement>) => {
     const nodeId = (e.target as Element).closest("[data-node-id]")?.getAttribute("data-node-id");
     const node = nodeId ? display.nodes.find((n) => n.nodeId === nodeId) : undefined;
@@ -327,9 +398,16 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
       data-lod={level}
       data-drag={dragFeedback ? dragState(dragFeedback) : undefined}
     >
-      <svg ref={svgRef} className="stam-canvas__svg" width="100%" height="100%" onFocus={onFocus}>
+      <svg
+        ref={svgRef}
+        className="stam-canvas__svg"
+        width="100%"
+        height="100%"
+        onFocus={onFocus}
+        onClickCapture={onClickCapture}
+      >
         <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.k})`}>
-          <Edges edges={shownEdges} lod={level} dimmedIds={dimmedEdges} />
+          <Edges edges={shownEdges} lod={level} dimmedIds={dimmedEdges} highlightIds={pathEdges} />
           <g className="stam-canvas__nodes">
             {shownNodes.map((node) => (
               <PersonCard
@@ -338,7 +416,11 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
                 node={node}
                 lod={level}
                 selected={node.personId === selectedId}
-                dimmed={focus !== null && !focus.has(node.personId)}
+                dimmed={
+                  pathPeople
+                    ? !pathPeople.has(node.personId)
+                    : focus !== null && !focus.has(node.personId)
+                }
                 tabbable={node.nodeId === tabStop}
                 dir={dir}
                 collapsed={collapsed ? collapsed.has(node.personId) : undefined}

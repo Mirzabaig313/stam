@@ -192,6 +192,52 @@ describe("Canvas", () => {
     expect(sy).toBeCloseTo(300, 6);
   });
 
+  test("isPersonInView judges where the camera is going, not where it is mid-glide", () => {
+    const { ref, layout } = setup({ doc: bigFamily(200) });
+    const handle = ref.current!;
+    const near = layout.nodes[0]!;
+    const far = layout.nodes[layout.nodes.length - 1]!;
+    act(() => handle.centerOnPerson(near.personId));
+    for (let i = 0; i < 8; i++) act(() => handle.zoomIn());
+    act(() => handle.centerOnPerson(near.personId));
+    expect(handle.isPersonInView(near.personId)).toBe(true);
+    expect(handle.isPersonInView(far.personId)).toBe(false);
+    expect(handle.isPersonInView("nobody")).toBe(false);
+
+    reduceMotion(false);
+    act(() => handle.centerOnPerson(far.personId)); // a glide: the camera has not moved yet
+    const [sx] = handle.worldToScreen([far.x + CARD_W / 2, 0]);
+    expect(Math.abs(sx - 400)).toBeGreaterThan(400);
+    expect(handle.isPersonInView(far.personId)).toBe(true);
+    expect(handle.isPersonInView(near.personId)).toBe(false);
+  });
+
+  test("isPersonInView leaves out a covered bottom strip", () => {
+    const { ref, layout } = setup({ doc: bigFamily(200) });
+    const handle = ref.current!;
+    const target = layout.nodes[layout.nodes.length - 1]!;
+    for (let i = 0; i < 8; i++) act(() => handle.zoomIn());
+    act(() => handle.centerOnPerson(target.personId));
+    expect(handle.isPersonInView(target.personId, { bottomInset: 200 })).toBe(true);
+    expect(handle.isPersonInView(target.personId, { bottomInset: 320 })).toBe(false);
+  });
+
+  test("centerOnPerson uses the canvas's size now, before a resize has been observed", () => {
+    const { ref, layout } = setup({ doc: bigFamily(200) });
+    const handle = ref.current!;
+    const target = layout.nodes[layout.nodes.length - 1]!;
+    // A side panel opened in the same commit: the canvas is narrower, the observer not yet run.
+    SCREEN.width = 440;
+    try {
+      act(() => handle.centerOnPerson(target.personId));
+      const [sx, sy] = handle.worldToScreen([target.x + CARD_W / 2, target.y + CARD_H / 2]);
+      expect(sx).toBeCloseTo(220, 6);
+      expect(sy).toBeCloseTo(300, 6);
+    } finally {
+      SCREEN.width = 800;
+    }
+  });
+
   test("centerOnPerson with a bottom inset centres the card in the area above it", () => {
     const { ref, layout } = setup({ doc: bigFamily(200) });
     const handle = ref.current!;
@@ -402,5 +448,51 @@ describe("Canvas", () => {
     const labels = [...container.querySelectorAll(".stam-ruler__label")].map((l) => l.textContent);
     expect(labels).toEqual(["I", "II", "III"]);
     expect(container.querySelector(".stam-minimap")).not.toBeNull();
+  });
+});
+
+const cardOf = (container: HTMLElement, id: string) =>
+  container.querySelector(`[data-node-id="${id}"] .stam-card`)!;
+
+describe("relationship path", () => {
+  test("path people stay in full ink and everyone else dims to 0.25; their edges get their own group", () => {
+    const { container } = setup({ highlightPath: ["ali", "ahmed", "omar"] });
+    const dimmed = [...container.querySelectorAll(".stam-node--dimmed")].map((el) =>
+      el.getAttribute("data-node-id"),
+    );
+    expect(dimmed).not.toContain("ali");
+    expect(dimmed).not.toContain("ahmed");
+    expect(dimmed).not.toContain("omar");
+    expect(dimmed).toContain("zainab");
+    const lit = [...container.querySelectorAll(".stam-edges--path [data-edge-id]")].map((el) =>
+      el.getAttribute("data-edge-id"),
+    );
+    expect(lit.toSorted()).toEqual(["child:u1:ali", "child:u1:omar"]);
+    const faded = container.querySelectorAll(
+      ".stam-edges:not(.stam-edges--path) .stam-edge--dimmed",
+    );
+    expect(faded.length).toBeGreaterThan(0);
+  });
+
+  test("an empty path highlights nothing", () => {
+    const { container } = setup({ highlightPath: [] });
+    expect(container.querySelector(".stam-node--dimmed")).toBeNull();
+    expect(container.querySelector(".stam-edges--path")).toBeNull();
+  });
+
+  test("Shift+click goes to onShiftSelect and does not select", () => {
+    const picks: string[] = [];
+    const { container, onSelect } = setup({ onShiftSelect: (id) => picks.push(id) });
+    fireEvent.click(cardOf(container, "omar"), { shiftKey: true });
+    expect(picks).toEqual(["omar"]);
+    expect(onSelect).not.toHaveBeenCalled();
+    fireEvent.click(cardOf(container, "omar"));
+    expect(onSelect).toHaveBeenCalledWith("omar");
+  });
+
+  test("Shift+click selects as usual without onShiftSelect", () => {
+    const { container, onSelect } = setup();
+    fireEvent.click(cardOf(container, "omar"), { shiftKey: true });
+    expect(onSelect).toHaveBeenCalledWith("omar");
   });
 });

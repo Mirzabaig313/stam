@@ -14,14 +14,16 @@ afterEach(cleanup);
 const onlyOf = (commands: Command[], type: Command["type"]) =>
   commands.filter((c) => c.type === type);
 
-async function open(personId: string, doc = famSimple()) {
+async function open(personId: string, doc = famSimple(), readOnly = false) {
   const onRequestDelete = mock((_id: string) => {});
   const view = await renderWithStore(
-    <PersonPanel personId={personId} onRequestDelete={onRequestDelete} />,
+    <PersonPanel personId={personId} onRequestDelete={onRequestDelete} readOnly={readOnly} />,
     doc,
   );
   return { ...view, onRequestDelete, user: userEvent.setup() };
 }
+
+const button = (name: string) => screen.getByRole("button", { name }) as HTMLButtonElement;
 
 const personIn = (store: Awaited<ReturnType<typeof open>>["store"], id: string) =>
   store.getState().doc!.persons[id]!;
@@ -206,6 +208,15 @@ describe("PersonPanel buttons", () => {
     expect(
       (screen.getByRole("button", { name: "Set as root" }) as HTMLButtonElement).disabled,
     ).toBe(true);
+  });
+
+  test("read-only: Set as root and Delete… are disabled", async () => {
+    const { user, onRequestDelete, commands } = await open("c1", famSimple(), true);
+    expect(button("Set as root").disabled).toBe(true);
+    expect(button("Delete…").disabled).toBe(true);
+    await user.click(button("Delete…"));
+    expect(onRequestDelete).not.toHaveBeenCalled();
+    expect(commands).toEqual([]);
   });
 
   test("Delete… asks for the delete dialog", async () => {
