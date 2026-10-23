@@ -1,0 +1,348 @@
+/*
+ * The tree list (TreeListPage, TreeCard): an album's contents page. Each tree is a raised card
+ * holding a mounted thumbnail of its first three generations, tinted one album hue per
+ * generation. Tokens only; logical properties only.
+ */
+
+.tree-list-page {
+  max-inline-size: 1180px;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.tree-list-header {
+  flex-wrap: wrap;
+  row-gap: var(--space-3);
+}
+
+.tree-list-header .page-header-actions {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Settings is a tool, not an action on trees: it sits apart from Import and New tree. */
+.tree-list-header__settings {
+  margin-inline-end: var(--space-2);
+}
+
+/* ---------------------------------------------------------------- calm inline notices */
+
+.tree-list-notices:empty {
+  display: none;
+}
+
+.tree-list-notices {
+  display: grid;
+  gap: var(--space-2);
+  margin-block-end: var(--space-6);
+}
+
+.tree-list-page .banner,
+.tree-list-page .notice {
+  margin: 0;
+  padding-block: 8px;
+  padding-inline: 16px 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+  background: color-mix(in srgb, var(--hue-2) 55%, var(--ground));
+  color: var(--ink);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}
+
+.tree-list-page .notice {
+  padding-block: 10px;
+  background: var(--danger-soft);
+}
+
+.tree-list-page .banner-warn {
+  background: color-mix(in srgb, var(--hue-4) 60%, var(--ground));
+}
+
+.tree-list-page .banner output {
+  padding-block: 4px;
+}
+
+/* The dismiss is a quiet word, not a second call to action. */
+.tree-list-page .banner .button {
+  flex: none;
+  min-block-size: 32px;
+  padding-inline: 12px;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.tree-list-page .banner .button:hover {
+  background: var(--hover);
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+:root[data-theme="print"] .tree-list-page .banner,
+:root[data-theme="print"] .tree-list-page .notice {
+  border: 1px solid var(--ink);
+}
+
+/* ---------------------------------------------------------------- first run */
+
+.tree-list-empty {
+  margin-block-start: var(--space-2);
+  padding-block: clamp(40px, 7vw, 72px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+}
+
+.tree-list-empty .empty-state__art {
+  inline-size: 168px;
+}
+
+.tree-list-empty .empty-state__title {
+  font-size: var(--text-display);
+}
+
+/* ---------------------------------------------------------------- the grid of trees */
+
+.tree-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tree-card {
+  position: relative;
+  display: grid;
+  grid-template-areas:
+    "preview preview"
+    "body more";
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--dur-card) var(--ease);
+}
+
+.tree-card:hover {
+  box-shadow: var(--shadow-2);
+}
+
+/* The thumbnail is mounted like a photograph: a linen well with a hairline edge. */
+.tree-card__preview {
+  grid-area: preview;
+  aspect-ratio: 2 / 1;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.tree-card__body {
+  grid-area: body;
+  min-inline-size: 0;
+  padding-block: 14px 8px;
+  padding-inline: 8px 4px;
+}
+
+.tree-card__name {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+[lang="ur"] .tree-card__name,
+[lang="ar"] .tree-card__name {
+  line-height: 1.4;
+}
+
+.tree-card__link {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* The link covers the whole card, so a press anywhere on it opens the tree. */
+.tree-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+}
+
+.tree-card:hover:not(:has(.tree-card__more:hover)) .tree-card__link {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
+}
+
+.tree-card__link:focus-visible {
+  outline: none;
+}
+
+.tree-card__link:focus-visible::after {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.tree-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  margin-block-start: 6px;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.tree-card__stats > span + span::before {
+  content: "·" / "";
+  margin-inline: 7px;
+  color: var(--ink-3);
+}
+
+/* Above the covering link, so it takes its own presses. */
+.tree-card__more {
+  position: relative;
+  z-index: 1;
+  grid-area: more;
+  align-self: start;
+  margin-block-start: 10px;
+  color: var(--ink-2);
+}
+
+/* ---------------------------------------------------------------- the thumbnail */
+
+.tree-preview {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+/* A family wider than the frame fades out at the sides: it carries on past them. */
+.tree-preview--cropped {
+  mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* The tree runs from the right in a right-to-left interface, as the canvas does. */
+.tree-preview:dir(rtl) {
+  scale: -1 1;
+}
+
+.tree-preview__lines path {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 3;
+  stroke-linejoin: round;
+}
+
+.tree-preview__card--g0 {
+  --tint: var(--hue-0);
+  --tint-deep: var(--hue-0-deep);
+}
+
+.tree-preview__card--g1 {
+  --tint: var(--hue-1);
+  --tint-deep: var(--hue-1-deep);
+}
+
+.tree-preview__card--g2 {
+  --tint: var(--hue-2);
+  --tint-deep: var(--hue-2-deep);
+}
+
+.tree-preview__card > rect:first-child {
+  fill: var(--tint);
+  stroke: color-mix(in srgb, var(--tint-deep) 40%, transparent);
+  stroke-width: 2;
+}
+
+.tree-preview__face {
+  fill: color-mix(in srgb, var(--tint-deep) 55%, var(--tint));
+  stroke: var(--card);
+  stroke-width: 3;
+}
+
+.tree-preview__bar {
+  fill: var(--ink);
+  opacity: 0.32;
+}
+
+.tree-preview__bar--short {
+  opacity: 0.18;
+}
+
+.tree-preview__card--deceased > rect:first-child {
+  fill: color-mix(in srgb, var(--tint) 45%, var(--deceased));
+}
+
+.tree-preview__card--deceased .tree-preview__face {
+  fill: color-mix(in srgb, var(--tint-deep) 30%, var(--deceased));
+}
+
+/* An empty tree: ghost parents and a card waiting for its first person. */
+.tree-preview__ghost {
+  fill: none;
+  stroke: var(--ink-3);
+  stroke-width: 2;
+  stroke-dasharray: 6 6;
+  opacity: 0.7;
+}
+
+.tree-preview__ghost--you {
+  fill: var(--card);
+  opacity: 1;
+}
+
+.tree-preview__lines--ghost path {
+  stroke-dasharray: 4 6;
+  opacity: 0.6;
+}
+
+.tree-preview__plus-disc {
+  fill: var(--accent);
+}
+
+.tree-preview__plus {
+  fill: none;
+  stroke: var(--on-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+:root[data-theme="print"] .tree-preview__card > rect:first-child {
+  stroke: var(--ink);
+}
+
+/* ---------------------------------------------------------------- phone */
+
+@media (max-width: 640px) {
+  /* Settings shrinks to its icon; the label stays as its accessible name. */
+  .tree-list-header .tree-list-header__settings {
+    inline-size: 40px;
+    margin-inline-end: 0;
+    padding: 0;
+  }
+
+  .tree-list-header__settings .icon-button__label {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tree-list-header .button {
+    padding-inline: 14px;
+  }
+}

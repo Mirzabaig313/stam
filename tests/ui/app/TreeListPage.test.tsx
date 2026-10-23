@@ -57,6 +57,16 @@ function renderList() {
   );
 }
 
+/** Opens a tree card's "⋯" menu and picks one of its actions. */
+async function chooseAction(
+  user: ReturnType<typeof userEvent.setup>,
+  tree: string,
+  action: string,
+) {
+  await user.click(await screen.findByRole("button", { name: `Actions for ${tree}` }));
+  await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: action }));
+}
+
 async function createTree(name?: string) {
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "New tree" }));
@@ -73,16 +83,16 @@ async function createTree(name?: string) {
 describe("TreeListPage", () => {
   test("an empty list invites you to create the first tree", async () => {
     renderList();
-    expect(await screen.findByText("Create your first tree")).toBeTruthy();
+    expect(await screen.findByText("Start your family tree")).toBeTruthy();
   });
 
   test("creating a tree lists it with its people count", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await createTree("Khan family");
     expect(await screen.findByText("Khan family")).toBeTruthy();
     expect(screen.getByText("0 people")).toBeTruthy();
-    expect(screen.queryByText("Create your first tree")).toBeNull();
+    expect(screen.queryByText("Start your family tree")).toBeNull();
     expect((await env.repo.listTrees()).map((t) => t.name)).toEqual(["Khan family"]);
   });
 
@@ -95,7 +105,7 @@ describe("TreeListPage", () => {
 
   test("the name prompt starts with a default name", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await createTree();
     expect(await screen.findByText("My family")).toBeTruthy();
   });
@@ -109,7 +119,7 @@ describe("TreeListPage", () => {
       },
     });
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await createTree("One");
     await screen.findByText("One");
     await createTree("Two");
@@ -208,7 +218,7 @@ describe("TreeListPage", () => {
     };
     const json = await exportStamJson(doc, {}, { includePhotos: false });
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent.setup().upload(screen.getByLabelText("Import"), new File([json], "x.json"));
     expect(await screen.findByText("editor opened")).toBeTruthy();
     const [meta] = await env.repo.listTrees();
@@ -218,7 +228,7 @@ describe("TreeListPage", () => {
 
   test("the editor is told how many photos were skipped, counting only dropped photos", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const file = JSON.parse(await exportStamJson(famHalfSiblings(), {}, { includePhotos: false }));
     file.photos = { bad1: "not a data url", bad2: "data:text/html;base64,AAAA" };
     await userEvent
@@ -230,7 +240,7 @@ describe("TreeListPage", () => {
 
   test("an import without skipped photos hands over a zero count", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const json = await exportStamJson(famHalfSiblings(), {}, { includePhotos: false });
     await userEvent.setup().upload(screen.getByLabelText("Import"), new File([json], "ok.json"));
     await screen.findByText("editor opened");
@@ -239,7 +249,7 @@ describe("TreeListPage", () => {
 
   test("a file that is not a Stam tree shows the reason and adds nothing", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const file = new File(["{ nope"], "bad.json", { type: "application/json" });
     await userEvent.setup().upload(screen.getByLabelText("Import"), file);
     expect((await screen.findByRole("alert")).textContent).toBe(
@@ -250,7 +260,7 @@ describe("TreeListPage", () => {
 
   test("a file over 50 MB is refused without being read", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const file = new File(["{}"], "huge.json", { type: "application/json" });
     Object.defineProperty(file, "size", { value: 50 * 1024 * 1024 + 1 });
     let read = false;
@@ -265,7 +275,7 @@ describe("TreeListPage", () => {
 
   test("each import error code has its own translated message", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const user = userEvent.setup();
     const notStam = new File([JSON.stringify({ format: "other" })], "x.json");
     await user.upload(screen.getByLabelText("Import"), notStam);
@@ -280,7 +290,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Delete Khans" }));
+    await chooseAction(user, "Khans", "Delete");
     const dialog = screen.getByRole("dialog");
     expect(dialog.textContent).toContain("Khans");
     // The name is user text: isolate it so a right-to-left name cannot reorder the sentence.
@@ -295,9 +305,9 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Delete Khans" }));
+    await chooseAction(user, "Khans", "Delete");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
-    expect(await screen.findByText("Create your first tree")).toBeTruthy();
+    expect(await screen.findByText("Start your family tree")).toBeTruthy();
     expect(await env.repo.listTrees()).toHaveLength(0);
   });
 
@@ -309,7 +319,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Delete Khans" }));
+    await chooseAction(user, "Khans", "Delete");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(async () => expect(await env.repo.getPhoto("khan-photo")).toBeUndefined());
     expect(await env.repo.getPhoto("shah")).toBeDefined();
@@ -319,7 +329,7 @@ describe("TreeListPage", () => {
     await env.repo.putPhoto("left-over", new Blob(["x"], { type: "image/png" }));
     const json = await exportStamJson(famHalfSiblings(), {}, { includePhotos: false });
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent.setup().upload(screen.getByLabelText("Import"), new File([json], "x.json"));
     expect(await screen.findByText("editor opened")).toBeTruthy();
     await waitFor(async () => expect(await env.repo.getPhoto("left-over")).toBeUndefined());
@@ -332,13 +342,13 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Rename Khans" }));
+    await chooseAction(user, "Khans", "Rename");
     const input = within(screen.getByRole("dialog")).getByLabelText("Tree name");
     await user.clear(input);
     await user.type(input, "Khan line");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(heard).toEqual(["renamed"]));
-    await user.click(await screen.findByRole("button", { name: "Delete Khan line" }));
+    await chooseAction(user, "Khan line", "Delete");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(heard).toEqual(["renamed", "deleted"]));
     editorTab.close();
@@ -356,7 +366,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Rename Khans" }));
+    await chooseAction(user, "Khans", "Rename");
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
     expect(await screen.findByText("That didn't work. Try again.")).toBeTruthy();
     expect((await realGet("t1"))!.doc.name).toBe("Other tab");
@@ -367,7 +377,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Delete Khans" }));
+    await chooseAction(user, "Khans", "Delete");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(await env.repo.listTrees()).toHaveLength(1);
@@ -378,7 +388,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Rename Khans" }));
+    await chooseAction(user, "Khans", "Rename");
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Tree name") as HTMLInputElement;
     expect(input.value).toBe("Khans");
@@ -395,7 +405,7 @@ describe("TreeListPage", () => {
     renderList();
     const user = userEvent.setup();
     await screen.findByText("Khans");
-    await user.click(screen.getByRole("button", { name: "Rename Khans" }));
+    await chooseAction(user, "Khans", "Rename");
     const dialog = screen.getByRole("dialog");
     const input = within(dialog).getByLabelText("Tree name");
     await user.clear(input);
@@ -412,7 +422,7 @@ describe("TreeListPage", () => {
     renderList();
     await screen.findByText("Khans");
     spyOn(env.repo, "getTree").mockRejectedValue(new Error("disk"));
-    await userEvent.setup().click(screen.getByRole("button", { name: "Download backup of Khans" }));
+    await chooseAction(userEvent.setup(), "Khans", "Download backup");
     expect((await screen.findByRole("alert")).textContent).toBe("That didn't work. Try again.");
   });
 
@@ -421,7 +431,7 @@ describe("TreeListPage", () => {
     renderList();
     await screen.findByText("Khans");
     await env.repo.deleteTree("t1");
-    await userEvent.setup().click(screen.getByRole("button", { name: "Download backup of Khans" }));
+    await chooseAction(userEvent.setup(), "Khans", "Download backup");
     expect((await screen.findByRole("alert")).textContent).toBe("That didn't work. Try again.");
   });
 
@@ -429,7 +439,7 @@ describe("TreeListPage", () => {
     await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
     renderList();
     await screen.findByText("Khans");
-    await userEvent.setup().click(screen.getByRole("button", { name: "Duplicate Khans" }));
+    await chooseAction(userEvent.setup(), "Khans", "Duplicate");
     expect(await screen.findByText("Khans (copy)")).toBeTruthy();
     expect(await env.repo.listTrees()).toHaveLength(2);
   });
@@ -477,18 +487,136 @@ describe("TreeListPage", () => {
   });
 });
 
+describe("TreeListPage: the first run", () => {
+  test("invites you to start, with New tree, Import and the privacy promise", async () => {
+    renderList();
+    const title = await screen.findByRole("heading", { name: "Start your family tree" });
+    const invite = title.closest("section")!;
+    expect(invite.textContent).toContain("Everything stays on this device. Nothing is uploaded.");
+    expect(within(invite).getByRole("button", { name: "New tree" })).toBeTruthy();
+    expect(within(invite).getByLabelText("Import")).toBeTruthy();
+    // The header keeps only what the invitation does not offer: one New tree, one Import.
+    expect(screen.getAllByRole("button", { name: "New tree" })).toHaveLength(1);
+    expect(screen.getAllByLabelText("Import")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Settings" })).toBeTruthy();
+  });
+
+  test("once there is a tree, New tree and Import move to the header", async () => {
+    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    renderList();
+    await screen.findByText("Khans");
+    const header = screen.getByRole("banner");
+    expect(within(header).getByRole("button", { name: "New tree" })).toBeTruthy();
+    expect(within(header).getByLabelText("Import")).toBeTruthy();
+    expect(within(header).getByRole("button", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByText("Start your family tree")).toBeNull();
+  });
+});
+
+describe("TreeListPage: tree cards", () => {
+  test("a card shows a preview, the name, people, generations and the edit time", async () => {
+    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    renderList();
+    const link = await screen.findByRole("link", { name: "Khans" });
+    const card = link.closest("li")!;
+    expect(within(card).getByText("5 people")).toBeTruthy();
+    expect(await within(card).findByText("2 generations")).toBeTruthy();
+    expect(within(card).getByText(/^edited /)).toBeTruthy();
+    // The thumbnail: one box per person, decorative (the text says what it shows).
+    const svg = card.querySelector("svg.tree-preview")!;
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    expect(svg.querySelectorAll(".tree-preview__card")).toHaveLength(5);
+  });
+
+  test("an empty tree shows a placeholder drawing and no generations", async () => {
+    await env.repo.saveTree({
+      ...famSimple(),
+      id: "t0",
+      name: "Blank",
+      persons: {},
+      unions: {},
+      unionOrder: {},
+      rootPersonId: undefined,
+    });
+    renderList();
+    const card = (await screen.findByRole("link", { name: "Blank" })).closest("li")!;
+    expect(await within(card).findByText("0 people")).toBeTruthy();
+    await waitFor(() => expect(card.querySelector(".tree-preview--empty")).toBeTruthy());
+    expect(within(card).queryByText(/generation/)).toBeNull();
+  });
+
+  test("one person is one generation", async () => {
+    await env.repo.saveTree({
+      ...famSimple(),
+      id: "solo",
+      name: "Solo",
+      persons: { dad: famSimple().persons.dad! },
+      unions: {},
+      unionOrder: {},
+    });
+    renderList();
+    expect(await screen.findByText("1 generation")).toBeTruthy();
+  });
+
+  test("the ⋯ menu lists Rename, Duplicate, Download backup and a destructive Delete", async () => {
+    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    renderList();
+    const user = userEvent.setup();
+    const more = await screen.findByRole("button", { name: "Actions for Khans" });
+    expect(more.getAttribute("aria-haspopup")).toBe("menu");
+    expect(more.getAttribute("aria-expanded")).toBe("false");
+    await user.click(more);
+    const menu = screen.getByRole("menu", { name: "Khans" });
+    expect(more.getAttribute("aria-expanded")).toBe("true");
+    const items = within(menu).getAllByRole("menuitem");
+    expect(items.map((i) => i.textContent)).toEqual([
+      "Rename",
+      "Duplicate",
+      "Download backup",
+      "Delete",
+    ]);
+    expect(items[3]!.className).toContain("menu-item--danger");
+    // The first item takes the focus; Escape closes and gives the focus back to the button.
+    expect(document.activeElement).toBe(items[0]!);
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(more);
+  });
+
+  test("the keyboard reaches the card link, then its menu", async () => {
+    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    renderList();
+    const link = await screen.findByRole("link", { name: "Khans" });
+    link.focus();
+    await userEvent.setup().tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Actions for Khans" }));
+  });
+
+  test("Delete from the menu still asks first", async () => {
+    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    renderList();
+    const user = userEvent.setup();
+    await chooseAction(user, "Khans", "Delete");
+    const dialog = screen.getByRole("dialog", { name: "Delete this tree?" });
+    expect(within(dialog).getByRole("button", { name: "Delete" }).className).toContain(
+      "button-danger",
+    );
+    expect(await env.repo.listTrees()).toHaveLength(1);
+  });
+});
+
 describe("TreeListPage: GEDCOM import", () => {
   const FULL = `${import.meta.dir}/../../fixtures/gedcom/full-551.ged`;
 
   test("the file picker accepts .ged files", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     expect((screen.getByLabelText("Import") as HTMLInputElement).accept).toContain(".ged");
   });
 
   test("a .ged file is saved as a tree, its report shown, and Open tree opens it", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const user = userEvent.setup();
     await user.upload(
       screen.getByLabelText("Import"),
@@ -514,7 +642,7 @@ describe("TreeListPage: GEDCOM import", () => {
 
   test("closing the report stays on the list, which now shows the tree", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const user = userEvent.setup();
     await user.upload(
       screen.getByLabelText("Import"),
@@ -530,7 +658,7 @@ describe("TreeListPage: GEDCOM import", () => {
 
   test("GEDCOM with another extension is still recognised", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     // As if picked with "All files": the picker's filter is only a suggestion.
     await userEvent
       .setup({ applyAccept: false })
@@ -544,7 +672,7 @@ describe("TreeListPage: GEDCOM import", () => {
 
   test("a .ged file that is not GEDCOM shows the reason and adds nothing", async () => {
     renderList();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent
       .setup()
       .upload(screen.getByLabelText("Import"), new File(["just some notes"], "notes.ged"));
@@ -573,7 +701,7 @@ describe("TreeListPage: after a GEDCOM import", () => {
       </Routes>,
       { repo: env.repo },
     );
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent
       .setup()
       .upload(
@@ -592,7 +720,7 @@ describe("TreeListPage: after a GEDCOM import", () => {
       </Routes>,
       { repo: env.repo },
     );
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent
       .setup()
       .upload(
@@ -613,7 +741,7 @@ describe("TreeListPage: after a GEDCOM import", () => {
       </Routes>,
       { repo: env.repo },
     );
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent
       .setup()
       .upload(
@@ -647,7 +775,7 @@ function renderLargePage() {
 describe("TreeListPage: a GEDCOM file larger than the app is tuned for", () => {
   test("over 5,000 people asks first; Cancel imports nothing", async () => {
     renderLargePage();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const user = userEvent.setup();
     await user.upload(screen.getByLabelText("Import"), bigGedcom(5001));
     const ask = await screen.findByRole("dialog", { name: "Large family tree" });
@@ -661,7 +789,7 @@ describe("TreeListPage: a GEDCOM file larger than the app is tuned for", () => {
 
   test("Continue imports it and shows the report", async () => {
     renderLargePage();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     const user = userEvent.setup();
     await user.upload(screen.getByLabelText("Import"), bigGedcom(5001));
     const ask = await screen.findByRole("dialog", { name: "Large family tree" });
@@ -672,7 +800,7 @@ describe("TreeListPage: a GEDCOM file larger than the app is tuned for", () => {
 
   test("5,000 people imports without asking", async () => {
     renderLargePage();
-    await screen.findByText("Create your first tree");
+    await screen.findByText("Start your family tree");
     await userEvent.setup().upload(screen.getByLabelText("Import"), bigGedcom(5000));
     expect(await screen.findByRole("dialog", { name: "Import report" })).toBeTruthy();
   });

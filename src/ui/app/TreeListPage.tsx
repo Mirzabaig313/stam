@@ -1,6 +1,8 @@
+import "./treeList.css";
+
 import { type ChangeEvent, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 
 import { APP_NAME, TUNED_PEOPLE } from "@/config";
 import { applyCommand } from "@/core/commands/apply";
@@ -14,6 +16,7 @@ import { announceTreeChange } from "@/storage/multitab";
 import { requestPersistentStorage } from "@/storage/persist";
 import { cleanUpUnusedPhotos } from "@/storage/photoCleanup";
 import type { TreeMeta } from "@/storage/treeRepo";
+import { Button, EmptyState, Icon, IconButton } from "@/ui/design";
 import { SettingsDialog } from "@/ui/settings/SettingsDialog";
 
 import { BackupBanner } from "./BackupBanner";
@@ -21,9 +24,9 @@ import { isBackupDue } from "./backupState";
 import { ConfirmDialog, Dialog, NamePrompt } from "./Dialog";
 import { downloadBackup } from "./downloadBackup";
 import { GedcomReportDialog } from "./GedcomReportDialog";
-import { relativeTime } from "./relativeTime";
 import { useRepo } from "./RepoContext";
 import { StorageBanner } from "./StorageBanner";
+import { type TreeAction, TreeCard } from "./TreeCard";
 
 /** Files bigger than this are refused before they are read into memory. */
 const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
@@ -40,7 +43,7 @@ export function TreeListPage({
   /** Runs after an imported GEDCOM tree is saved; by default, the unused-photo clean-up. */
   afterImport?: () => Promise<void>;
 } = {}) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const repo = useRepo();
   // Like the JSON import and delete paths: photos no tree, snapshot or unsaved edit uses go.
   const afterImport = afterImportProp ?? (() => cleanUpUnusedPhotos(repo));
@@ -181,105 +184,82 @@ export function TreeListPage({
 
   const defaultName = t("treeList.defaultName");
 
+  function onAction(action: TreeAction, tree: TreeMeta) {
+    if (action === "rename" || action === "delete") setDialog({ kind: action, tree });
+    else if (action === "backup") void onBackup(tree);
+    else void act(() => repo.duplicateTree(tree.id, t("treeList.copyName", { name: tree.name })));
+  }
+
+  const hasTrees = trees !== null && trees.length > 0;
+  const newTree = (
+    <Button variant="primary" icon="plus" onClick={() => setDialog({ kind: "new" })}>
+      {t("treeList.newTree")}
+    </Button>
+  );
+  const importButton = (
+    <label className="button file-button">
+      <Icon name="upload" />
+      {t("treeList.import")}
+      <input
+        type="file"
+        accept=".json,application/json,.ged"
+        className="visually-hidden"
+        onChange={(event) => void onImport(event)}
+      />
+    </label>
+  );
+
   return (
-    <main className="page" id="main">
-      <header className="page-header">
+    <main className="page tree-list-page" id="main">
+      <header className="page-header tree-list-header">
         {/* The landing page is another document: a full navigation, not a router link. */}
         <a href="/" className="brand" aria-label={t("app.home", { app: APP_NAME })}>
           {APP_NAME}
         </a>
         <div className="page-header-actions">
-          <label className="button file-button">
-            {t("treeList.import")}
-            <input
-              type="file"
-              accept=".json,application/json,.ged"
-              className="visually-hidden"
-              onChange={(event) => void onImport(event)}
-            />
-          </label>
-          <button type="button" className="button" onClick={() => setSettingsOpen(true)}>
-            {t("settings.open")}
-          </button>
-          <button
-            type="button"
-            className="button button-primary"
-            onClick={() => setDialog({ kind: "new" })}
-          >
-            {t("treeList.newTree")}
-          </button>
+          <IconButton
+            icon="settings"
+            label={t("settings.open")}
+            showLabel
+            className="tree-list-header__settings"
+            onClick={() => setSettingsOpen(true)}
+          />
+          {hasTrees && importButton}
+          {hasTrees && newTree}
         </div>
       </header>
 
-      <StorageBanner />
-      {backupDue && <BackupBanner onDismiss={() => setBackupDue(false)} />}
-      {message && (
-        <p className="notice" role="alert">
-          {message}
-        </p>
-      )}
+      <div className="tree-list-notices">
+        <StorageBanner />
+        {backupDue && <BackupBanner onDismiss={() => setBackupDue(false)} />}
+        {message && (
+          <p className="notice" role="alert">
+            {message}
+          </p>
+        )}
+      </div>
 
       <h1 className="page-title">{t("treeList.title")}</h1>
 
       {trees?.length === 0 && (
-        <section className="empty">
-          <p className="empty-title">{t("treeList.empty")}</p>
-          <p className="muted">{t("treeList.emptyHint")}</p>
-        </section>
+        <EmptyState
+          className="tree-list-empty"
+          title={t("treeList.empty")}
+          actions={
+            <>
+              {newTree}
+              {importButton}
+            </>
+          }
+        >
+          <p>{t("treeList.emptyHint")}</p>
+        </EmptyState>
       )}
 
-      {trees && trees.length > 0 && (
-        <ul className="tree-list">
+      {hasTrees && (
+        <ul className="tree-grid">
           {trees.map((tree) => (
-            <li key={tree.id} className="tree-row">
-              <Link to={`/app/t/${tree.id}`} className="tree-link">
-                <bdi className="tree-name">{tree.name}</bdi>
-                <span className="tree-meta">
-                  <span>{t("treeList.people", { count: tree.peopleCount })}</span>
-                  <span>
-                    {t("treeList.edited", { when: relativeTime(tree.updatedAt, i18n.language) })}
-                  </span>
-                </span>
-              </Link>
-              <div className="tree-actions">
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  aria-label={t("treeList.renameAria", { name: tree.name })}
-                  onClick={() => setDialog({ kind: "rename", tree })}
-                >
-                  {t("treeList.rename")}
-                </button>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  aria-label={t("treeList.duplicateAria", { name: tree.name })}
-                  onClick={() =>
-                    void act(() =>
-                      repo.duplicateTree(tree.id, t("treeList.copyName", { name: tree.name })),
-                    )
-                  }
-                >
-                  {t("treeList.duplicate")}
-                </button>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  aria-label={t("treeList.backupAria", { name: tree.name })}
-                  onClick={() => void onBackup(tree)}
-                >
-                  {t("treeList.backup")}
-                </button>
-                <button
-                  type="button"
-                  className="button button-quiet"
-                  aria-label={t("treeList.deleteAria", { name: tree.name })}
-                  onClick={() => setDialog({ kind: "delete", tree })}
-                >
-                  {t("common.delete")}
-                </button>
-              </div>
-            </li>
+            <TreeCard key={tree.id} tree={tree} onAction={onAction} />
           ))}
         </ul>
       )}
