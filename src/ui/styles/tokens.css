@@ -1,5 +1,11 @@
-/* Design tokens. Light only for M1; a dark set slots in later by overriding these on :root. */
-:root {
+/*
+ * Design tokens, one set per theme on <html data-theme> (settings.ts applies it before the first
+ * paint). `light` is also the default with no attribute. Every text/background pair is checked
+ * for WCAG AA in every theme by tests/ui/settings/tokenContrast.test.ts, which reads this file:
+ * keep the colours as hex, one `--name: value;` per line.
+ */
+:root,
+:root[data-theme="light"] {
   /* Colour */
   --ground: #f4f5f2;
   --ink: #111311;
@@ -7,6 +13,37 @@
   --line: rgba(17, 19, 17, 0.14);
   /* Selection and "you" only. Never decoration. */
   --accent: #2b47f5;
+
+  /* Surfaces: cards, form fields, banners. */
+  --card: #ffffff;
+  --card-hover: #f9faf7;
+  --deceased: #eceee9;
+  --deceased-hover: #e4e6e0;
+  --field: #ffffff;
+  --surface: #ffffff;
+
+  /* Washes over the ground: hover, the current row, the minimap's view box. */
+  --hover: rgba(17, 19, 17, 0.06);
+  --pressed: rgba(17, 19, 17, 0.08);
+  --tint: rgba(17, 19, 17, 0.04);
+  --primary-hover: #2a2d2a;
+  --backdrop: rgba(17, 19, 17, 0.4);
+  --shadow: rgba(17, 19, 17, 0.14);
+  /* A hairline on an ink surface (the tooltip's key). */
+  --on-ink-line: rgba(244, 245, 242, 0.35);
+
+  /* Lines: the card edge, and connector strength (R32: 3:1 against the ground). */
+  --card-stroke: 1px;
+  --edge-opacity: 0.55;
+  --edge-width: 1.5px;
+
+  /* Card colour modes (data-color-mode="branch" | "generation"): six hues, AA under ink and muted. */
+  --hue-0: #dbe5fb;
+  --hue-1: #d8eedd;
+  --hue-2: #f5e6c3;
+  --hue-3: #f7dce5;
+  --hue-4: #d2ecec;
+  --hue-5: #e6dff7;
 
   /* Shape: cards are the only rounded thing. */
   --radius-card: 6px;
@@ -26,17 +63,100 @@
   color-scheme: light;
 }
 
+/* Dark: the PRD's dark set, cards lifted a step off the ground. */
+:root[data-theme="dark"] {
+  --ground: #0f110f;
+  --ink: #e8eae6;
+  --muted: #9aa29b;
+  --line: rgba(232, 234, 230, 0.16);
+  --accent: #6f84ff;
+  --card: #1c201c;
+  --card-hover: #232823;
+  --deceased: #141714;
+  --deceased-hover: #1a1d1a;
+  --field: #161916;
+  --surface: #161916;
+  --hover: rgba(232, 234, 230, 0.08);
+  --pressed: rgba(232, 234, 230, 0.12);
+  --tint: rgba(232, 234, 230, 0.05);
+  --primary-hover: #c9ccc6;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --on-ink-line: rgba(15, 17, 15, 0.35);
+  --hue-0: #1d2b4d;
+  --hue-1: #193526;
+  --hue-2: #3b2f12;
+  --hue-3: #40202d;
+  --hue-4: #133638;
+  --hue-5: #2e2247;
+
+  color-scheme: dark;
+}
+
+/* Classic: the light ground with the familiar blue and pink cards by gender. */
+:root[data-theme="classic"] {
+  --male: #dce8f8;
+  --female: #fadde8;
+  --male-deceased: #e6ebf1;
+  --female-deceased: #f1e6ea;
+}
+
+/* Print: pure black on white, no fills, heavier lines. */
+:root[data-theme="print"] {
+  --ground: #ffffff;
+  --ink: #000000;
+  --muted: #000000;
+  --line: rgba(0, 0, 0, 0.45);
+  --accent: #000000;
+  --card: #ffffff;
+  --card-hover: #f2f2f2;
+  --deceased: #ffffff;
+  --deceased-hover: #f2f2f2;
+  --field: #ffffff;
+  --surface: #ffffff;
+  --hover: rgba(0, 0, 0, 0.08);
+  --pressed: rgba(0, 0, 0, 0.12);
+  --tint: rgba(0, 0, 0, 0.04);
+  --primary-hover: #333333;
+  --backdrop: rgba(0, 0, 0, 0.5);
+  --shadow: rgba(0, 0, 0, 0.2);
+  --on-ink-line: rgba(255, 255, 255, 0.5);
+  --card-stroke: 1.5px;
+  --edge-opacity: 1;
+  --edge-width: 2px;
+  --hue-0: #ffffff;
+  --hue-1: #ffffff;
+  --hue-2: #ffffff;
+  --hue-3: #ffffff;
+  --hue-4: #ffffff;
+  --hue-5: #ffffff;
+}
+
+/* Reduce motion: the OS setting, unless Settings chose (<html data-motion="reduce|full">). */
 @media (prefers-reduced-motion: reduce) {
-  :root {
+  :root:not([data-motion="full"]) {
     --dur-layout: 0ms;
     --dur-card: 0ms;
   }
 
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
   }
+}
+
+:root[data-motion="reduce"] {
+  --dur-layout: 0ms;
+  --dur-card: 0ms;
+}
+
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
 }

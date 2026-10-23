@@ -42,7 +42,7 @@
   translate: 0 -4px;
 }
 
-[dir="rtl"] .tip--center {
+.tip--center:dir(rtl) {
   translate: 50% -4px;
 }
 
@@ -60,8 +60,8 @@
   translate: 0 0;
 }
 
-[dir="rtl"] .tip-anchor:hover > .tip--center,
-[dir="rtl"] .tip-anchor > :focus-visible + .tip--center {
+.tip-anchor:hover > .tip--center:dir(rtl),
+.tip-anchor > :focus-visible + .tip--center:dir(rtl) {
   translate: 50% 0;
 }
 
@@ -70,10 +70,17 @@
   transition-delay: 0s, 0s, 0s;
 }
 
+/* A control whose menu is open: the menu says it all, and the tip would cover it. */
+.tip-anchor > [aria-expanded="true"] + .tip {
+  opacity: 0;
+  visibility: hidden;
+  transition: none;
+}
+
 .tip__key {
   align-self: flex-start;
   padding: 1px 6px;
-  border: 1px solid rgba(244, 245, 242, 0.35);
+  border: 1px solid var(--on-ink-line);
   border-radius: 6px;
   font: inherit;
   font-size: 12px;

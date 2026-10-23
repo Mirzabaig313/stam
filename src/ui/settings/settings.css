@@ -1,0 +1,128 @@
+/* Settings dialog. Logical properties only. */
+.dialog:has(.settings-form) {
+  inline-size: min(520px, calc(100% - 2 * var(--gutter)));
+  max-block-size: calc(100% - 2 * var(--gutter));
+  overflow-y: auto;
+}
+
+.settings-form {
+  display: grid;
+  gap: 20px;
+}
+
+.settings-group {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.settings-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 6px 8px;
+  margin-inline: -8px;
+  cursor: pointer;
+  transition: background-color var(--dur-card) var(--ease);
+}
+
+.settings-choice:hover {
+  background: var(--hover);
+}
+
+.settings-choice input {
+  flex: none;
+  margin: 0;
+  margin-block-start: 3px;
+  accent-color: var(--ink);
+}
+
+.settings-choice__text {
+  display: grid;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.settings-choice__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-choice__hint {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.settings-choice [lang="ur"],
+.settings-choice [lang="ar"] {
+  font-size: 1.1em;
+}
+
+/* Each theme in miniature: its ground with two small cards in its own fills and ink. */
+.settings-swatch {
+  position: relative;
+  flex: none;
+  inline-size: 34px;
+  block-size: 22px;
+  border: 1px solid var(--line);
+  background: var(--_sw-ground);
+}
+
+.settings-swatch::before,
+.settings-swatch::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 6px;
+  inline-size: 11px;
+  block-size: 8px;
+  border: 1px solid var(--_sw-ink);
+  border-radius: 2px;
+}
+
+.settings-swatch::before {
+  inset-inline-start: 4px;
+  background: var(--_sw-card);
+}
+
+.settings-swatch::after {
+  inset-inline-end: 4px;
+  background: var(--_sw-alt);
+}
+
+.settings-swatch[data-swatch="light"] {
+  --_sw-ground: #f4f5f2;
+  --_sw-card: #ffffff;
+  --_sw-alt: #ffffff;
+  --_sw-ink: #111311;
+}
+
+.settings-swatch[data-swatch="dark"] {
+  --_sw-ground: #0f110f;
+  --_sw-card: #1c201c;
+  --_sw-alt: #1c201c;
+  --_sw-ink: #e8eae6;
+}
+
+.settings-swatch[data-swatch="classic"] {
+  --_sw-ground: #f4f5f2;
+  --_sw-card: #dce8f8;
+  --_sw-alt: #fadde8;
+  --_sw-ink: #111311;
+}
+
+.settings-swatch[data-swatch="print"] {
+  --_sw-ground: #ffffff;
+  --_sw-card: #ffffff;
+  --_sw-alt: #ffffff;
+  --_sw-ink: #000000;
+}
+
+/* The language picker (LanguageField) and its "Translation in review" note. */
+.language-review {
+  margin-block: 6px 0;
+  font-size: 13px;
+}
