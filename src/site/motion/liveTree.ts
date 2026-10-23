@@ -50,7 +50,10 @@ export function fit(live: LiveTreeView, bounds: Box, maxScale: number, pad = 32)
 export function draw(live: LiveTreeView, blend: Blend, camera: Camera, lift?: string) {
   const { s, tx, ty } = camera;
   live.world.style.transform = `translate3d(${tx}px, ${ty}px, 0) scale(${s})`;
-  live.root.classList.toggle("lod-low", s < 0.6);
+  // Level of detail, as in the editor: full cards, then names only, then initials.
+  live.root.classList.toggle("lod-low", s < 0.5);
+  live.root.classList.toggle("lod-mid", s >= 0.5 && s < 0.74);
+  live.root.style.setProperty("--s", s.toFixed(3));
 
   const seen = new Set<string>();
   for (const card of blend.cards) {
