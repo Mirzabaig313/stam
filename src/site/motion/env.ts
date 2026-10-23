@@ -2,7 +2,6 @@
 // are safe to import while prerendering.
 
 export const prefersReducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
-export const isTouch = () => matchMedia("(hover: none), (pointer: coarse)").matches;
 export const isMobile = () => matchMedia("(max-width: 767px)").matches;
 
 /** expo-out for everything that settles; expo-in-out only for page-sized moves. */

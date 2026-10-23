@@ -5,7 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { startDrag } from "./drag";
-import { isMobile, isTouch, prefersReducedMotion } from "./env";
+import { isMobile, prefersReducedMotion } from "./env";
 import { initScroll, onScroll } from "./scroll";
 import { startStage } from "./stage";
 
@@ -22,43 +22,6 @@ function headerStepsAside(stepAside = true) {
     document.documentElement.classList.toggle("header-away", away);
     document.documentElement.classList.toggle("header-solid", y > 24);
     last = y;
-  });
-}
-
-/**
- * The hero tree leans a few pixels toward the pointer. With the pointer still, it holds still:
- * the intro and the looping drag demo carry the life (DESIGN.md, "Idle"). Off screen and under
- * reduced motion it does nothing.
- */
-function heroLean() {
-  const figure = document.querySelector<HTMLElement>("[data-hero-tree]");
-  const lean = figure?.querySelector<HTMLElement>("[data-lean]");
-  if (!figure || !lean) return;
-  const aim = { x: 0, y: 0 };
-  const now = { x: 0, y: 0 };
-  if (!isTouch()) {
-    addEventListener(
-      "pointermove",
-      (e: PointerEvent) => {
-        aim.x = e.clientX / innerWidth - 0.5;
-        aim.y = e.clientY / innerHeight - 0.5;
-      },
-      { passive: true },
-    );
-  }
-  const tick = () => {
-    const k = 1 - Math.pow(0.94, gsap.ticker.deltaRatio());
-    now.x += (aim.x - now.x) * k;
-    now.y += (aim.y - now.y) * k;
-    const x = now.x * 14;
-    const y = now.y * 6;
-    lean.style.translate = `${x.toFixed(2)}px ${y.toFixed(2)}px`;
-  };
-  ScrollTrigger.create({
-    trigger: figure,
-    start: "top bottom",
-    end: "bottom top",
-    onToggle: (self) => (self.isActive ? gsap.ticker.add(tick) : gsap.ticker.remove(tick)),
   });
 }
 
@@ -132,7 +95,6 @@ export function startMotion() {
   initScroll();
   headerStepsAside();
   pageLeave();
-  heroLean();
   if (isMobile()) chapterFrames();
   else startStage();
   startDrag();

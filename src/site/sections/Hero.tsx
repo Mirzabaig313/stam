@@ -33,7 +33,7 @@ export function Hero() {
       <figure className="hero__figure" data-hero-tree>
         <div className="register hero__register">
           <RulerMarks frame={FINAL} />
-          <div className="hero__tree" data-lean>
+          <div className="hero__tree">
             <StaticTree frame={FINAL} stagger className="tree--hero" />
           </div>
         </div>

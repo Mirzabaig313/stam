@@ -565,7 +565,9 @@ dd {
 }
 
 /* Very narrow phones: the section link goes; the footer and the hero still link to it. */
-@media (max-width: 379px) {
+/* Phones: the header keeps the wordmark, Privacy and the CTA; the section link is in the hero
+   and the footer. */
+@media (max-width: 419px) {
   .site-nav li:first-child {
     display: none;
   }
@@ -899,7 +901,7 @@ dd {
   inset-block-start: 0;
   inset-inline-start: 0;
   inline-size: 3px;
-  block-size: 88px;
+  block-size: 72px;
   margin-inline-start: -1.5px;
   background: var(--accent);
   border-radius: 2px;
@@ -1073,6 +1075,24 @@ dd {
 .motion .hero__line {
   animation: slide-lock 1.1s var(--ease) both;
   animation-delay: calc(var(--i) * 0.08s);
+}
+
+/* Phones: the same intro, quicker, so a slow phone is settled within its first two seconds. */
+@media (max-width: 767px) {
+  .motion .tree--hero .card {
+    animation-duration: 0.7s;
+    animation-delay: calc(0.1s + var(--row) * 0.08s);
+  }
+
+  .motion .tree--hero .edge {
+    animation-duration: 0.5s;
+    animation-delay: calc(0.25s + var(--row) * 0.08s);
+  }
+
+  .motion .hero__figure .ruler__mark,
+  .motion .missing__figure .ruler__mark {
+    animation-delay: calc(0.05s + var(--row) * 0.08s);
+  }
 }
 
 /* ------------------------------------------------------------------ chapters */
@@ -1362,7 +1382,6 @@ html:not(.motion) .chapter__count .chapter__of,
   align-items: center;
   padding-block: 0.42rem;
   padding-inline-start: var(--gutter);
-  border-block-end: 1px solid var(--line);
   color: var(--muted);
   transition: color 0.4s var(--ease);
 }
@@ -1580,7 +1599,7 @@ html:not(.motion) .chapter__count .chapter__of,
 
 .live--drag {
   grid-template-columns: minmax(0, 1fr);
-  aspect-ratio: 1.75;
+  aspect-ratio: 2.3;
   border-block: 1px solid var(--line);
   background: linear-gradient(var(--rule) 0 0) 0 calc(50% - 0px) / 100% 1px no-repeat;
 }
@@ -1706,7 +1725,7 @@ html:not(.motion) .live--drag {
 }
 
 .exports__group {
-  padding-block: 1.6rem 0.4rem;
+  padding-block: 1.6rem 0.75rem;
   font-size: var(--t-xs);
   font-weight: 600;
   font-stretch: 125%;
@@ -2072,11 +2091,6 @@ html:not(.motion) .live--drag {
     background: #dde2fb;
     translate: calc(var(--u) * 4) 0;
   }
-
-  .card--pick.is-a:hover .card__avatar,
-  .card--pick.is-b:hover .card__avatar {
-    background: var(--ink);
-  }
 }
 
 .calc__answer {
@@ -2280,6 +2294,15 @@ html:not(.motion) .live--drag {
 
   .live--drag {
     border-block-start: 0;
+  }
+
+  /* The badge on the backup row already says it. */
+  .preview__status {
+    display: none;
+  }
+
+  .doc__head {
+    padding-block-end: 40px;
   }
 
   /* The pinned tree fades at the sides of the phone instead of being cut by them. */

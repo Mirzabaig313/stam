@@ -66,7 +66,7 @@ export function startDrag(): (() => void) | undefined {
 
     draw(live, blend, fit(live, room, 1.1, 16), s.lift > 0.01 ? KEY : undefined);
     if (mark) {
-      mark.style.transform = `translate3d(${mx}px, ${home.y - 8}px, 0)`;
+      mark.style.transform = `translate3d(${mx}px, ${home.y}px, 0)`;
       mark.style.opacity = String(s.mark);
     }
   };

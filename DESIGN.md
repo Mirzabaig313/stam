@@ -96,15 +96,21 @@ l `clamp(1.5rem, 1.15rem + 1.4vw, 2.5rem)`, body `clamp(1.0625rem, 1rem + 0.2vw,
 - Hovers (one treatment per role):
   - Primary buttons: a paper fill slides in from the inline-start and locks (the button
     inverts), the label slides out sideways while its copy slides in, the arrow travels.
-  - Nav links: an underline slides in from the inline-start and locks.
-  - Index rows (exports) and person buttons (calculator): the row marker slides along the row;
-    cards tighten their outline.
-  - Utility links (footer legal): underline at rest, thickens.
+  - Links (nav, footer, text links): an ink fill slides in from the inline-start of the word
+    and locks, and the word inverts. Text links keep a hairline underline at rest; the current
+    page keeps an underline.
+  - Index rows (exports): an ink fill slides along the whole row and the row inverts.
+  - Person buttons (calculator): the card slides a few px along its row, the avatar inverts,
+    and the path from the first picked person is previewed in dashed accent.
 - Idle (a decision): the page is calm at rest, as the concept's emotion asks ("calm order").
-  The hero tree leans a few px toward the pointer and holds still when the pointer does; the
-  scroll-built chapters hold their finished frame while you read; the drag and drop demo loops
-  while it is on screen. An earlier slow drift on the hero kept the first screen from ever
-  settling and was removed.
+  The hero tree settles once and holds; the scroll-built chapters hold their finished frame
+  while you read; the drag and drop demo loops while it is on screen. An earlier slow drift and
+  a pointer lean on the hero were removed (the lean in the final "remove one accessory" pass).
+- Drag demo: Ines rises clear of her row and travels, her siblings slide over to make room
+  while she hovers, then she drops into the gap. No frame puts text over text.
+- Chapters on phones: no pinned stage. Five stacked frames, each with its own tree; the people
+  a chapter adds wait beside their places and settle in as the frame comes into view, then the
+  new connectors appear. Steps are numbered 1 to 5; roman numerals are kept for rows.
 - One clock: Lenis, ScrollTrigger and every driver run on `gsap.ticker`.
 - Reduced motion: native scroll, no scrub; the chapters become five stacked finished frames,
   the drag demo shows its end state, the hero tree is drawn complete.
