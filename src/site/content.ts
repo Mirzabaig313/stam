@@ -218,15 +218,18 @@ export const privacyPage = {
   title: "Privacy",
   lede: `${APP_NAME} is built so that your family's details never leave your device. Here is exactly what that means.`,
   updated: "Last updated 23 October 2026",
+  columns: ["Question", "In short", "In detail"],
   sections: [
     {
       heading: "What is stored",
+      answer: "What you add",
       body: [
         "The people you add, their dates, places, notes and photos, and how they are related. Photos are shrunk to at most 512 pixels on your device before they are saved.",
       ],
     },
     {
       heading: "Where it is stored",
+      answer: "This browser",
       body: [
         "In your browser's own storage (IndexedDB) on this device. Nothing is sent to a server, because there is no server that could receive it.",
         "That also means clearing your browser's site data deletes your trees. Download a backup now and then; the app reminds you.",
@@ -234,18 +237,21 @@ export const privacyPage = {
     },
     {
       heading: "What is never collected",
+      answer: "Everything else",
       body: [
         "There are no accounts, no cookies, no analytics, no advertising and no third-party scripts. The pages load only files from this site.",
       ],
     },
     {
       heading: "Backups and sharing",
+      answer: "A file you keep",
       body: [
         "A backup is a file you download and keep. It goes wherever you put it. You can open it again in the app on any device.",
       ],
     },
     {
       heading: "Hosting",
+      answer: "Static files",
       body: [
         "The site is served as static files by Cloudflare Pages. Like any web host, Cloudflare handles your IP address to deliver the files and protect the service. The site itself keeps no logs and sees none of your tree.",
       ],
@@ -255,7 +261,6 @@ export const privacyPage = {
 };
 
 export const notFound = {
-  numeral: "?",
   card: "No record",
   heading: "This branch has no record.",
   text: "The page you followed is not in the register. It may have moved, or the address has a typo.",
