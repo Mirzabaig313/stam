@@ -45,19 +45,38 @@ export function startStage(): (() => void) | undefined {
   const setChapter = (k: number, local: number) => {
     target = k === 0 ? 0 : k - 1 + clamp01(local);
     if (k !== shownCaption && caption) {
-      shownCaption = k;
       const set = (sel: string, text: string) => {
         const el = caption.querySelector<HTMLElement>(sel);
         if (el) el.textContent = text;
       };
+      const forward = k > shownCaption;
       set("[data-caption-count]", roman(k + 1));
       set("[data-caption-title]", chapters[k]!.title);
       set("[data-caption-text]", chapters[k]!.text);
-      // The caption settles in sideways, like the cards.
+      for (const step of caption.querySelectorAll<HTMLElement>("[data-caption-step]")) {
+        step.classList.toggle("is-current", Number(step.dataset.captionStep) === k);
+      }
+      shownCaption = k;
+      // The caption settles in sideways, like the cards: the numeral first, then the words,
+      // from the side the story is moving toward.
+      const from = forward ? 1 : -1;
       gsap.fromTo(
-        caption.children,
-        { x: -24, autoAlpha: 0 },
-        { x: 0, autoAlpha: 1, duration: 0.7, ease: "expo.out", stagger: 0.05, overwrite: true },
+        caption.querySelector("[data-caption-count]"),
+        { x: 64 * from, autoAlpha: 0 },
+        { x: 0, autoAlpha: 1, duration: 0.8, ease: "expo.out", overwrite: true },
+      );
+      gsap.fromTo(
+        caption.querySelectorAll("[data-caption-title], [data-caption-text]"),
+        { x: 28 * from, autoAlpha: 0 },
+        {
+          x: 0,
+          autoAlpha: 1,
+          duration: 0.7,
+          delay: 0.06,
+          ease: "expo.out",
+          stagger: 0.05,
+          overwrite: true,
+        },
       );
       items.forEach((item, i) => item.classList.toggle("is-current", i === k));
     }

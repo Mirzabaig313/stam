@@ -51,18 +51,36 @@ export function Chapters() {
             rows={FINAL.rows}
             className="live--stage"
           />
-          {/* Phones read the current chapter here, under the tree; desktop reads the list. */}
+          {/* The pinned frame's caption: the current chapter's numeral set large, its title and
+              text, and a register of all five steps. The list beside it keeps the text for
+              screen readers; this copy is decorative (the stage is aria-hidden). */}
           <div className="stage__caption" data-stage-caption>
-            <p className="chapter__count">
-              <span data-caption-count>{roman(1)}</span>
-              <span className="chapter__of"> of {roman(chapters.length)}</span>
+            <p className="stage__numeral">
+              <span className="stage__digits" data-caption-count>
+                {roman(1)}
+              </span>
+              <span className="stage__of">of {roman(chapters.length)}</span>
             </p>
-            <p className="chapter__title" data-caption-title>
-              {chapters[0]!.title}
-            </p>
-            <p className="chapter__text" data-caption-text>
-              {chapters[0]!.text}
-            </p>
+            <div className="stage__words">
+              <p className="chapter__title" data-caption-title>
+                {chapters[0]!.title}
+              </p>
+              <p className="chapter__text" data-caption-text>
+                {chapters[0]!.text}
+              </p>
+            </div>
+            <ol className="stage__steps">
+              {chapters.map((chapter, i) => (
+                <li
+                  key={chapter.title}
+                  className={i === 0 ? "stage__step is-current" : "stage__step"}
+                  data-caption-step={i}
+                >
+                  <span className="stage__step-num">{roman(i + 1)}</span>
+                  <span className="stage__step-name">{chapter.title}</span>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </div>
