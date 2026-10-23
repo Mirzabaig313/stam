@@ -102,6 +102,23 @@ const TEXT_X = 60;
 const TEXT_END = CARD_W - 12;
 const GLYPH_SPACE = 16;
 const HIT = 24;
+
+/** A circle of radius `r` centred on (cx, cy), as a path. */
+const ring = (cx: number, cy: number, r: number) =>
+  `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
+
+/**
+ * ♂ or ♀ drawn as a stroked path centred on `cx`, the size and place of the 12 px glyph whose
+ * baseline sits at y 17. The glyphs never mirror, so neither does the arrow.
+ */
+export function genderMarkPath(gender: Person["gender"], cx: number): string {
+  if (gender === "male") {
+    const x = cx - 1.2;
+    const y = 13;
+    return `${ring(x, y, 3.2)}M${x + 2.3} ${y - 2.3}L${cx + 3.6} 7.6M${cx + 0.8} 7.6H${cx + 3.6}V10.4`;
+  }
+  return `${ring(cx, 9.6, 3.2)}M${cx} 12.8V18.6M${cx - 2.2} 16.2H${cx + 2.2}`;
+}
 const CHEVRON_INSET = 14;
 
 function initialsOf(person: Person): string {
@@ -149,6 +166,11 @@ export type PersonCardProps = {
   collapsed?: boolean;
   photoUrl?: string;
   dragRole?: DragRole;
+  /**
+   * Exports: the drawing only. No roles, focus, handlers or controls, no hover or focus shapes,
+   * the drawn text left readable, and `data-person-id` on the card's root group.
+   */
+  static?: boolean;
   onSelect?: (personId: string) => void;
   onToggleCollapse?: (personId: string) => void;
   /** Gets the topmost biological ancestor of the spouse ("↑ View family"). */
@@ -173,6 +195,7 @@ function PersonCardImpl({
   collapsed,
   photoUrl,
   dragRole,
+  static: isStatic = false,
   onSelect,
   onToggleCollapse,
   onViewFamily,
@@ -249,7 +272,8 @@ function PersonCardImpl({
 
   // Text lines: name, then the native name, then the years (or "see original" on a linked copy).
   // Without a last line the block is centred: a lone name sits on the card's middle.
-  const hasLastLine = linked || years !== "";
+  // A static (export) card has no "see original" link: a linked copy's last line stays empty.
+  const hasLastLine = isStatic ? !linked && years !== "" : linked || years !== "";
   const loneName = !hasLastLine && !nativeName;
   const nameY = hasLastLine ? (nativeName ? 25 : 31) : nativeName ? 31 : CARD_H / 2;
   const nativeY = hasLastLine ? 41 : 47;
@@ -287,7 +311,9 @@ function PersonCardImpl({
     const badgeW = badge ? Math.ceil(textWidth(badge, BADGE_FONT)) + 12 : 0;
     shape = (
       <>
-        <rect className="stam-card__lift" y={2} width={CARD_W} height={CARD_H} rx={RADIUS} />
+        {!isStatic && (
+          <rect className="stam-card__lift" y={2} width={CARD_W} height={CARD_H} rx={RADIUS} />
+        )}
         <rect className="stam-card__bg" width={CARD_W} height={CARD_H} rx={RADIUS} />
       </>
     );
@@ -375,16 +401,25 @@ function PersonCardImpl({
             {fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT)}
           </text>
         )}
-        <text
-          className="stam-card__gender"
-          x={sx(CARD_W - 9)}
-          y={17}
-          textAnchor="end"
-          fontSize={12}
-          aria-hidden="true"
-        >
-          {person.gender === "male" ? "♂" : "♀"}
-        </text>
+        {isStatic ? (
+          // Exports draw the mark as a path: no embedded font (and so no PDF) has ♂ or ♀.
+          <path
+            className="stam-card__gender-mark"
+            data-gender={person.gender}
+            d={genderMarkPath(person.gender, sx(CARD_W - 14))}
+          />
+        ) : (
+          <text
+            className="stam-card__gender"
+            x={sx(CARD_W - 9)}
+            y={17}
+            textAnchor="end"
+            fontSize={12}
+            aria-hidden="true"
+          >
+            {person.gender === "male" ? "♂" : "♀"}
+          </text>
+        )}
         {badge && (
           <g className="stam-card__badge">
             <rect x={(CARD_W - badgeW) / 2} y={CARD_H - 9} width={badgeW} height={18} />
@@ -417,6 +452,21 @@ function PersonCardImpl({
   const seeOriginalW = Math.ceil(textWidth(seeOriginalText, SMALL_FONT)) + 8;
   const physicalX = (start: number, width: number) =>
     dir === "rtl" ? CARD_W - start - width : start;
+
+  if (isStatic) {
+    return (
+      <g
+        className={nodeClass}
+        data-node-id={node.nodeId}
+        data-person-id={personId}
+        transform={`translate(${node.x} ${node.y})`}
+        opacity={opacity}
+      >
+        <g className={cardClass}>{shape}</g>
+        <g className={decorClass}>{texts}</g>
+      </g>
+    );
+  }
 
   return (
     <g
