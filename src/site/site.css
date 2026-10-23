@@ -1823,15 +1823,28 @@ html:not(.motion) .live--drag {
   border: 0;
   padding: 0;
   min-inline-size: 0;
-  inline-size: min(100%, 1100px);
+  justify-self: stretch;
+  /* Full bleed, so the numerals sit in the page margin like every other register. */
+  margin-inline: calc((var(--margin) + var(--gutter)) * -1) calc(var(--gutter) * -1);
   margin-block: 1rem;
+}
+
+.calc__register .ruler {
+  align-self: stretch;
+}
+
+.calc__frame {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  inline-size: min(100% - var(--gutter) * 2, 1100px);
 }
 
 @media (max-width: 767px) {
   /* Phones: the whole family fits the column; small cards show first names and stay at least
      28 px tall, so every person is a comfortable tap. */
-  .calc__tree {
-    inline-size: 100%;
+  .calc__frame {
+    inline-size: calc(100% - var(--gutter));
   }
 
   .calc__tree .card--pick {

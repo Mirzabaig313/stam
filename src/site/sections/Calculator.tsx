@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 
-import { CardBody, cardClass, StaticTree } from "@/site/components/Tree";
+import { CardBody, cardClass, RulerMarks, StaticTree } from "@/site/components/Tree";
 import { calculator } from "@/site/content";
 import { FINAL, FINAL_DOC } from "@/site/data";
 import { samplePerson } from "@/site/sample/family";
@@ -66,25 +66,31 @@ export function Calculator() {
       </div>
       <fieldset className="calc__tree">
         <legend className="sr-only">Sample family</legend>
-        <StaticTree
-          frame={FINAL}
-          highlight={highlight}
-          renderCard={(key, style) => {
-            const state = key === a ? "a" : key === b ? "b" : onPath.has(key) ? "path" : "";
-            return (
-              <button
-                key={key}
-                type="button"
-                className={cardClass(key, `card--pick${state ? ` is-${state}` : ""}`)}
-                style={style}
-                aria-pressed={key === a || key === b}
-                onClick={() => pick(key)}
-              >
-                <CardBody personKey={key} />
-              </button>
-            );
-          }}
-        />
+        {/* The same register as the hero: generation numerals in the margin, rules across. */}
+        <div className="register calc__register">
+          <RulerMarks frame={FINAL} />
+          <div className="calc__frame">
+            <StaticTree
+              frame={FINAL}
+              highlight={highlight}
+              renderCard={(key, style) => {
+                const state = key === a ? "a" : key === b ? "b" : onPath.has(key) ? "path" : "";
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    className={cardClass(key, `card--pick${state ? ` is-${state}` : ""}`)}
+                    style={style}
+                    aria-pressed={key === a || key === b}
+                    onClick={() => pick(key)}
+                  >
+                    <CardBody personKey={key} />
+                  </button>
+                );
+              }}
+            />
+          </div>
+        </div>
       </fieldset>
       <p className="calc__answer" aria-live="polite">
         <bdi>{status}</bdi>
