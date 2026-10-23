@@ -18,7 +18,7 @@ Stack: inside the existing Bun project (its bundler, React 19, its tokens). GSAP
 landing only. No WebGL: the signature is the layout engine itself, drawn in SVG and HTML, and
 GL would add weight without adding meaning.
 
-## Concept Card (PRD §12.1, verbatim)
+## Concept Card (PRD §12.1, with the screenshot line amended)
 
 ```
 Idea:        Every family fits on rows: one generation per line, drawn in order
@@ -26,14 +26,15 @@ Metaphor:    The ruled pages of a family register, with numbered generation line
 Signature:   Scroll-built family. The real layout engine adds people row by row (pinned chapters)
 Emotion:     Calm order. "Oh, mine could look like that."
 Motion verb: "settle into rows". Things slide sideways and then lock onto their row
-Screenshot:  A finished 5-generation tree with a Roman-numeral ruler down the margin
+Screenshot:  A finished 4-generation tree with a Roman-numeral ruler down the margin
 ```
 
 Anchor: the product's core rule (systematic, one row per generation). The runner-up "threads"
 contributes one detail: connectors draw in after their cards have locked.
 
-Note on the screenshot line: the sample family is four generations (I to IV). Five rows made the
-tree too wide to stay legible on a laptop; the ruler and the register still carry the idea.
+Amendment to the screenshot line (PRD §12.1 said five generations): the sample family is four
+generations (I to IV), told in five chapters (I to V). A fifth row made the hero tree too small to
+read at laptop heights, so the card now says what the page shows.
 
 ## System
 
@@ -107,9 +108,12 @@ l `clamp(1.5rem, 1.15rem + 1.4vw, 2.5rem)`, body `clamp(1.0625rem, 1rem + 0.2vw,
 - One clock: Lenis, ScrollTrigger and every driver run on `gsap.ticker`.
 - Reduced motion: native scroll, no scrub; the chapters become five stacked finished frames,
   the drag demo shows its end state, the hero tree is drawn complete.
-- Page transitions: cross-document view transitions (CSS only). The header is a shared
-  element and stays put; the old page slides a little toward the inline-start and fades, the
-  new one slides in from the inline-end and locks.
+- Page transitions: five ruled rows of ink (the curtain, numbered I to V in the margin) slide
+  in from the inline-start one row after another and lock, then the browser navigates. The next
+  page opens covered (`flags.js` reads a session flag before first paint) and its rows slide off
+  toward the inline-end, row by row, while the header stays put; its own intro waits for them.
+  No view transitions: Bun's CSS bundler mangles `@view-transition`, and the curtain works in
+  every browser. Back/forward from the cache replays the arrival.
 
 ### Composition plan
 
@@ -124,11 +128,11 @@ HERO (full-bleed, ruler margin)
 | III|     [Noor] [Adam]   [Hana]--[Sami]==[Elif]                                        |
 | IV |                       [Lena]   [Theo]                                             |
 
-CHAPTERS I–V (sticky stage)
-|    | I. One person    |  sticky stage: the engine's tree, camera fits as it grows     |
-|    | (scrolls)        |  ruler numerals follow the rows                               |
-|    | II. A partner    |                                                               |
-|    | ...              |                                                               |
+CHAPTERS I–V (one pinned frame per chapter; each frame is a poster)
+| I  |  the engine's tree on the register,       | III        of V                    |
+| II |  camera fits as it grows                  | Their children                     |
+|    |                                           | text                               |
+|    |                                           | I II [III] IV V register of steps   |
 
 DRAG AND DROP (split)
 |    | heading + 3 rules       |  looping demo: a card lifts, slides, drops, rows re-flow |
@@ -147,7 +151,13 @@ FOOTER (final composition)
 | I  | ________________________ ruled lines ________________________________________   |
 | II | STAM  (giant, sitting on a rule)        links · etymology · colophon             |
 
-404: one empty ruled row, a dashed card "No record", the line "This branch has no record."
+PRIVACY PAGE (the policy as a register)
+|    | PRIVACY (giant)                          lede · updated                         |
+| I  | question (small) | SHORT ANSWER (large) | details                              |
+| II | ...                                                                             |
+
+404: the hero's composition with a gap in the family: Ada and Tomas's children on rows I and
+II, the third child a dashed "No record" card; "This branch has no record." on the left.
 ```
 
 ### Genericness test
@@ -165,7 +175,8 @@ FOOTER (final composition)
 
 - The chapters run the real `applyCommand` and `layoutFamily` in the browser. The prerendered
   HTML draws the same frames, because the sample family is keyed by stable names.
-- Phones get the editor's level-of-detail rule: below a card scale of about 0.5 the cards show
-  initials instead of names (FR-C9).
+- Level of detail in three steps, as in the editor (FR-C9): full cards when there is room; at
+  laptop sizes the avatar goes and the name keeps a readable size of its own (at least 11.5 px);
+  only small cards (phones) show initials.
 - The exports list is honest: only the JSON backup works today; everything else is labelled
   "Coming in a later version". The calculator demo runs on the sample family only and says so.

@@ -101,7 +101,6 @@ body {
 
 /* The register margin: one hairline down every page, where the row numerals live. */
 .rail {
-  view-transition-name: rail;
   position: fixed;
   inset-block: 0;
   inset-inline-start: var(--margin);
@@ -431,11 +430,6 @@ dd {
     box-shadow 0.3s var(--ease);
 }
 
-/* The header is shared across page transitions: it stays put while the page beneath changes. */
-.site-header {
-  view-transition-name: site-header;
-}
-
 .header-solid .site-header {
   box-shadow: 0 1px 0 var(--line);
 }
@@ -656,8 +650,31 @@ dd {
   color: var(--muted);
 }
 
-/* Level of detail (FR-C9): small cards show initials only, as the editor does when zoomed out. */
-@container card (max-width: 92px) {
+/* Level of detail (FR-C9), in three steps like the editor's zoom. Full cards when there is
+   room; at laptop sizes the avatar goes and the name keeps a readable size of its own; only
+   small cards (phones) fall back to initials. */
+@container card (max-width: 124px) {
+  .card__avatar,
+  .card__sex {
+    display: none;
+  }
+
+  .card__text {
+    grid-column: 1 / -1;
+    gap: 0.2em;
+  }
+
+  .card__name {
+    font-size: max(11.5px, calc(var(--u) * 15.5));
+    font-weight: 640;
+  }
+
+  .card__years {
+    font-size: max(10px, calc(var(--u) * 12.5));
+  }
+}
+
+@container card (max-width: 66px) {
   /* Hidden visually only, so buttons keep their names. */
   .card__text {
     position: absolute;
@@ -668,28 +685,16 @@ dd {
     white-space: nowrap;
   }
 
-  .card__sex {
-    display: none;
-  }
-
   .card__avatar {
+    display: grid;
+    grid-column: 1 / -1;
+    justify-self: center;
     inline-size: auto;
     block-size: auto;
     aspect-ratio: auto;
     background: none;
     font-size: calc(var(--u) * 34);
     font-stretch: 112%;
-  }
-}
-
-.card {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
-@container card (max-width: 92px) {
-  .card__avatar {
-    grid-column: 1 / -1;
-    justify-self: center;
   }
 }
 
@@ -747,6 +752,26 @@ dd {
   scale: 1.04;
   box-shadow: 0 14px 28px -12px rgb(17 19 17 / 0.35);
   z-index: 2;
+}
+
+/* The live trees follow the same three steps; --s is the camera scale, so the mid step keeps
+   the name at a fixed size on screen. */
+.lod-mid .card__avatar,
+.lod-mid .card__sex {
+  display: none;
+}
+
+.lod-mid .card {
+  grid-template-columns: minmax(0, 1fr);
+  padding-inline: calc(10px / var(--s, 1));
+}
+
+.lod-mid .card__name {
+  font-size: calc(12.5px / var(--s, 1));
+}
+
+.lod-mid .card__years {
+  font-size: calc(10.5px / var(--s, 1));
 }
 
 .lod-low .card__text,
@@ -930,22 +955,23 @@ dd {
 
 .motion .tree--hero .card {
   animation: settle-in 1s var(--ease) both;
-  animation-delay: calc(0.2s + var(--row) * 0.16s + var(--i) * 0.025s);
+  animation-delay: calc(var(--enter, 0s) + 0.2s + var(--row) * 0.16s + var(--i) * 0.025s);
 }
 
 .motion .tree--hero .edge {
   animation: appear 0.7s var(--ease) both;
-  animation-delay: calc(0.45s + var(--row) * 0.16s);
+  animation-delay: calc(var(--enter, 0s) + 0.45s + var(--row) * 0.16s);
 }
 
-.motion .hero__figure .ruler__mark {
+.motion .hero__figure .ruler__mark,
+.motion .missing__figure .ruler__mark {
   animation: appear 0.8s var(--ease) both;
-  animation-delay: calc(0.15s + var(--row) * 0.16s);
+  animation-delay: calc(var(--enter, 0s) + 0.15s + var(--row) * 0.16s);
 }
 
 .motion .hero__line {
   animation: slide-lock 1.1s var(--ease) both;
-  animation-delay: calc(var(--i) * 0.08s);
+  animation-delay: calc(var(--enter, 0s) + var(--i) * 0.08s);
 }
 
 /* ------------------------------------------------------------------ chapters */
@@ -1050,6 +1076,25 @@ dd {
   display: none;
 }
 
+/* Without motion the chapters read as five stacked frames, each led by its numeral. */
+html:not(.motion) .chapter__count {
+  font-family: var(--font-wide);
+  font-weight: 800;
+  font-size: clamp(3rem, 1.5rem + 4vw, 5.5rem);
+  line-height: 0.85;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+html:not(.motion) .chapter__count .chapter__of {
+  font-family: var(--font);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-inline-start: 0.6rem;
+}
+
 @media (max-width: 767px) {
   .chapters__intro .heading,
   .chapters__text,
@@ -1072,38 +1117,38 @@ dd {
   }
 }
 
-/* With motion: the stage sticks and the chapter texts scroll past it. */
+/* With motion: one pinned frame per chapter. The stage covers the whole screen: the tree on
+   the register at the start, the chapter set as a poster at the end (a large numeral, its
+   words, and the register of all five steps). The list underneath only provides the scroll;
+   its text stays for screen readers. */
 .motion .chapters__body {
   display: grid;
-  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .motion .chapters__list {
-  grid-column: 2;
+  grid-column: 1;
   grid-row: 1;
 }
 
 .motion .chapter {
-  display: flex;
-  align-items: center;
+  display: block;
   min-block-size: 100svh;
   border: 0;
-  padding-block: 0;
+  padding: 0;
 }
 
-/* The chapter beside the stage reads in ink; the others step back to muted (still AA). */
+.motion .chapter:last-child {
+  min-block-size: 130svh;
+}
+
 .motion .chapter__copy {
-  padding-inline: 0 var(--gutter);
-  color: var(--muted);
-  translate: -24px 0;
-  transition:
-    color 0.5s var(--ease),
-    translate 0.7s var(--ease);
-}
-
-.motion .chapter.is-current .chapter__copy {
-  color: var(--ink);
-  translate: 0 0;
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .motion .chapter__frame {
@@ -1117,8 +1162,12 @@ dd {
   position: sticky;
   inset-block-start: 0;
   block-size: 100svh;
-  grid-template-rows: minmax(0, 1fr) auto;
-  padding-block: calc(var(--header-h) + 2svh) 6svh;
+  grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: var(--gutter);
+  padding-block: calc(var(--header-h) + 4svh) 6svh;
+  padding-inline-end: var(--gutter);
+  z-index: 2;
 }
 
 .live--stage .live__view {
@@ -1126,60 +1175,170 @@ dd {
 }
 
 .stage__caption {
-  display: none;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto minmax(0, 1fr) auto;
+  min-block-size: 0;
+  border-inline-start: 1px solid var(--line);
+  padding-inline-start: var(--gutter);
+}
+
+.stage__numeral {
+  grid-row: 2;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+  margin-block-end: clamp(1rem, 3svh, 2rem);
+  overflow: clip;
+}
+
+.stage__digits {
+  display: block;
+  font-family: var(--font-wide);
+  font-weight: 800;
+  font-stretch: 125%;
+  font-size: clamp(6rem, 1rem + 12vw, 13.5rem);
+  line-height: 0.74;
+  letter-spacing: -0.02em;
+  text-box: trim-both cap alphabetic;
+  margin-inline-start: -0.04em;
+}
+
+.stage__of {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.stage__words {
+  grid-row: 3;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.stage__words .chapter__title {
+  margin: 0;
+  font-size: clamp(1.75rem, 1rem + 1.9vw, 2.75rem);
+}
+
+.stage__words .chapter__text {
+  max-inline-size: 30ch;
+  color: var(--ink);
+}
+
+/* The register of all five steps: a ruled list, the current row marked like an index row. */
+.stage__steps {
+  grid-row: 5;
+  display: grid;
+  border-block-start: 1px solid var(--ink);
+  font-size: var(--t-xs);
+}
+
+.stage__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: center;
+  padding-block: 0.42rem;
+  border-block-end: 1px solid var(--line);
+  color: var(--muted);
+  transition: color 0.4s var(--ease);
+}
+
+.stage__step-num {
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.08em;
+}
+
+.stage__step-name {
+  font-weight: 500;
+  transition: translate 0.5s var(--ease);
+}
+
+.stage__step.is-current {
+  color: var(--ink);
+}
+
+/* The current step is marked on the caption's rule, like a finger on the register. */
+.stage__step::before {
+  content: "";
+  position: absolute;
+  inset-block: -1px;
+  inset-inline-start: calc(var(--gutter) * -1 - 1px);
+  inline-size: 3px;
+  background: var(--ink);
+  scale: 1 0;
+  transition: scale 0.45s var(--ease);
+}
+
+.stage__step.is-current::before {
+  scale: 1 1;
+}
+
+.stage__step.is-current .stage__step-name {
+  translate: 0.6rem 0;
+  font-weight: 650;
 }
 
 @media (max-width: 767px) {
-  .motion .chapters__body {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  /* Phones: one sticky screen. The tree sits above, the current chapter's text below it,
-     and the list underneath only provides the scroll (its text stays for screen readers). */
+  /* Phones: one sticky screen. The tree sits above, the current chapter below it. */
   .motion .stage {
-    grid-column: 1;
-    grid-row: 1;
-    block-size: 100svh;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(0, 1fr) auto;
-    padding-block: calc(var(--header-h) + 8px) 7svh;
-    z-index: 2;
+    padding-block: calc(var(--header-h) + 8px) 6svh;
+    padding-inline-end: 0;
   }
 
   .stage__caption {
-    display: grid;
-    gap: 0.5rem;
-    min-block-size: 11.5rem;
-    padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
-    padding-block-start: 1.25rem;
+    grid-template-rows: none;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 1rem;
+    align-items: start;
+    min-block-size: 12.5rem;
+    border-inline-start: 0;
     border-block-start: 1px solid var(--line);
+    padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
+    padding-block-start: 1.1rem;
   }
 
-  .stage__caption .chapter__count,
-  .stage__caption .chapter__title {
+  .stage__numeral {
+    grid-row: 1;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
     margin: 0;
   }
 
-  .motion .chapters__list {
-    grid-column: 1;
+  .stage__digits {
+    font-size: 4.25rem;
+  }
+
+  .stage__words {
     grid-row: 1;
+    gap: 0.45rem;
+  }
+
+  .stage__words .chapter__title {
+    font-size: 1.5rem;
+  }
+
+  .stage__words .chapter__text {
+    font-size: 1rem;
+  }
+
+  .stage__steps {
+    display: none;
   }
 
   .motion .chapter {
     min-block-size: 70svh;
-    padding: 0;
   }
 
   .motion .chapter:last-child {
     min-block-size: 100svh;
-  }
-
-  .motion .chapter__copy {
-    position: absolute;
-    inline-size: 1px;
-    block-size: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
 }
 
@@ -1695,7 +1854,7 @@ html:not(.motion) .live--drag {
   }
 }
 
-@container card (max-width: 92px) {
+@container card (max-width: 66px) {
   .card--pick.is-a .card__avatar,
   .card--pick.is-b .card__avatar {
     background: none;
@@ -1895,7 +2054,10 @@ html:not(.motion) .live--drag {
 
 /* ------------------------------------------------------------------ privacy page */
 
+/* Opens like the home page: the title on the left, the lede hung on column 8. Then the policy
+   is a register: one ruled row per question across the full width. */
 .doc {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--gutter);
@@ -1906,12 +2068,23 @@ html:not(.motion) .live--drag {
 .doc__head {
   grid-column: 1 / -1;
   display: grid;
-  gap: 1.5rem;
-  padding-block-end: clamp(40px, 8svh, 80px);
+  grid-template-columns: subgrid;
+  align-items: end;
+  row-gap: 1.5rem;
+  padding-block-end: clamp(48px, 10svh, 112px);
 }
 
 .doc__title {
-  font-size: var(--t-mega);
+  grid-column: 1 / span 7;
+  font-size: clamp(3.5rem, 1rem + 9vw, 11rem);
+  line-height: 0.82;
+}
+
+.doc__aside {
+  grid-column: 8 / -1;
+  display: grid;
+  gap: 1rem;
+  padding-block-end: 0.5rem;
 }
 
 .doc__updated {
@@ -1920,22 +2093,62 @@ html:not(.motion) .live--drag {
 }
 
 .doc__body {
-  grid-column: 1 / span 9;
+  grid-column: 1 / -1;
   display: grid;
-  gap: 0;
-  border-block-start: 1px solid var(--ink);
+  grid-template-columns: subgrid;
 }
 
-/* Each section is a row of the register: its numeral sits in the page margin. */
-.doc {
+.doc__columns,
+.doc__section {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+
+.doc__columns {
+  padding-block: 0 0.6rem;
+  border-block-end: 1px solid var(--ink);
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.doc__columns span:nth-child(1),
+.doc__heading {
+  grid-column: 1 / span 3;
+}
+
+.doc__columns span:nth-child(2),
+.doc__answer {
+  grid-column: 4 / span 4;
+}
+
+.doc__columns span:nth-child(3),
+.doc__text {
+  grid-column: 8 / -1;
+}
+
+.doc__section {
   position: relative;
+  row-gap: 0.75rem;
+  padding-block: clamp(1.5rem, 3.5svh, 2.5rem);
+  border-block-end: 1px solid var(--line);
+  align-items: baseline;
 }
 
+.doc__section p + p {
+  margin-block-start: 0.8rem;
+}
+
+/* Each row's numeral sits in the page margin, on the row. */
 .doc__num {
   position: absolute;
-  inset-inline-start: 0;
+  inset-inline-start: calc((var(--margin) + var(--gutter)) * -1);
   inline-size: var(--margin);
-  margin-block-start: 0.3rem;
+  inset-block-start: clamp(1.5rem, 3.5svh, 2.5rem);
+  margin-block-start: 0.35rem;
   text-align: center;
   font-size: var(--t-xs);
   font-weight: 600;
@@ -1944,25 +2157,28 @@ html:not(.motion) .live--drag {
   color: var(--muted);
 }
 
-.doc__section {
-  display: grid;
-  grid-template-columns: minmax(0, 16rem) minmax(0, 40rem);
-  gap: var(--gutter);
-  padding-block: 1.6rem;
-  border-block-end: 1px solid var(--line);
-}
-
-.doc__section p + p {
-  margin-block-start: 0.8rem;
-}
-
 .doc__heading {
-  font-weight: 700;
-  font-stretch: 112%;
-  font-size: var(--t-body);
+  font-weight: 650;
+  font-size: var(--t-s);
+  color: var(--muted);
+}
+
+.doc__answer {
+  font-family: var(--font-wide);
+  font-weight: 750;
+  font-stretch: 118%;
+  font-size: clamp(1.75rem, 0.9rem + 2.3vw, 3.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.doc__text {
+  max-inline-size: 44ch;
 }
 
 .doc__actions {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1971,73 +2187,155 @@ html:not(.motion) .live--drag {
 }
 
 @media (max-width: 900px) {
-  .doc__body {
+  .doc__title {
     grid-column: 1 / -1;
+  }
+
+  .doc__aside {
+    grid-column: 1 / span 9;
+  }
+
+  .doc__columns {
+    display: none;
+  }
+
+  .doc__heading {
+    grid-column: 1 / -1;
+  }
+
+  .doc__answer {
+    grid-column: 1 / span 5;
+  }
+
+  .doc__text {
+    grid-column: 6 / -1;
   }
 }
 
 @media (max-width: 600px) {
-  .doc__section {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0.6rem;
+  .doc__aside,
+  .doc__answer,
+  .doc__text {
+    grid-column: 1 / -1;
+  }
+
+  .doc__answer {
+    font-size: 2rem;
   }
 }
 
 /* ------------------------------------------------------------------ 404 */
 
+/* The same opening as the home page, with a gap in the family: one child's card is empty. */
 .missing {
   display: grid;
-  align-content: center;
-  gap: clamp(32px, 6svh, 64px);
-  min-block-size: 92svh;
-  padding-block: calc(var(--header-h) + 32px) 64px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(24px, 5svh, 56px);
+  min-block-size: 100svh;
+  padding-block: calc(var(--header-h) + 4svh) 6svh;
 }
 
-.missing__row {
-  block-size: 140px;
-}
-
-.missing__row .ruler {
-  align-self: stretch;
-}
-
-.missing__slot {
-  grid-column: 2;
-  grid-row: 1;
+.missing__top {
   display: grid;
-  align-items: center;
-  padding-inline: var(--gutter);
-}
-
-.card--empty {
-  position: relative;
-  --u: 1px;
-  inline-size: 180px;
-  block-size: 72px;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  border: 1.5px dashed rgb(17 19 17 / 0.45);
-  background: var(--ground);
-  color: var(--muted);
-  font-weight: 600;
-}
-
-.motion .card--empty {
-  animation: settle-in 1s var(--ease) 0.2s both;
-  --side: 1;
-}
-
-.missing__copy {
-  display: grid;
-  gap: 1.4rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  column-gap: var(--gutter);
+  row-gap: 1.5rem;
+  align-items: end;
   padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
 }
 
 .missing__title {
-  text-wrap: balance;
-  font-size: var(--t-xl);
-  font-size: clamp(2.5rem, 1rem + 5vw, 6rem);
-  max-inline-size: 14ch;
+  grid-column: 1 / span 8;
+  font-size: clamp(2.75rem, 0.6rem + 5.6vw, 7rem);
+}
+
+.missing__aside {
+  grid-column: 9 / -1;
+  display: grid;
+  gap: 1.2rem;
+  padding-block-end: 0.4rem;
+}
+
+.missing__aside .lede {
+  font-size: var(--t-body);
+  line-height: 1.5;
+}
+
+.missing__figure {
+  container-type: size;
+  min-block-size: 240px;
+  display: grid;
+  align-items: center;
+}
+
+.missing__register .ruler {
+  align-self: stretch;
+}
+
+.missing__tree {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  inline-size: min(100% - var(--gutter) * 2, 100cqh * var(--ratio, 2.6), 820px);
+}
+
+.card--empty {
+  border: max(1px, calc(var(--u) * 1.5)) dashed rgb(17 19 17 / 0.5);
+  background: var(--ground);
+  color: var(--muted);
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+}
+
+.card--empty .card__name {
+  font-size: max(12px, calc(var(--u) * 15));
+  font-weight: 600;
+}
+
+/* The blank card keeps its words at every size. */
+@container card (max-width: 66px) {
+  .card--empty .card__text {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    clip-path: none;
+  }
+}
+
+.motion .missing .card--empty {
+  animation: settle-in 1s var(--ease) calc(var(--enter, 0s) + 0.75s) both;
+  --side: 1;
+}
+
+@media (max-width: 1100px) {
+  .missing__title {
+    grid-column: 1 / -1;
+  }
+
+  .missing__aside {
+    grid-column: 1 / span 8;
+  }
+}
+
+@media (max-width: 767px) {
+  .missing {
+    min-block-size: 0;
+    padding-block: calc(var(--header-h) + 28px) 48px;
+  }
+
+  .missing__aside {
+    grid-column: 1 / -1;
+  }
+
+  .missing__figure {
+    container-type: inline-size;
+    min-block-size: 0;
+  }
+
+  .missing__tree {
+    inline-size: calc(100% - var(--gutter));
+    justify-self: start;
+  }
 }
 
 /* ------------------------------------------------------------------ phones */
@@ -2081,46 +2379,77 @@ html:not(.motion) .live--drag {
   }
 
   .missing__title {
-    font-size: 9.4vw;
-    max-inline-size: none;
+    font-size: 10.2vw;
   }
 }
 
 /* ------------------------------------------------------------------ page transitions */
 
-/* Leaving (motion only, see motion/index.ts): the page's rows slide off toward the start. */
-.is-leaving #main,
-.is-leaving .site-footer {
-  opacity: 0;
-  translate: -48px 0;
-  transition:
-    opacity 0.32s cubic-bezier(0.7, 0, 0.84, 0),
-    translate 0.36s cubic-bezier(0.7, 0, 0.84, 0);
+/* Five ruled rows of ink, under the header. Leaving, they slide in from the start of the line,
+   one row after another, and lock (motion/index.ts adds .is-leaving). The next page opens
+   covered (flags.js adds .vt-enter before first paint) and the rows slide off toward the end
+   of the line, row by row. Hidden by default, so without JavaScript nothing covers anything. */
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+  pointer-events: none;
 }
 
-/* The @view-transition opt-in is added to each page's <head> by scripts/prerender.ts, because
-   Bun's CSS bundler does not understand that at-rule yet. */
-
-@keyframes vt-out {
-  to {
-    opacity: 0;
-    translate: -32px 0;
-  }
+.curtain__row {
+  display: grid;
+  grid-template-columns: var(--margin) minmax(0, 1fr);
+  align-items: center;
+  background:
+    linear-gradient(rgb(244 245 242 / 0.14) 0 0) 0 0 / 100% 1px no-repeat,
+    linear-gradient(rgb(244 245 242 / 0.14) 0 0) var(--margin) 0 / 1px 100% no-repeat,
+    var(--curtain);
+  color: #a3aaa4;
+  clip-path: inset(0 100% 0 0);
+  /* One row of the curtain is one generation row: 0.045 s apart, like the hero's rows. */
+  --delay: calc(var(--k) * 0.045s);
 }
 
-@keyframes vt-in {
+.curtain__num {
+  text-align: center;
+  font-size: var(--t-xs);
+  font-weight: 600;
+  font-stretch: 125%;
+  letter-spacing: 0.08em;
+}
+
+.is-leaving .curtain {
+  pointer-events: auto;
+}
+
+.is-leaving .curtain__row {
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 0.36s var(--ease) var(--delay);
+}
+
+@keyframes rows-off {
   from {
-    opacity: 0;
-    translate: 48px 0;
+    clip-path: inset(0 0 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 100%);
   }
 }
 
-::view-transition-old(root) {
-  animation: vt-out 0.28s cubic-bezier(0.7, 0, 0.84, 0) both;
+.vt-enter .curtain__row {
+  animation: rows-off 0.62s var(--ease) calc(0.06s + var(--delay)) backwards;
 }
 
-::view-transition-new(root) {
-  animation: vt-in 0.55s var(--ease) both;
+/* The new page's own intro waits until its rows have cleared. */
+.vt-enter {
+  --enter: 0.32s;
+}
+
+html:not(.motion) .curtain {
+  display: none;
 }
 
 /* ------------------------------------------------------------------ reduced motion */
@@ -2134,9 +2463,8 @@ html:not(.motion) .live--drag {
     scroll-behavior: auto !important;
   }
 
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none !important;
+  .curtain {
+    display: none;
   }
 
   .btn__label::after {
