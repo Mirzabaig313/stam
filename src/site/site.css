@@ -449,6 +449,22 @@ dd {
   align-items: center;
 }
 
+/* The wordmark answers like the nav: a rule slides in under it from the start and locks. */
+.wordmark {
+  background: linear-gradient(currentColor 0 0) 0 calc(100% - 6px) / 0% 2px no-repeat;
+  transition: background-size 0.45s var(--ease);
+}
+
+@media (hover: hover) {
+  .wordmark:hover {
+    background-size: 100% 2px;
+  }
+}
+
+.wordmark:focus-visible {
+  background-size: 100% 2px;
+}
+
 .site-nav {
   margin-inline-start: auto;
 }
@@ -763,11 +779,11 @@ dd {
 
 .lod-mid .card {
   grid-template-columns: minmax(0, 1fr);
-  padding-inline: calc(10px / var(--s, 1));
+  padding-inline: calc(8px / var(--s, 1));
 }
 
 .lod-mid .card__name {
-  font-size: calc(12.5px / var(--s, 1));
+  font-size: calc(12px / var(--s, 1));
 }
 
 .lod-mid .card__years {

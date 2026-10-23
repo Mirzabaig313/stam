@@ -8,10 +8,39 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { chapters } from "@/site/content";
 import { FRAMES } from "@/site/data";
-import { frameAt, roman } from "@/site/sample/frames";
+import { type Blend, CARD_W, frameAt, padded, roman, settle } from "@/site/sample/frames";
 
 import { clamp01, isMobile } from "./env";
-import { bindLiveTree, draw, fit, measure } from "./liveTree";
+import { bindLiveTree, type Camera, draw, fit, type LiveTreeView, measure } from "./liveTree";
+
+/** Phones never zoom out below names-only cards; the camera follows each chapter's new people. */
+const PHONE_MIN_SCALE = 0.62;
+
+/** Centre (layout x) of the people each chapter adds; chapter I is its one person. */
+const FOCUS_X = FRAMES.map((frame, i) => {
+  const before = new Set(i > 0 ? FRAMES[i - 1]!.cards.map((c) => c.key) : []);
+  const added = frame.cards.filter((c) => !before.has(c.key));
+  const xs = added.map((c) => c.x + CARD_W / 2);
+  return (Math.min(...xs) + Math.max(...xs)) / 2;
+});
+
+/**
+ * The phone camera: the whole tree while it fits at a readable size; past that it holds the
+ * names-only scale and pans along the rows to the people the current chapter adds.
+ */
+function phoneCamera(live: LiveTreeView, blend: Blend, position: number): Camera {
+  const whole = fit(live, blend.bounds, 1.25);
+  if (whole.s >= PHONE_MIN_SCALE) return whole;
+  const s = PHONE_MIN_SCALE;
+  const i = Math.floor(position);
+  const t = settle(position - i);
+  const fx = FOCUS_X[i]! + ((FOCUS_X[i + 1] ?? FOCUS_X[i]!) - FOCUS_X[i]!) * t;
+  const b = padded(blend.bounds, 24);
+  const { w, h } = live.size;
+  const tx = Math.min(-b.x * s, Math.max(w - (b.x + b.width) * s, w / 2 - fx * s));
+  const ty = (h - b.height * s) / 2 - b.y * s;
+  return { s, tx, ty };
+}
 
 /** How far into a chapter (px) its frame is complete; past it the finished frame holds. */
 const transitionDistance = (span: number) => Math.min(span * 0.6, innerHeight * 0.45);
@@ -38,7 +67,11 @@ export function startStage(): (() => void) | undefined {
 
   const render = () => {
     const blend = frameAt(FRAMES, current);
-    draw(live, blend, fit(live, blend.bounds, isMobile() ? 1.25 : 1.6));
+    draw(
+      live,
+      blend,
+      isMobile() ? phoneCamera(live, blend, current) : fit(live, blend.bounds, 1.6),
+    );
   };
 
   const line = "center";
