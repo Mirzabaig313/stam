@@ -1,0 +1,52 @@
+/*
+ * Arabic-script fonts, self-hosted. Each face covers the Arabic blocks only (unicode-range), so a
+ * browser fetches a file the first time it draws an Arabic-script letter: English pages never do.
+ *
+ * Noto Naskh Arabic is the Arabic-script range of "Archivo Variable" itself. Everything set in
+ * Archivo (cards, panels, the canvas) draws Arabic, Urdu and Persian names in Naskh, in every
+ * interface language, and the cards' text fitting measures them in the same font.
+ *
+ * Noto Nastaliq Urdu is the Urdu interface's font: Urdu is written in Nastaliq. Latin text in the
+ * Urdu interface still falls through to Archivo.
+ */
+@font-face {
+  font-family: "Archivo Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("@fontsource-variable/noto-naskh-arabic/files/noto-naskh-arabic-arabic-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+FB50-FDFF,
+    U+FE70-FE74, U+FE76-FEFC;
+}
+
+@font-face {
+  font-family: "Noto Nastaliq Urdu Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("@fontsource-variable/noto-nastaliq-urdu/files/noto-nastaliq-urdu-arabic-wght-normal.woff2")
+    format("woff2-variations");
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0897-08E1, U+08E3-08FF, U+FB50-FDFF,
+    U+FE70-FE74, U+FE76-FEFC;
+}
+
+/*
+ * An attribute selector, not the lang pseudo-class, which the RTL build check rejects. `:root` lifts
+ * it above the theme blocks (:root[data-theme=…] in tokens.css), which set --font too.
+ */
+html:root[lang="ur"] {
+  --font: "Noto Nastaliq Urdu Variable", "Archivo Variable", system-ui, sans-serif;
+}
+
+/* Nastaliq's letters climb and descend far more than Latin ones. */
+html[lang="ur"] body {
+  line-height: 1.9;
+}
+
+/* Urdu inside a page in another language, such as the Urdu word in the relationship panel. */
+:not(html)[lang="ur"] {
+  font-family: "Noto Nastaliq Urdu Variable", "Archivo Variable", system-ui, sans-serif;
+}

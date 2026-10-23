@@ -382,7 +382,8 @@ export function stamViewer(win: Window): void {
     else if (e.key === "ArrowDown") panBy(0, -step, true);
     else if (e.key === "+" || e.key === "=") zoomCentre(1.25);
     else if (e.key === "-" || e.key === "_") zoomCentre(0.8);
-    else if (e.key === "0") fit(true);
+    // `code` too: an Arabic keyboard types ٠ on that key.
+    else if (e.key === "0" || e.code === "Digit0") fit(true);
     else handled = false;
     if (handled) e.preventDefault();
   });

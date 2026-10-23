@@ -2,7 +2,7 @@ import type { LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
 
 export type ExportScope = "whole" | "view" | "branch" | "visible";
-export type ExportTheme = "light" | "print";
+export type ExportTheme = "light" | "dark" | "print";
 export type ExportOptions = {
   scope: ExportScope;
   theme: ExportTheme;

@@ -142,4 +142,15 @@ describe("exported viewer", () => {
     $<HTMLButtonElement>('[data-action="fit"]').click();
     expect(scale()).toBeCloseTo(start);
   });
+
+  test("0 fits on an Arabic keyboard too, where the key types ٠", () => {
+    const world = $("#world");
+    const scale = () => Number(/scale\(([\d.e-]+)\)/.exec(world.style.transform)?.[1]);
+    const start = scale();
+    $<HTMLButtonElement>('[data-action="zoom-in"]').click();
+    $("#stage").dispatchEvent(
+      new KeyboardEvent("keydown", { key: "٠", code: "Digit0", bubbles: true }),
+    );
+    expect(scale()).toBeCloseTo(start);
+  });
 });

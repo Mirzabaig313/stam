@@ -1,7 +1,7 @@
 import { displayName } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
 
-import { archivoBase64 } from "./fontData.macro.ts" with { type: "macro" };
+import { archivoBase64, notoBase64 } from "./fontData.macro.ts" with { type: "macro" };
 
 /** A font embedded in an exported SVG as an `@font-face` with base64 woff2 data. */
 export type EmbeddedFont = {
@@ -54,25 +54,86 @@ const ARCHIVO_ITALIC: EmbeddedFont[] = [
   archivo("italic", "latin", LATIN, archivoBase64("archivo-latin-wdth-italic.woff2")),
 ];
 
-const ARABIC_SCRIPT = /[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿]/u;
+/** The family Urdu text is set in (titles, the Urdu HTML viewer); Arabic-script range only. */
+export const NASTALIQ_FAMILY = "Noto Nastaliq Urdu";
+
+// The Arabic blocks of @fontsource-variable's "arabic" subsets, without the punctuation and
+// direction marks they share with Archivo's latin range.
+const ARABIC_RANGE =
+  "U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0897-08E1,U+08E3-08FF,U+FB50-FDFF," +
+  "U+FE70-FE74,U+FE76-FEFC";
+
+// Naskh is the export family's Arabic-script range, as in the app (src/i18n/fonts.css): every
+// text drawn in Archivo, card names included, falls through to it, and cards measure as on screen.
+const NASKH: EmbeddedFont = {
+  family: EXPORT_FONT_FAMILY,
+  style: "normal",
+  weight: "400 700",
+  subset: "naskh-arabic",
+  unicodeRange: ARABIC_RANGE,
+  base64: notoBase64("noto-naskh-arabic-arabic-wght-normal.woff2"),
+};
+
+const NASTALIQ: EmbeddedFont = {
+  family: NASTALIQ_FAMILY,
+  style: "normal",
+  weight: "400 700",
+  subset: "nastaliq-urdu",
+  unicodeRange: ARABIC_RANGE,
+  base64: notoBase64("noto-nastaliq-urdu-arabic-wght-normal.woff2"),
+};
+
+const ARABIC_SCRIPT = /[\u0600-\u06FF\u0750-\u077F\u0870-\u08FF\uFB50-\uFDFF\uFE70-\uFEFC]/u;
+/**
+ * Letters only Urdu uses among Arabic-script languages: ٹ ڈ ڑ ں ھ ہ ۂ ۃ ے ۓ. Yeh (ی) and keheh (ک)
+ * are shared with Persian, so a name with only those stays in Naskh.
+ */
+const URDU_LETTERS = /[\u0679\u0688\u0691\u06BA\u06BE\u06C1-\u06C3\u06D2\u06D3]/u;
+
+const namesOf = (doc: TreeDocument) =>
+  Object.values(doc.persons).flatMap((p) => [p.firstName, p.lastName, p.nickname, p.nativeName]);
 
 /** True when any name in the document is written in Arabic script (Arabic, Urdu, Persian…). */
 export function hasArabicScript(doc: TreeDocument): boolean {
-  return Object.values(doc.persons).some((p) =>
-    [p.firstName, p.lastName, p.nickname, p.nativeName].some((s) => s && ARABIC_SCRIPT.test(s)),
-  );
+  return namesOf(doc).some((s) => s && ARABIC_SCRIPT.test(s));
+}
+
+/** True when the text has a letter only Urdu uses, so it reads best in Nastaliq. */
+export function hasUrduLetters(text: string): boolean {
+  return URDU_LETTERS.test(text);
+}
+
+/**
+ * The Arabic-script fonts some text needs: Noto Naskh Arabic for any Arabic-script letter, and
+ * Noto Nastaliq Urdu as well when there is Urdu.
+ */
+export function scriptFontsFor(texts: readonly (string | undefined)[]): EmbeddedFont[] {
+  const arabic = texts.filter((s): s is string => !!s && ARABIC_SCRIPT.test(s));
+  if (arabic.length === 0) return [];
+  return arabic.some(hasUrduLetters) ? [NASKH, NASTALIQ] : [NASKH];
 }
 
 /**
  * The fonts an export of `doc` needs: Archivo (latin and latin-ext) always, its italic only when
- * an unnamed placeholder is drawn (the "Unknown father" label is italic).
- *
- * The seam for script fonts: M4 adds Noto Naskh Arabic and Noto Nastaliq Urdu here when
- * `hasArabicScript(doc)`. Until then Arabic-script names fall back to the viewer's system fonts.
+ * an unnamed placeholder is drawn (the "Unknown father" label is italic), and the Arabic-script
+ * fonts its names and `texts` (the title and subtitle) need.
  */
-export function fontsFor(doc: TreeDocument): EmbeddedFont[] {
+export function fontsFor(doc: TreeDocument, texts: readonly string[] = []): EmbeddedFont[] {
   const italic = Object.values(doc.persons).some((p) => p.isPlaceholder && !displayName(p));
-  return italic ? [...ARCHIVO_NORMAL, ...ARCHIVO_ITALIC] : ARCHIVO_NORMAL;
+  return [
+    ...ARCHIVO_NORMAL,
+    ...(italic ? ARCHIVO_ITALIC : []),
+    ...scriptFontsFor([...namesOf(doc), ...texts]),
+  ];
+}
+
+/**
+ * Rules for the embedded script fonts: with Nastaliq embedded, the title and subtitle set their
+ * Urdu in it (cards keep Naskh, the font they are fitted with on screen).
+ */
+export function scriptCss(fonts: readonly EmbeddedFont[]): string {
+  if (!fonts.some((f) => f.family === NASTALIQ_FAMILY)) return "";
+  return `.stam-export__title,.stam-export__subtitle{font-family:"${NASTALIQ_FAMILY}","${EXPORT_FONT_FAMILY}",system-ui,sans-serif}`;
 }
 
 /** `@font-face` rules for `fonts`. Base64 and the ranges hold no `<` or `&`: safe in SVG/HTML. */

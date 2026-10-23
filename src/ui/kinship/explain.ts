@@ -1,5 +1,6 @@
 import { describeRelationship } from "@/core/kinship/describe";
 import { relate } from "@/core/kinship/relate";
+import { describeIn } from "@/core/kinship/sentences";
 import type { Relationship, Translate } from "@/core/kinship/types";
 import { urduTerm } from "@/core/kinship/urdu";
 import type { TreeDocument } from "@/core/model/types";
@@ -62,15 +63,19 @@ export function explainRelation(
   bId: string | null,
   t: T,
   fns: KinshipFns = realKinship,
+  language = "en",
 ): Explanation | null {
   if (aId === null || bId === null || aId === bId) return null;
   const a = doc.persons[aId];
   const b = doc.persons[bId];
   if (!a || !b) return null;
-  return phraseRelations(doc, aId, bId, fns.relate(doc, aId, bId), t, fns);
+  return phraseRelations(doc, aId, bId, fns.relate(doc, aId, bId), t, fns, language);
 }
 
-/** The sentences for relationships `relate` already worked out (see `explainRelation`). */
+/**
+ * The sentences for relationships `relate` already worked out (see `explainRelation`), in the
+ * interface `language`. In Urdu the sentence already has the Urdu word, so `urdu` stays null.
+ */
 export function phraseRelations(
   doc: TreeDocument,
   aId: string,
@@ -78,22 +83,25 @@ export function phraseRelations(
   rels: Relationship[],
   t: T,
   fns: KinshipFns = realKinship,
+  language = "en",
 ): Explanation | null {
   const a = doc.persons[aId];
   const b = doc.persons[bId];
   if (!a || !b) return null;
   const names = { a: personLabel(a, t), b: personLabel(b, t) };
   const translate: Translate = (key, options) => t(key, options);
+  const base = language.split("-")[0];
+  const describe = base === "ur" || base === "ar" ? describeIn(base) : fns.describeRelationship;
   // Pedigree collapse can give the same sentence along two lines (a great-grandson through both
   // parents): one row each, the first line's Urdu term and path.
   const results: Explanation["results"] = [];
   const seen = new Set<string>();
   for (const rel of rels) {
-    const parts = partsOf(fns.describeRelationship(rel, A_MARK, B_MARK, translate));
+    const parts = partsOf(describe(rel, A_MARK, B_MARK, translate));
     const text = parts.map((p) => (typeof p === "string" ? p : names[p.name])).join("");
     if (seen.has(text)) continue;
     seen.add(text);
-    results.push({ text, urdu: fns.urduTerm(rel), parts });
+    results.push({ text, urdu: base === "ur" ? null : fns.urduTerm(rel), parts });
   }
   return { aId, bId, results, path: rels[0]?.path ?? [] };
 }

@@ -65,6 +65,10 @@ const xOf = (svg: string, id: string) =>
     )![1],
   );
 
+/** The families of the embedded Arabic-script faces. */
+const families = (svg: string) =>
+  [...svg.matchAll(/@font-face{font-family:"([^"]+)"[^}]*unicode-range:U\+0600/g)].map((m) => m[1]);
+
 describe("renderTreeSvg", () => {
   test("gives a standalone SVG that parses, with size, viewBox and namespaces", () => {
     const doc = famSimple();
@@ -89,6 +93,17 @@ describe("renderTreeSvg", () => {
     expect(svg).not.toContain("var(");
     expect(render(famSimple(), { theme: "print", showRuler: true, title: "T" }).svg).not.toContain(
       "var(",
+    );
+  });
+
+  test("embeds the Arabic-script fonts its names and title need, Nastaliq for the Urdu title", () => {
+    expect(families(render(famSimple()).svg)).toEqual([]);
+    const arabic = docOf([person("p", "Ali", "", "male", { nativeName: "علي" })], [], "p");
+    expect(families(render(arabic).svg)).toEqual(["Archivo Variable"]);
+    const urdu = render(famSimple(), { title: "ہمارا خاندان" }).svg;
+    expect(families(urdu)).toEqual(["Archivo Variable", "Noto Nastaliq Urdu"]);
+    expect(urdu).toContain(
+      '.stam-export__title,.stam-export__subtitle{font-family:"Noto Nastaliq Urdu"',
     );
   });
 
@@ -207,6 +222,15 @@ describe("renderTreeSvg", () => {
       "#ffffff",
     );
     expect(print).toContain(".stam-card__bg{fill:none;stroke:#000000");
+  });
+
+  test("dark resolves the dark tokens: dark ground, light ink, lifted cards", () => {
+    const dark = render(famSimple(), { theme: "dark" }).svg;
+    expect(parse(dark).querySelector(".stam-export__ground")?.getAttribute("fill")).toBe("#0f110f");
+    expect(dark).toContain(".stam-card__bg{fill:#1c201c;stroke:#e8eae6");
+    expect(dark).toContain(".stam-card__years{fill:#9aa29b");
+    expect(dark).toContain("stam-export--dark");
+    expect(dark).not.toContain("var(--");
   });
 
   test("placeholder labels come from the given t", () => {

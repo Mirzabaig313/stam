@@ -1,6 +1,9 @@
 {
   "app": {
     "loading": "Loading…",
+    "skipToContent": "Skip to content",
+    "home": "{{app}} home",
+    "updateAvailable": "New version available.",
     "notFound": {
       "title": "Page not found",
       "link": "Back to your trees"
@@ -11,13 +14,58 @@
       "error": {
         "NOT_JSON": "This file isn't valid JSON, so it can't be a family tree.",
         "NOT_STAM": "This file isn't a family tree made with this app.",
+        "NOT_GEDCOM": "This file isn't a GEDCOM family tree.",
         "FUTURE_VERSION": "This file was made by a newer version of the app. Update the app and try again.",
         "INVALID_TREE": "This file's family tree is damaged and can't be opened.",
         "TOO_LARGE": "This file is too large. The limit is 50 MB.",
         "UNKNOWN": "Couldn't import this file."
       },
       "photosSkipped_one": "{{count}} photo was skipped because it couldn't be read.",
-      "photosSkipped_other": "{{count}} photos were skipped because they couldn't be read."
+      "photosSkipped_other": "{{count}} photos were skipped because they couldn't be read.",
+      "gedcom": {
+        "title": "Import report",
+        "counts": "Imported {{people}} and {{families}}.",
+        "people_one": "{{count}} person",
+        "people_other": "{{count}} people",
+        "families_one": "{{count}} family",
+        "families_other": "{{count}} families",
+        "allImported": "Everything in the file was imported.",
+        "skipped_one": "{{count}} line was not imported",
+        "skipped_other": "{{count}} lines were not imported",
+        "item": "Line {{line}}, {{tag}}: {{reason}}",
+        "itemNoTag": "Line {{line}}: {{reason}}",
+        "more_one": "and {{count}} more",
+        "more_other": "and {{count}} more",
+        "open": "Open tree",
+        "close": "Close",
+        "warning": {
+          "UNKNOWN_SEX_one": "{{count}} person had no sex recorded, so it was guessed from their family role. Please check:",
+          "UNKNOWN_SEX_other": "{{count}} people had no sex recorded, so it was guessed from their family role. Please check:",
+          "MALFORMED_LINES_one": "{{count}} line was damaged and was read as best we could.",
+          "MALFORMED_LINES_other": "{{count}} lines were damaged and were read as best we could.",
+          "NO_HEADER": "The file has no GEDCOM header, so it may be incomplete.",
+          "CHARSET": "This file uses the {{charset}} character set. Accented letters may be wrong; please check names.",
+          "NOTES_CUT_one": "{{count, number}} person's notes were longer than {{limit, number}} characters and were cut short:",
+          "NOTES_CUT_other": "{{count, number}} people's notes were longer than {{limit, number}} characters and were cut short:",
+          "NOTES_FULL_one": "The file's notes came to more than {{limit, number}} characters in all, so the notes of {{count, number}} person were cut or left out.",
+          "NOTES_FULL_other": "The file's notes came to more than {{limit, number}} characters in all, so the notes of {{count, number}} people were cut or left out."
+        },
+        "reason": {
+          "UNSUPPORTED": "not used by this app",
+          "BAD_LINE": "not readable",
+          "BAD_DATE": "a date that can't be read",
+          "MISSING_REF": "points to a record that isn't in the file",
+          "DUPLICATE_RECORD": "a second record with the same id",
+          "EXTRA_RECORD": "a second entry where only one is kept",
+          "EXTRA_PARTNER": "a third partner in one family",
+          "NO_PARTNERS": "a family with no parents; its children were kept",
+          "SECOND_BIRTH_FAMILY": "a second birth family; the first was kept",
+          "CYCLE": "would make someone their own ancestor"
+        },
+        "largeTitle": "Large family tree",
+        "large": "This file has {{count, number}} people; {{app}} is tuned for up to {{max, number}}. Continue?",
+        "continue": "Continue"
+      }
     }
   },
   "common": {
@@ -289,6 +337,7 @@
       "pdf-poster": "PDF poster",
       "pdf-tiled": "PDF, tiled for printing",
       "html": "Web page (HTML)",
+      "gedcom": "GEDCOM (.ged)",
       "json": "Backup (.json)"
     },
     "formatHints": {
@@ -298,6 +347,7 @@
       "pdf-poster": "One page, scaled to fit.",
       "pdf-tiled": "Print on A4 or Letter and join the pages.",
       "html": "One file you can open and explore anywhere.",
+      "gedcom": "For other family tree apps. Everything except photos.",
       "json": "Everything, to restore or move the tree."
     },
     "scope": "What to include",
@@ -315,7 +365,8 @@
     "ruler": "Show generation ruler",
     "theme": "Style",
     "themes": {
-      "light": "Screen",
+      "light": "Light",
+      "dark": "Dark",
       "print": "Print (black on white)"
     },
     "background": "Background",
@@ -325,6 +376,7 @@
     },
     "privacy": "Privacy mode",
     "privacyHint": "Living people show their name only: no dates, places, photos or notes.",
+    "privacyHintGedcom": "Living people show their name only; GEDCOM files are often shared.",
     "scale": "Scale",
     "scaleOption": "{{count}}×",
     "quality": "JPEG quality: {{percent}}%",
@@ -515,5 +567,58 @@
     "death": "{{name}} died in {{year}}",
     "union": "{{name}}'s union began in {{year}}",
     "showRow": "Show {{name}}, {{details}}"
+  },
+  "settings": {
+    "open": "Settings",
+    "title": "Settings",
+    "done": "Done",
+    "language": "Language",
+    "theme": "Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "classic": "Classic",
+      "print": "Print"
+    },
+    "themeHints": {
+      "light": "Dark ink on a pale ground.",
+      "dark": "Pale ink on a dark ground. Easier on the eyes at night.",
+      "classic": "Blue and pink cards by gender, on the pale ground.",
+      "print": "Black on white with no fills and heavier lines."
+    },
+    "colorMode": "Card colours",
+    "colorModes": {
+      "gender": "By gender",
+      "branch": "By branch",
+      "generation": "By generation"
+    },
+    "colorModeHints": {
+      "gender": "Plain cards with a ♂ or ♀ mark.",
+      "branch": "Each child of the person at the top starts a colour. Their family shares it.",
+      "generation": "One colour for each generation row."
+    },
+    "direction": "Tree direction",
+    "directions": {
+      "auto": "Follow the language",
+      "ltr": "Left to right",
+      "rtl": "Right to left"
+    },
+    "motion": "Reduce motion",
+    "motions": {
+      "system": "Follow this device",
+      "reduce": "On",
+      "full": "Off"
+    },
+    "motionHint": "Turns off animated moves of the tree and the cards."
+  },
+  "language": {
+    "label": "Language",
+    "inReview": "Translation in review: machine-assisted, not yet checked by a native speaker."
+  },
+  "dates": {
+    "about": "abt {{date}}",
+    "before": "bef {{date}}",
+    "after": "aft {{date}}",
+    "between": "{{from}}–{{to}}"
   }
 }

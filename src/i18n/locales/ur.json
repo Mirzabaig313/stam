@@ -1,0 +1,623 @@
+{
+  "_review": "Machine-assisted translation. Needs review by a native speaker.",
+  "app": {
+    "loading": "لوڈ ہو رہا ہے…",
+    "notFound": {
+      "title": "صفحہ نہیں ملا",
+      "link": "اپنے شجروں پر واپس جائیں"
+    },
+    "unknownPerson": "نامعلوم",
+    "storageUnavailable": "آپ کا براؤزر مقامی اسٹوریج روک رہا ہے، اس لیے یہاں شجرے نہیں کھل سکتے۔ اس سائٹ کے لیے سائٹ ڈیٹا کی اجازت دیں اور صفحہ دوبارہ لوڈ کریں۔",
+    "import": {
+      "error": {
+        "NOT_JSON": "یہ فائل درست JSON نہیں ہے، اس لیے یہ شجرہ نہیں ہو سکتی۔",
+        "NOT_STAM": "یہ فائل اس ایپ سے بنا ہوا شجرہ نہیں ہے۔",
+        "FUTURE_VERSION": "یہ فائل ایپ کے نئے ورژن سے بنی ہے۔ ایپ اپ ڈیٹ کریں اور دوبارہ کوشش کریں۔",
+        "INVALID_TREE": "اس فائل کا شجرہ خراب ہے اور کھل نہیں سکتا۔",
+        "TOO_LARGE": "یہ فائل بہت بڑی ہے۔ حد 50 MB ہے۔",
+        "UNKNOWN": "یہ فائل درآمد نہیں ہو سکی۔",
+        "NOT_GEDCOM": "یہ فائل GEDCOM خاندانی شجرہ نہیں ہے۔"
+      },
+      "photosSkipped_one": "{{count, number}} تصویر چھوڑ دی گئی کیونکہ وہ پڑھی نہیں جا سکی۔",
+      "photosSkipped_other": "{{count, number}} تصاویر چھوڑ دی گئیں کیونکہ وہ پڑھی نہیں جا سکیں۔",
+      "gedcom": {
+        "title": "درآمد کی رپورٹ",
+        "counts": "{{people}} اور {{families}} درآمد ہوئے۔",
+        "people_one": "{{count, number}} فرد",
+        "people_other": "{{count, number}} افراد",
+        "families_one": "{{count, number}} خاندان",
+        "families_other": "{{count, number}} خاندان",
+        "allImported": "فائل میں موجود سب کچھ درآمد ہو گیا۔",
+        "skipped_one": "{{count, number}} سطر درآمد نہیں ہوئی",
+        "skipped_other": "{{count, number}} سطریں درآمد نہیں ہوئیں",
+        "item": "سطر {{line}}، {{tag}}: {{reason}}",
+        "itemNoTag": "سطر {{line}}: {{reason}}",
+        "more_one": "اور {{count, number}} مزید",
+        "more_other": "اور {{count, number}} مزید",
+        "open": "شجرہ کھولیں",
+        "close": "بند کریں",
+        "warning": {
+          "UNKNOWN_SEX_one": "{{count, number}} فرد کی جنس درج نہیں تھی، اس لیے خاندانی کردار سے اندازہ لگایا گیا۔ براہ کرم جانچ لیں:",
+          "UNKNOWN_SEX_other": "{{count, number}} افراد کی جنس درج نہیں تھی، اس لیے خاندانی کردار سے اندازہ لگایا گیا۔ براہ کرم جانچ لیں:",
+          "MALFORMED_LINES_one": "{{count, number}} سطر خراب تھی اور جتنا ممکن ہوا پڑھی گئی۔",
+          "MALFORMED_LINES_other": "{{count, number}} سطریں خراب تھیں اور جتنا ممکن ہوا پڑھی گئیں۔",
+          "NO_HEADER": "اس فائل میں GEDCOM ہیڈر نہیں ہے، اس لیے یہ نامکمل ہو سکتی ہے۔",
+          "CHARSET": "یہ فائل {{charset}} کیریکٹر سیٹ استعمال کرتی ہے۔ اعراب والے حروف غلط ہو سکتے ہیں؛ براہ کرم نام جانچ لیں۔",
+          "NOTES_CUT_one": "{{count, number}} فرد کے نوٹس {{limit, number}} حروف سے لمبے تھے اور مختصر کر دیے گئے:",
+          "NOTES_CUT_other": "{{count, number}} افراد کے نوٹس {{limit, number}} حروف سے لمبے تھے اور مختصر کر دیے گئے:",
+          "NOTES_FULL_one": "فائل کے کل نوٹس {{limit, number}} حروف سے زیادہ تھے، اس لیے {{count, number}} فرد کے نوٹس مختصر کر دیے گئے یا چھوڑ دیے گئے۔",
+          "NOTES_FULL_other": "فائل کے کل نوٹس {{limit, number}} حروف سے زیادہ تھے، اس لیے {{count, number}} افراد کے نوٹس مختصر کر دیے گئے یا چھوڑ دیے گئے۔"
+        },
+        "reason": {
+          "UNSUPPORTED": "یہ ایپ اسے استعمال نہیں کرتی",
+          "BAD_LINE": "پڑھنے کے قابل نہیں",
+          "BAD_DATE": "ایسی تاریخ جو پڑھی نہیں جا سکتی",
+          "MISSING_REF": "ایسے ریکارڈ کی طرف اشارہ جو فائل میں نہیں",
+          "DUPLICATE_RECORD": "ایک ہی شناخت والا دوسرا ریکارڈ",
+          "EXTRA_RECORD": "دوسرا اندراج جہاں صرف ایک رکھا جاتا ہے",
+          "EXTRA_PARTNER": "ایک خاندان میں تیسرا شریکِ حیات",
+          "NO_PARTNERS": "والدین کے بغیر خاندان؛ اس کے بچے رکھ لیے گئے",
+          "SECOND_BIRTH_FAMILY": "دوسرا پیدائشی خاندان؛ پہلا رکھا گیا",
+          "CYCLE": "اس سے کوئی اپنا ہی جدِ امجد بن جاتا"
+        },
+        "largeTitle": "بڑا خاندانی شجرہ",
+        "large": "اس فائل میں {{count, number}} افراد ہیں؛ {{app}} زیادہ سے زیادہ {{max, number}} افراد کے لیے بنایا گیا ہے۔ جاری رکھیں؟",
+        "continue": "جاری رکھیں"
+      }
+    },
+    "skipToContent": "مواد پر جائیں",
+    "home": "{{app}} کا صفحۂ اول",
+    "updateAvailable": "نیا ورژن دستیاب ہے۔"
+  },
+  "common": {
+    "cancel": "منسوخ کریں",
+    "create": "بنائیں",
+    "save": "محفوظ کریں",
+    "delete": "حذف کریں",
+    "dismiss": "بند کریں",
+    "treeName": "شجرے کا نام"
+  },
+  "treeList": {
+    "title": "آپ کے شجرے",
+    "empty": "اپنا پہلا شجرہ بنائیں",
+    "emptyHint": "سب کچھ اسی آلے پر رہتا ہے۔ کچھ بھی اپ لوڈ نہیں ہوتا۔",
+    "newTree": "نیا شجرہ",
+    "import": "درآمد کریں",
+    "defaultName": "میرا خاندان",
+    "copyName": "{{name}} (نقل)",
+    "people_one": "{{count, number}} فرد",
+    "people_other": "{{count, number}} افراد",
+    "edited": "ترمیم {{when}}",
+    "loadFailed": "اس براؤزر سے آپ کے شجرے پڑھے نہیں جا سکے۔",
+    "actionFailed": "یہ کام نہیں ہوا۔ دوبارہ کوشش کریں۔",
+    "rename": "نام بدلیں",
+    "renameAria": "{{name}} کا نام بدلیں",
+    "duplicate": "نقل بنائیں",
+    "duplicateAria": "{{name}} کی نقل بنائیں",
+    "backup": "بیک اپ",
+    "backupAria": "{{name}} کا بیک اپ ڈاؤن لوڈ کریں",
+    "deleteAria": "{{name}} حذف کریں",
+    "newDialogTitle": "نیا شجرہ",
+    "renameDialogTitle": "شجرے کا نام بدلیں",
+    "deleteDialogTitle": "یہ شجرہ حذف کریں؟",
+    "deleteDialogBody": "”<name/>“ اور اس کے تمام افراد اس آلے سے ہٹا دیے جائیں گے۔ یہ واپس نہیں ہو سکتا۔"
+  },
+  "banner": {
+    "backupDue": "آپ کے پچھلے بیک اپ کو کافی وقت ہو گیا ہے۔ کوئی شجرہ کھولیں اور نقل محفوظ کرنے کے لیے بیک اپ ڈاؤن لوڈ کریں چنیں۔",
+    "storageFull": "اسٹوریج تقریباً بھر چکی ہے۔ بیک اپ ڈاؤن لوڈ کریں۔",
+    "otherTab": "یہ شجرہ کسی دوسرے ٹیب میں بدل گیا ہے۔ ترمیم جاری رکھنے کے لیے دوبارہ لوڈ کریں۔",
+    "deletedElsewhere": "یہ شجرہ کسی دوسرے ٹیب میں حذف کر دیا گیا۔",
+    "backToTrees": "میرے شجروں پر واپس",
+    "reload": "دوبارہ لوڈ کریں",
+    "recovered": "بیک اپ اسنیپ شاٹ سے بحال کیا گیا۔ دیکھ لیں کہ سب کچھ موجود ہے، پھر بیک اپ ڈاؤن لوڈ کریں۔",
+    "dbBlocking": "{{app}} کسی دوسرے ٹیب میں اپ ڈیٹ ہوا ہے۔ دوبارہ لوڈ کریں۔",
+    "dbBlocked": "اپ ڈیٹ مکمل کرنے کے لیے {{app}} کے دوسرے ٹیب بند کریں۔",
+    "dbTerminated": "{{app}} کی اس براؤزر کی اسٹوریج تک رسائی ختم ہو گئی۔ دوبارہ لوڈ کریں۔"
+  },
+  "editor": {
+    "failedTitle": "یہ شجرہ کھل نہیں سکا",
+    "failedLink": "اپنے شجروں پر واپس جائیں"
+  },
+  "toolbar": {
+    "myTrees": "میرے شجرے",
+    "rename": "شجرے کا نام بدلیں",
+    "renameNamed": "شجرے {{name}} کا نام بدلیں",
+    "hint": {
+      "undo": "اپنی آخری تبدیلی واپس لیں۔",
+      "redo": "جو ابھی واپس لیا وہ دوبارہ لائیں۔",
+      "zoomOut": "شجرے کا زیادہ حصہ دیکھنے کے لیے چھوٹا کریں۔",
+      "zoomIn": "کارڈ پڑھنے کے لیے بڑا کریں۔",
+      "zoomKeys": "Ctrl کے ساتھ اسکرول، یا دو انگلیوں سے",
+      "fit": "پورا شجرہ اسکرین پر لائیں۔",
+      "search": "نام سے کسی فرد کو ڈھونڈیں اور اس تک جائیں۔",
+      "focusMode": "منتخب فرد اور اس کی سیدھی لکیر کے سوا سب کو مدھم کریں۔",
+      "relate": "معلوم کریں کہ دو افراد کا آپس میں کیا رشتہ ہے۔",
+      "relateKeys": "ایک فرد منتخب کریں، پھر Shift دبا کر دوسرے پر کلک کریں",
+      "birthdays": "آنے والی سالگرہیں اور آج کے دن کیا ہوا۔",
+      "menu": "تصاویر اور PDF برآمد کریں، بیک اپ ڈاؤن لوڈ کریں۔",
+      "exportKeys": "برآمد کے لیے {{keys}}"
+    },
+    "undo": "واپس لیں",
+    "redo": "دوبارہ کریں",
+    "zoomIn": "بڑا کریں",
+    "zoomOut": "چھوٹا کریں",
+    "fit": "شجرہ اسکرین کے مطابق کریں",
+    "search": "افراد تلاش کریں",
+    "focusMode": "توجہ موڈ",
+    "unconnected": "{{count, number}} جڑے ہوئے نہیں",
+    "unconnectedAria": "{{count, number}} جڑے ہوئے نہیں۔ انہیں دکھائیں۔",
+    "backTo": "→ <name/> پر واپس",
+    "menu": "مینو",
+    "downloadBackup": "بیک اپ ڈاؤن لوڈ کریں (.json)",
+    "includePhotos": "تصاویر شامل کریں",
+    "backupFailed": "بیک اپ نہیں بن سکا۔",
+    "export": "برآمد کریں…"
+  },
+  "saveStatus": {
+    "saving": "محفوظ ہو رہا ہے…",
+    "saved": "محفوظ ہو گیا",
+    "error": "محفوظ نہیں ہو سکا"
+  },
+  "panel": {
+    "label": "فرد کی تفصیلات",
+    "close": "پینل بند کریں",
+    "unnamed": "بے نام فرد",
+    "firstName": "پہلا نام",
+    "lastName": "خاندانی نام",
+    "nickname": "عرفی نام",
+    "nativeName": "مقامی زبان میں نام",
+    "gender": {
+      "label": "جنس",
+      "male": "مرد",
+      "female": "عورت"
+    },
+    "living": "حیات",
+    "birthDate": "تاریخ پیدائش",
+    "birthPlace": "جائے پیدائش",
+    "deathDate": "تاریخ وفات",
+    "deathPlace": "جائے وفات",
+    "dateError": "سال اس طرح لکھیں: 1950، 1950-03-14، abt 1950 یا 1948–1952",
+    "notes": "نوٹس",
+    "photo": {
+      "upload": "تصویر اپ لوڈ کریں",
+      "replace": "تصویر بدلیں",
+      "remove": "تصویر ہٹائیں",
+      "failed": "یہ تصویر استعمال نہیں ہو سکی۔ کوئی اور تصویر آزمائیں۔"
+    },
+    "partner": "شریک حیات",
+    "noPartner": "کوئی شریک حیات درج نہیں",
+    "status": {
+      "label": "حیثیت",
+      "married": "شادی شدہ",
+      "partner": "ساتھی",
+      "engaged": "منگنی شدہ",
+      "divorced": "طلاق یافتہ",
+      "separated": "علیحدہ",
+      "widowed": "بیوہ / رنڈوا"
+    },
+    "startDate": "آغاز کی تاریخ",
+    "endDate": "اختتام کی تاریخ",
+    "children": "اولاد",
+    "childTypeAria": "{{name}}: اولاد کی قسم",
+    "childType": {
+      "biological": "حقیقی",
+      "adopted": "لے پالک",
+      "step": "سوتیلی",
+      "foster": "پرورش میں"
+    },
+    "setRoot": "جڑ بنائیں",
+    "viewFamily": "خاندان دیکھیں",
+    "deleteButton": "حذف کریں…",
+    "deleteDialog": {
+      "title": "<name/> کو حذف کریں؟",
+      "body": "آپ فوراً بعد اسے واپس لے سکتے ہیں۔",
+      "only": "صرف <name/> کو حذف کریں",
+      "withDescendants_one": "<name/> اور {{count, number}} اولاد کو حذف کریں",
+      "withDescendants_other": "<name/> اور {{count, number}} اولادوں کو حذف کریں"
+    },
+    "search": {
+      "title": "افراد تلاش کریں",
+      "pickerTitle": "کوئی فرد چنیں",
+      "placeholder": "نام لکھیں",
+      "results": "ملتے جلتے افراد",
+      "none": "”{{query}}“ سے کوئی نہیں ملتا۔"
+    },
+    "unconnected": {
+      "title": "جڑے ہوئے نہیں",
+      "none": "سب جڑے ہوئے ہیں۔"
+    }
+  },
+  "canvas": {
+    "region": "خاندانی شجرہ",
+    "unknownFather": "نامعلوم والد",
+    "unknownMother": "نامعلوم والدہ",
+    "seeOriginal": "اصل دیکھیں ←",
+    "seeOriginalLabel": "{{name}} کے اصل کارڈ پر جائیں",
+    "viewFamily": "↑ خاندان دیکھیں",
+    "viewFamilyLabel": "{{name}} کا خاندان دیکھیں",
+    "collapse": "{{name}} کی شاخ سمیٹیں",
+    "expand": "{{name}} کی شاخ کھولیں",
+    "hiddenBadge": "+{{count, number}}",
+    "describe": {
+      "unnamed": "بے نام فرد",
+      "born": "پیدائش {{date}}",
+      "died": "وفات {{date}}",
+      "sonOf": "{{parents}} کا بیٹا",
+      "daughterOf": "{{parents}} کی بیٹی",
+      "twoParents": "{{first}} اور {{second}}",
+      "linked": "منسلک نقل",
+      "hidden_one": "{{count, number}} چھپی ہوئی اولاد",
+      "hidden_other": "{{count, number}} چھپی ہوئی اولادیں"
+    }
+  },
+  "dnd": {
+    "menuLabel": "{{name}} کو منتقل کریں",
+    "makeChild": "<name/> کی اولاد بنائیں",
+    "makeSpouse": "<name/> کا شریک حیات بنائیں",
+    "makeParent": "<name/> کا والد یا والدہ بنائیں",
+    "noActions": "<name/> کو <target/> سے نہیں جوڑا جا سکتا۔",
+    "notAllowed": "یہاں اجازت نہیں",
+    "cardMenu": "{{name}} کے لیے اقدامات",
+    "moveTo": "منتقل کریں…",
+    "error": {
+      "CYCLE": "اس سے کوئی اپنا ہی جد بن جائے گا۔",
+      "ALREADY_LINKED": "یہ پہلے ہی اس طرح جڑے ہوئے ہیں۔",
+      "PARENTS_FULL": "اس فرد کے پہلے ہی دو والدین ہیں۔",
+      "AMBIGUOUS_UNION": "پہلے چنیں کہ کون سا خاندان۔",
+      "NOT_FOUND": "یہ فرد اب شجرے میں نہیں ہے۔",
+      "INVALID": "یہ تبدیلی ممکن نہیں۔"
+    }
+  },
+  "handles": {
+    "addParent": "{{name}} کے والد یا والدہ شامل کریں",
+    "addChild": "{{name}} کی اولاد شامل کریں",
+    "addBesideLeft": "{{name}} کے بائیں جانب شریک حیات یا بہن بھائی شامل کریں",
+    "addBesideRight": "{{name}} کے دائیں جانب شریک حیات یا بہن بھائی شامل کریں",
+    "besideMenu": "{{name}} کے ساتھ شامل کریں",
+    "spouse": "شریک حیات",
+    "sibling": "بہن بھائی",
+    "start": "کسی فرد سے شروع کریں",
+    "startHint": "نام لکھیں، ♂ یا ♀ چنیں، Enter دبائیں۔",
+    "name": "نام",
+    "male": "مرد",
+    "female": "عورت",
+    "chooseGender": "♂ یا ♀ چنیں",
+    "editor": {
+      "first": "نیا فرد",
+      "child": "{{name}} کی نئی اولاد",
+      "spouse": "{{name}} کا نیا شریک حیات",
+      "parent": "{{name}} کے نئے والد یا والدہ",
+      "sibling": "{{name}} کا نیا بہن بھائی"
+    },
+    "unionChooser": {
+      "title": "کس خاندان کی اولاد؟",
+      "label": "{{name}} کی نئی اولاد کا خاندان چنیں",
+      "noPartner": "کوئی شریک حیات نہیں",
+      "cancel": "منسوخ کریں"
+    },
+    "error": {
+      "PARENTS_FULL": "اس فرد کے پہلے ہی دو والدین ہیں۔",
+      "AMBIGUOUS_UNION": "چنیں کہ اولاد کس خاندان کی ہے۔",
+      "CYCLE": "اس سے کوئی اپنا ہی جد بن جائے گا۔",
+      "ALREADY_LINKED": "یہ پہلے ہی جڑے ہوئے ہیں۔",
+      "NOT_FOUND": "یہ فرد اب موجود نہیں۔",
+      "INVALID": "اسے یہاں شامل نہیں کیا جا سکتا۔"
+    }
+  },
+  "export": {
+    "pdf": {
+      "guideTitle": "جوڑنے کی رہنمائی",
+      "guideInstruction": "نشانوں پر کاٹیں، لیبلوں کے مطابق ملائیں",
+      "guideSummary_one": "{{count, number}} صفحہ: {{cols}} چوڑائی میں، {{rows}} لمبائی میں",
+      "guideSummary_other": "{{count, number}} صفحات: {{cols}} چوڑائی میں، {{rows}} لمبائی میں",
+      "tileLabel": "قطار {{row}}، کالم {{col}}",
+      "pageOf": "صفحہ {{page}} از {{total}}"
+    },
+    "html": {
+      "searchLabel": "نام سے تلاش کریں",
+      "searchPlaceholder": "نام سے تلاش کریں",
+      "zoomIn": "بڑا کریں",
+      "zoomOut": "چھوٹا کریں",
+      "fit": "اسکرین کے مطابق",
+      "tools": "منظر",
+      "treeLabel": "خاندانی شجرہ۔ ہلانے کے لیے گھسیٹیں یا تیر کے بٹن استعمال کریں، زوم کے لیے + اور −، پورا دیکھنے کے لیے 0۔ ہر فرد Enter سے کھلتا ہے۔",
+      "results": "ملتے جلتے افراد",
+      "details": "تفصیلات",
+      "close": "بند کریں",
+      "matches_one": "{{n}} نتیجہ",
+      "matches_other": "{{n}} نتائج",
+      "noMatches": "کوئی نتیجہ نہیں",
+      "generated": "{{date}} کو Stam سے برآمد کیا گیا۔ انٹرنیٹ کے بغیر چلتا ہے۔"
+    },
+    "title": "برآمد",
+    "format": "فارمیٹ",
+    "formats": {
+      "svg": "SVG تصویر",
+      "png": "PNG تصویر",
+      "jpeg": "JPEG تصویر",
+      "pdf-poster": "PDF پوسٹر",
+      "pdf-tiled": "PDF، پرنٹ کے لیے ٹکڑوں میں",
+      "html": "ویب صفحہ (HTML)",
+      "json": "بیک اپ (.json)",
+      "gedcom": "GEDCOM فائل (.ged)"
+    },
+    "formatHints": {
+      "svg": "ہر سائز پر واضح۔",
+      "png": "سلائیڈز اور دستاویزات کے لیے۔",
+      "jpeg": "چھوٹی فائلیں، شفافیت کے بغیر۔",
+      "pdf-poster": "ایک صفحہ، سما جانے کے لیے چھوٹا بڑا کیا ہوا۔",
+      "pdf-tiled": "A4 یا Letter پر پرنٹ کریں اور صفحات جوڑیں۔",
+      "html": "ایک فائل جو آپ کہیں بھی کھول کر دیکھ سکتے ہیں۔",
+      "json": "سب کچھ، شجرہ بحال یا منتقل کرنے کے لیے۔",
+      "gedcom": "دوسری خاندانی شجرہ ایپس کے لیے۔ تصاویر کے سوا سب کچھ۔"
+    },
+    "scope": "کیا شامل کریں",
+    "scopes": {
+      "whole": "پورا شجرہ",
+      "view": "موجودہ خاندانی منظر",
+      "branch": "منتخب فرد اور اس کی نسل",
+      "visible": "جو اس وقت اسکرین پر ہے"
+    },
+    "options": "اختیارات",
+    "titleField": "عنوان",
+    "subtitleField": "ذیلی عنوان",
+    "dates": "تاریخیں دکھائیں",
+    "photos": "تصاویر شامل کریں",
+    "ruler": "نسلوں کا پیمانہ دکھائیں",
+    "theme": "انداز",
+    "themes": {
+      "light": "ہلکا",
+      "print": "پرنٹ (سفید پر سیاہ)",
+      "dark": "گہرا"
+    },
+    "background": "پس منظر",
+    "backgrounds": {
+      "solid": "ٹھوس",
+      "transparent": "شفاف"
+    },
+    "privacy": "رازداری موڈ",
+    "privacyHint": "زندہ افراد کا صرف نام دکھایا جاتا ہے: تاریخیں، مقامات، تصاویر یا نوٹس نہیں۔",
+    "privacyHintGedcom": "زندہ افراد کا صرف نام دکھایا جاتا ہے؛ GEDCOM فائلیں اکثر دوسروں سے شیئر کی جاتی ہیں۔",
+    "scale": "پیمانہ",
+    "scaleOption": "{{count, number}}×",
+    "quality": "JPEG معیار: {{percent}}%",
+    "page": "صفحے کا سائز",
+    "pageCustom": "اپنی مرضی کا",
+    "customWidth": "چوڑائی (ملی میٹر)",
+    "customHeight": "اونچائی (ملی میٹر)",
+    "orientation": "رخ",
+    "orientations": {
+      "auto": "خودکار",
+      "portrait": "عمودی",
+      "landscape": "افقی"
+    },
+    "margin": "حاشیہ (ملی میٹر)",
+    "tiledPage": "کاغذ",
+    "tiledScale": "پرنٹ کا سائز",
+    "tiledScaleOption": "{{percent}}%",
+    "estimatePx": "تقریباً {{width}} × {{height}} پکسل",
+    "estimatePages_one": "تقریباً {{count, number}} صفحہ",
+    "estimatePages_other": "تقریباً {{count, number}} صفحات",
+    "export": "برآمد کریں",
+    "exporting": "برآمد ہو رہا ہے…",
+    "close": "بند کریں",
+    "warning": {
+      "scale": "براؤزر کی حد میں رکھنے کے لیے پیمانہ {{scale}}× کر دیا گیا۔",
+      "sideLimit": "پیمانہ {{scale}}× کر دیا گیا: اس سے زیادہ چوڑائی یا اونچائی یہ براؤزر نہیں بنا سکتا۔",
+      "areaLimit": "پیمانہ {{scale}}× کر دیا گیا: اس سے زیادہ پکسل یہ براؤزر نہیں بنا سکتا۔"
+    },
+    "confirmPages": "اس سے {{count, number}} صفحات بنیں گے۔ جاری رکھیں؟",
+    "tooManyPages": "اس سے {{count, number}} صفحات بنیں گے، جو ہماری 400 کی حد سے زیادہ ہیں۔ چھوٹا پرنٹ سائز چنیں یا پوسٹر PDF استعمال کریں۔",
+    "error": "برآمد نہیں ہو سکی۔ کم حصہ یا چھوٹا پیمانہ آزمائیں۔",
+    "done": "{{name}} کے نام سے محفوظ ہو گیا۔",
+    "detail": {
+      "born": "پیدائش",
+      "died": "وفات",
+      "notes": "نوٹس"
+    },
+    "viewFallback": "پنکھا اور ٹائم لائن ابھی برآمد نہیں ہو سکتے۔ ان کی جگہ خاندانی منظر برآمد کیا گیا ہے۔"
+  },
+  "kinship": {
+    "sentence": "{{a}} کا {{b}} سے رشتہ: {{relation}}",
+    "same": "{{a}} اور {{b}} ایک ہی فرد ہیں",
+    "great": "{{term}} (ایک پشت مزید)",
+    "greatN": "{{term}} ({{nth}} پشت)",
+    "half": "{{term}} (سوتیلا رشتہ)",
+    "halfLong": "{{term}} (سوتیلا رشتہ)",
+    "cousin": "{{term}} ({{nth}} درجہ)",
+    "removed": "{{term}}، {{removal}}",
+    "removal1": "ایک پشت کے فرق سے",
+    "removal2": "دو پشتوں کے فرق سے",
+    "removalN_one": "{{count, number}} پشت کے فرق سے",
+    "removalN_other": "{{count, number}} پشتوں کے فرق سے",
+    "ordinal": {
+      "1": "پہلا",
+      "2": "دوسرا",
+      "3": "تیسرا",
+      "4": "چوتھا",
+      "5": "پانچواں",
+      "6": "چھٹا",
+      "7": "ساتواں",
+      "8": "آٹھواں",
+      "9": "نواں",
+      "10": "دسواں"
+    },
+    "nth_ordinal_other": "{{count, number}}واں",
+    "term": {
+      "parent_male": "والد",
+      "parent_female": "والدہ",
+      "child_male": "بیٹا",
+      "child_female": "بیٹی",
+      "parentAdopted_male": "منہ بولے والد",
+      "parentAdopted_female": "منہ بولی والدہ",
+      "childAdopted_male": "لے پالک بیٹا",
+      "childAdopted_female": "لے پالک بیٹی",
+      "grandparent_male": "دادا یا نانا",
+      "grandparent_female": "دادی یا نانی",
+      "grandchild_male": "پوتا یا نواسا",
+      "grandchild_female": "پوتی یا نواسی",
+      "sibling_male": "بھائی",
+      "sibling_female": "بہن",
+      "auncle_male": "چچا یا ماموں",
+      "auncle_female": "پھوپھی یا خالہ",
+      "nibling_male": "بھتیجا یا بھانجا",
+      "nibling_female": "بھتیجی یا بھانجی",
+      "cousin_male": "کزن",
+      "cousin_female": "کزن",
+      "spouse_male": "شوہر",
+      "spouse_female": "بیوی",
+      "exSpouse_male": "سابق شوہر",
+      "exSpouse_female": "سابقہ بیوی",
+      "fiance_male": "منگیتر",
+      "fiance_female": "منگیتر",
+      "partner_male": "ساتھی",
+      "partner_female": "ساتھی",
+      "stepParent_male": "سوتیلا باپ",
+      "stepParent_female": "سوتیلی ماں",
+      "stepChild_male": "سوتیلا بیٹا",
+      "stepChild_female": "سوتیلی بیٹی",
+      "stepSibling_male": "سوتیلا بھائی",
+      "stepSibling_female": "سوتیلی بہن",
+      "parentInLaw_male": "سسر",
+      "parentInLaw_female": "ساس",
+      "childInLaw_male": "داماد",
+      "childInLaw_female": "بہو",
+      "siblingInLaw_male": "سالا یا بہنوئی یا دیور",
+      "siblingInLaw_female": "سالی یا بھابھی یا نند",
+      "auncleByMarriage_male": "پھوپھا یا خالو",
+      "auncleByMarriage_female": "چچی یا ممانی",
+      "niblingByMarriage_male": "شریک حیات کا بھتیجا یا بھانجا",
+      "niblingByMarriage_female": "شریک حیات کی بھتیجی یا بھانجی",
+      "auncleInLaw_male": "شریک حیات کے چچا یا ماموں",
+      "auncleInLaw_female": "شریک حیات کی پھوپھی یا خالہ",
+      "niblingInLaw_male": "بھتیجی یا بھانجی کا شوہر",
+      "niblingInLaw_female": "بھتیجے یا بھانجے کی بیوی",
+      "grandparentInLaw_male": "شریک حیات کے دادا یا نانا",
+      "grandparentInLaw_female": "شریک حیات کی دادی یا نانی",
+      "grandchildInLaw_male": "پوتی یا نواسی کا شوہر",
+      "grandchildInLaw_female": "پوتے یا نواسے کی بیوی",
+      "otherInLaw_male": "سسرالی رشتہ دار",
+      "otherInLaw_female": "سسرالی رشتہ دار"
+    },
+    "panel": {
+      "title": "ہمارا آپس میں کیا رشتہ ہے؟",
+      "open": "ہمارا آپس میں کیا رشتہ ہے؟",
+      "close": "بند کریں",
+      "personA": "پہلا فرد",
+      "personB": "دوسرا فرد",
+      "choose": "کوئی فرد چنیں",
+      "swap": "افراد کی جگہ بدلیں",
+      "results": "رشتے",
+      "more_one": "{{count, number}} مزید دور کا رشتہ…",
+      "more_other": "{{count, number}} مزید دور کے رشتے…",
+      "urdu": "اردو میں",
+      "pickTwo": "رشتہ دیکھنے کے لیے دو افراد چنیں۔ آپ Shift دبا کر دوسرے کارڈ پر کلک بھی کر سکتے ہیں۔",
+      "same": "دو مختلف افراد چنیں۔",
+      "none": "اس شجرے میں {{a}} اور {{b}} کا آپس میں کوئی رشتہ نہیں۔",
+      "error": "رشتہ معلوم نہیں ہو سکا۔"
+    }
+  },
+  "views": {
+    "fan": {
+      "region": "{{name}} کے آبا و اجداد کا پنکھا چارٹ",
+      "generations": "نسلیں",
+      "fewer": "کم نسلیں",
+      "more": "زیادہ نسلیں"
+    },
+    "timeline": {
+      "region": "ٹائم لائن",
+      "empty": "یہاں ابھی کسی کا سال پیدائش درج نہیں۔"
+    },
+    "switcher": "منظر",
+    "mode": {
+      "family": "خاندان",
+      "pedigree": "آبا و اجداد",
+      "descendants": "نسل",
+      "hourglass": "ریت گھڑی",
+      "fan": "پنکھا",
+      "timeline": "ٹائم لائن"
+    },
+    "hint": {
+      "family": "ایک فرد سے نیچے سب، ان کے شریک حیات کے ساتھ۔ شجرہ یہیں بنائیں اور اس میں ترمیم کریں۔",
+      "pedigree": "ایک فرد کے والدین، دادا دادی اور مزید آبا و اجداد، اوپر کی طرف۔",
+      "descendants": "ایک فرد کی پوری نسل، مختصر اور شریک حیات کے بغیر۔",
+      "hourglass": "ایک فرد کے آبا و اجداد اوپر اور نسل نیچے۔",
+      "fan": "آبا و اجداد آدھے دائرے میں۔ خالی جگہیں بتاتی ہیں کہ کون ابھی باقی ہے۔",
+      "timeline": "ہر زندگی برسوں کی لکیر پر ایک پٹی کی صورت۔ دیکھیں کون ایک ہی وقت میں زندہ تھا۔"
+    },
+    "shortcut": "{{label}} (Alt+{{n}})",
+    "focus": "توجہ: <name/>",
+    "focusOn": "{{name}} پر توجہ",
+    "focusSelected": "منتخب فرد پر توجہ"
+  },
+  "birthdays": {
+    "open": "سالگرہیں",
+    "openWithCount_one": "سالگرہیں: اگلے 7 دنوں میں {{count, number}}",
+    "openWithCount_other": "سالگرہیں: اگلے 7 دنوں میں {{count, number}}",
+    "title": "آنے والی سالگرہیں",
+    "none": "اگلے 30 دنوں میں کوئی سالگرہ نہیں۔",
+    "turns": "{{count, number}} سال کے ہو جائیں گے",
+    "today": "آج",
+    "tomorrow": "کل",
+    "inDays_one": "{{count, number}} دن میں",
+    "inDays_other": "{{count, number}} دنوں میں",
+    "onThisDay": "آج کے دن",
+    "birth": "{{name}} {{year}} میں پیدا ہوئے",
+    "death": "{{name}} کا {{year}} میں انتقال ہوا",
+    "union": "{{name}} کا رشتہ {{year}} میں شروع ہوا",
+    "showRow": "{{name}} دکھائیں، {{details}}"
+  },
+  "language": {
+    "label": "زبان",
+    "inReview": "ترجمہ زیرِ نظرثانی: مشین کی مدد سے کیا گیا، ابھی کسی اہلِ زبان نے نہیں جانچا۔"
+  },
+  "dates": {
+    "about": "تقریباً {{date}}",
+    "before": "{{date}} سے پہلے",
+    "after": "{{date}} کے بعد",
+    "between": "{{from}} تا {{to}}"
+  },
+  "settings": {
+    "open": "ترتیبات",
+    "title": "ترتیبات",
+    "done": "ہو گیا",
+    "language": "زبان",
+    "theme": "تھیم",
+    "themes": {
+      "light": "ہلکا",
+      "dark": "گہرا",
+      "classic": "کلاسیکی",
+      "print": "پرنٹ"
+    },
+    "themeHints": {
+      "light": "ہلکے پس منظر پر گہری سیاہی۔",
+      "dark": "گہرے پس منظر پر ہلکی سیاہی۔ رات کو آنکھوں کے لیے آسان۔",
+      "classic": "جنس کے لحاظ سے نیلے اور گلابی کارڈ، ہلکے پس منظر پر۔",
+      "print": "سفید پر سیاہ، بغیر رنگ بھرے اور موٹی لکیروں کے ساتھ۔"
+    },
+    "colorMode": "کارڈ کے رنگ",
+    "colorModes": {
+      "gender": "جنس کے لحاظ سے",
+      "branch": "شاخ کے لحاظ سے",
+      "generation": "نسل کے لحاظ سے"
+    },
+    "colorModeHints": {
+      "gender": "♂ یا ♀ نشان والے سادہ کارڈ۔",
+      "branch": "سب سے اوپر والے فرد کا ہر بچہ ایک رنگ شروع کرتا ہے۔ اس کا خاندان وہی رنگ رکھتا ہے۔",
+      "generation": "ہر نسل کی قطار کے لیے ایک رنگ۔"
+    },
+    "direction": "شجرے کی سمت",
+    "directions": {
+      "auto": "زبان کے مطابق",
+      "ltr": "بائیں سے دائیں",
+      "rtl": "دائیں سے بائیں"
+    },
+    "motion": "حرکت کم کریں",
+    "motions": {
+      "system": "اس آلے کے مطابق",
+      "reduce": "آن",
+      "full": "آف"
+    },
+    "motionHint": "شجرے اور کارڈوں کی متحرک حرکت بند کر دیتا ہے۔"
+  }
+}

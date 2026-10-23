@@ -3,8 +3,8 @@ import type { jsPDF } from "jspdf";
 import { i18n } from "@/i18n";
 
 import type { RenderedSvg } from "../types";
-import { parseFontFaces, stripFontFaces } from "./fontFaces";
-import { createFontSet } from "./fonts";
+import { type FontFace, parseFontFaces, stripFontFaces } from "./fontFaces";
+import { createFontSet, type FontSet } from "./fonts";
 import {
   cellName,
   posterLayout,
@@ -14,6 +14,7 @@ import {
   type TileLayout,
   tileLayout,
 } from "./geometry";
+import { drawLabel, isRtlText, labelFaces, type LabelOptions } from "./labels";
 import { scopeCss } from "./scopeCss";
 import { textToPaths } from "./textToPaths";
 
@@ -42,7 +43,12 @@ async function loadPdfLibs() {
 
 const HOST_CLASS = "stam-export";
 
-type Prepared = { svg: SVGSVGElement; dispose: () => void };
+type Prepared = {
+  svg: SVGSVGElement;
+  /** The fonts the SVG embeds (Archivo, and Noto for Arabic-script names). */
+  faces: FontFace[];
+  dispose: () => void;
+};
 
 /**
  * Parses the export SVG into the live document (svg2pdf and computed styles need that) and turns
@@ -81,7 +87,7 @@ async function prepareSvg(r: RenderedSvg): Promise<Prepared> {
     host.remove();
     throw error;
   }
-  return { svg, dispose: () => host.remove() };
+  return { svg, faces, dispose: () => host.remove() };
 }
 
 function finish(pdf: jsPDF): Blob {
@@ -136,8 +142,22 @@ function cropMarks(pdf: jsPDF, l: TileLayout): void {
 }
 
 /** Ticks in the margin where the neighbour's edge falls, with the neighbour's cell name. */
+/** Draws a label in ink; see `drawLabel`. */
+function label(
+  pdf: jsPDF,
+  fonts: FontSet,
+  text: string,
+  x: number,
+  y: number,
+  o: LabelOptions,
+): void {
+  pdf.setFillColor(INK, INK, INK);
+  drawLabel(pdf, fonts, text, x, y, o);
+}
+
 function alignmentMarks(
   pdf: jsPDF,
+  fonts: FontSet,
   l: TileLayout,
   row: number,
   col: number,
@@ -150,7 +170,8 @@ function alignmentMarks(
   const bottom = m + l.trimH;
   const midX = m + l.trimW / 2;
   const midY = m + l.trimH / 2;
-  pdf.setFontSize(9);
+  const side: LabelOptions = { sizePt: 9, align: "center", angle: 90 };
+  const edge: LabelOptions = { sizePt: 9, align: "center" };
   pdf.setLineWidth(0.2);
   const tickV = (x: number) => {
     pdf.line(x, top - MARK_GAP, x, top - MARK_GAP - 3);
@@ -162,24 +183,32 @@ function alignmentMarks(
   };
   if (col + 1 < l.cols) {
     tickV(right - overlapMm);
-    pdf.text(cellName(row, col + 1), right + m / 2, midY, { align: "center", angle: 90 });
+    label(pdf, fonts, cellName(row, col + 1), right + m / 2, midY, side);
   }
   if (col > 0) {
     tickV(left + overlapMm);
-    pdf.text(cellName(row, col - 1), left - m / 2, midY, { align: "center", angle: 90 });
+    label(pdf, fonts, cellName(row, col - 1), left - m / 2, midY, side);
   }
   if (row + 1 < l.rows) {
     tickH(bottom - overlapMm);
-    pdf.text(cellName(row + 1, col), midX, bottom + m / 2 + 1.5, { align: "center" });
+    label(pdf, fonts, cellName(row + 1, col), midX, bottom + m / 2 + 1.5, edge);
   }
   if (row > 0) {
     tickH(top + overlapMm);
-    pdf.text(cellName(row - 1, col), midX, top - m / 2 + 1.5, { align: "center" });
+    label(pdf, fonts, cellName(row - 1, col), midX, top - m / 2 + 1.5, edge);
   }
+}
+
+function tileDetail(l: TileLayout, row: number, col: number, page: number, t: Translate) {
+  return `${t("export.pdf.tileLabel", { row: row + 1, col: col + 1 })} · ${t("export.pdf.pageOf", {
+    page,
+    total: l.pageCount,
+  })}`;
 }
 
 function tileLabel(
   pdf: jsPDF,
+  fonts: FontSet,
   l: TileLayout,
   row: number,
   col: number,
@@ -187,37 +216,31 @@ function tileLabel(
   t: Translate,
 ) {
   const m = TILE_MARGIN_MM;
-  pdf.setFontSize(11);
-  pdf.setFont("helvetica", "bold");
-  pdf.text(cellName(row, col), m + MARK_GAP + MARK_LEN + 2, m - 3.5);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(7);
-  const detail = `${t("export.pdf.tileLabel", { row: row + 1, col: col + 1 })} · ${t(
-    "export.pdf.pageOf",
-    { page, total: l.pageCount },
-  )}`;
-  pdf.text(detail, m + MARK_GAP + MARK_LEN + 10, m - 3.5);
+  const x = m + MARK_GAP + MARK_LEN + 2;
+  label(pdf, fonts, cellName(row, col), x, m - 3.5, { sizePt: 11, weight: 700 });
+  label(pdf, fonts, tileDetail(l, row, col, page, t), x + 8, m - 3.5, { sizePt: 7 });
 }
 
 async function assemblyGuide(
   pdf: jsPDF,
   svg2pdf: Awaited<ReturnType<typeof loadPdfLibs>>["svg2pdf"],
   svg: SVGSVGElement,
+  fonts: FontSet,
   l: TileLayout,
   t: Translate,
 ): Promise<void> {
   const m = 15;
-  pdf.setTextColor(INK);
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(16);
-  pdf.text(t("export.pdf.guideTitle"), m, m + 4);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(11);
-  pdf.text(t("export.pdf.guideInstruction"), m, m + 12);
-  pdf.text(
+  // Right-to-left headings start at the right margin.
+  const heading = (text: string, y: number, o: LabelOptions) => {
+    const rtl = isRtlText(text);
+    label(pdf, fonts, text, rtl ? l.pageW - m : m, y, { ...o, align: rtl ? "right" : "left" });
+  };
+  heading(t("export.pdf.guideTitle"), m + 4, { sizePt: 16, weight: 700 });
+  heading(t("export.pdf.guideInstruction"), m + 12, { sizePt: 11 });
+  heading(
     t("export.pdf.guideSummary", { count: l.tiles.length, cols: l.cols, rows: l.rows }),
-    m,
     m + 18,
+    { sizePt: 11 },
   );
 
   // The whole drawing as a thumbnail, with each tile's window drawn over it.
@@ -233,12 +256,12 @@ async function assemblyGuide(
   await svg2pdf(svg, pdf, { x: ox, y: oy, width: l.contentW * k, height: l.contentH * k });
   pdf.setDrawColor(INK);
   pdf.setLineWidth(0.3);
-  pdf.setFontSize(Math.max(6, Math.min(14, (Math.min(l.trimW, l.trimH) * k) / 4)));
+  const sizePt = Math.max(6, Math.min(14, (Math.min(l.trimW, l.trimH) * k) / 4));
   for (const tile of l.tiles) {
     const x = ox + tile.sx * k;
     const y = oy + tile.sy * k;
     pdf.rect(x, y, l.trimW * k, l.trimH * k);
-    pdf.text(cellName(tile.row, tile.col), x + 1.5, y + 1.5, { baseline: "top" });
+    label(pdf, fonts, cellName(tile.row, tile.col), x + 1.5, y + 1.5, { sizePt, baseline: "top" });
   }
 }
 
@@ -256,7 +279,16 @@ export async function toTiledPdf(
   try {
     const format: [number, number] = [l.pageW, l.pageH];
     const pdf = new jsPDF({ unit: "mm", format, orientation: l.orientation, compress: true });
-    await assemblyGuide(pdf, svg2pdf, prepared.svg, l, t);
+    // The labels' words, for the fonts they need beyond the tree's (an Urdu guide, Latin names).
+    const words = [
+      t("export.pdf.guideTitle"),
+      t("export.pdf.guideInstruction"),
+      t("export.pdf.guideSummary", { count: l.tiles.length, cols: l.cols, rows: l.rows }),
+      tileDetail(l, 0, 0, 2, t),
+    ];
+    const kit = await import("fontkit");
+    const fonts = createFontSet(kit, labelFaces(prepared.faces, words));
+    await assemblyGuide(pdf, svg2pdf, prepared.svg, fonts, l, t);
     let page = 1;
     for (const tile of l.tiles) {
       page++;
@@ -273,8 +305,8 @@ export async function toTiledPdf(
       });
       pdf.restoreGraphicsState();
       cropMarks(pdf, l);
-      alignmentMarks(pdf, l, tile.row, tile.col, o.overlapMm);
-      tileLabel(pdf, l, tile.row, tile.col, page, t);
+      alignmentMarks(pdf, fonts, l, tile.row, tile.col, o.overlapMm);
+      tileLabel(pdf, fonts, l, tile.row, tile.col, page, t);
     }
     return finish(pdf);
   } finally {

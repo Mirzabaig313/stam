@@ -1,10 +1,18 @@
 import { i18n } from "@/i18n";
 
-import type { ExportPerson, RenderedSvg } from "../types";
+import { fontFaceCss, NASTALIQ_FAMILY, scriptFontsFor } from "../render/fonts";
+import type { ExportPerson, ExportTheme, RenderedSvg } from "../types";
 import { sha256Base64 } from "./sha256";
 import { type ViewerData, viewerSource } from "./viewer";
 
-export type HtmlMeta = { title: string; generatedAt: string; lang: string; dir: "ltr" | "rtl" };
+export type HtmlMeta = {
+  title: string;
+  generatedAt: string;
+  lang: string;
+  dir: "ltr" | "rtl";
+  /** The export theme: the viewer's bar and panel match the drawing. Light when absent. */
+  theme?: ExportTheme;
+};
 export type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 const defaultT: Translate = (key, options) => i18n.t(key, options ?? {}) as string;
@@ -73,6 +81,10 @@ function pluralLabels(lang: string, t: Translate): Record<string, string> {
 const CSS = `
 :root{--ground:#f4f5f2;--paper:#fff;--ink:#111311;--muted:#5a615b;--line:rgba(17,19,17,.14);
 --accent:#2b47f5;--ease:cubic-bezier(.16,1,.3,1);color-scheme:light}
+[data-theme=dark]{--ground:#0f110f;--paper:#1c201c;--ink:#e8eae6;--muted:#9aa29b;
+--line:rgba(232,234,230,.16);--accent:#6f84ff;color-scheme:dark}
+[data-theme=print]{--ground:#fff;--paper:#fff;--ink:#000;--muted:#000;--line:rgba(0,0,0,.45);
+--accent:#000}
 *{box-sizing:border-box}
 html,body{block-size:100%;margin:0}
 body{display:grid;grid-template-rows:auto 1fr auto;background:var(--ground);color:var(--ink);
@@ -129,6 +141,7 @@ footer{padding:6px 16px;font-size:12px;color:var(--muted);border-block-start:1px
 @media (prefers-reduced-motion:reduce){#world.glide,[data-person-id]{transition:none}}
 @media print{.bar,.panel,footer{display:none}body{display:block;overflow:visible}
 #stage{overflow:visible}#world{position:static;transform:none!important}}
+html[lang|="ur"] body{font-family:"${NASTALIQ_FAMILY}","Archivo Variable",system-ui,sans-serif;line-height:1.9}
 `
   .trim()
   .replace(/\n/g, "");
@@ -143,10 +156,19 @@ export function toHtml(
   r: RenderedSvg,
   people: ExportPerson[],
   meta: HtmlMeta,
-  t: Translate = defaultT,
+  translate: Translate = defaultT,
 ): string {
+  // Every word the page itself shows, for the fonts they need.
+  const words: string[] = [];
+  const t: Translate = (key, options) => {
+    const text = translate(key, options);
+    words.push(text);
+    return text;
+  };
   const lang = LANG.test(meta.lang) ? meta.lang : "en";
   const dir = meta.dir === "rtl" ? "rtl" : "ltr";
+  const theme =
+    meta.theme === "dark" || meta.theme === "print" ? ` data-theme="${meta.theme}"` : "";
   const script = viewerSource();
   if (/<\/script/i.test(script)) throw new Error("toHtml: viewer source would close its tag");
   const data: ViewerData = {
@@ -168,18 +190,7 @@ export function toHtml(
   const width = Math.max(1, Math.round(r.width));
   const height = Math.max(1, Math.round(r.height));
 
-  return `<!doctype html>
-<html lang="${e(lang)}" dir="${dir}">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="${csp}">
-<meta name="referrer" content="no-referrer">
-<meta name="generator" content="Stam">
-<title>${e(meta.title)}</title>
-<style>${CSS}</style>
-</head>
-<body>
+  const body = `<body>
 <header class="bar">
 <h1><bdi>${e(meta.title)}</bdi></h1>
 <div class="find" role="search">
@@ -210,4 +221,29 @@ export function toHtml(
 </body>
 </html>
 `;
+
+  const texts = [
+    ...words,
+    meta.title,
+    ...people.flatMap((p) => [
+      p.name,
+      p.nativeName,
+      ...p.details.flatMap((d) => [d.label, d.value]),
+    ]),
+  ];
+  // The SVG's own @font-face rules apply to the whole page; add only what they lack.
+  const fonts = scriptFontsFor(texts).filter((f) => !r.svg.includes(fontFaceCss([f])));
+  const fontCss = fonts.length > 0 ? `<style>${fontFaceCss(fonts)}</style>\n` : "";
+  return `<!doctype html>
+<html lang="${e(lang)}" dir="${dir}"${theme}>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="${csp}">
+<meta name="referrer" content="no-referrer">
+<meta name="generator" content="Stam">
+<title>${e(meta.title)}</title>
+<style>${CSS}</style>
+${fontCss}</head>
+${body}`;
 }

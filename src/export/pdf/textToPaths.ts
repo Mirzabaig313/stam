@@ -14,7 +14,8 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 /** Attributes carried from the `<text>` to its `<path>` so CSS rules and clipping still match. */
 const CARRIED = ["id", "class", "transform", "opacity", "clip-path", "mask", "aria-hidden"];
 
-type Style = {
+/** How a run of text is drawn: CSS-like, in the units of the drawing it lands in. */
+export type TextStyle = {
   size: number;
   weight: number;
   style: string;
@@ -84,7 +85,7 @@ function weightOf(value: string | null): number {
   return Number.isFinite(n) ? n : 400;
 }
 
-function styleOf(el: Element): Style {
+function styleOf(el: Element): TextStyle {
   const cs = computed(el);
   const size = px(prop(el, cs, "font-size"), 16, 16);
   const families = (prop(el, cs, "font-family") ?? "sans-serif")
@@ -110,13 +111,17 @@ function styleOf(el: Element): Style {
 // Strong right-to-left: Hebrew, Arabic, Syriac, Thaana, NKo... and the Arabic presentation forms.
 const RTL = /[֐-ࣿיִ-﷿ﹰ-ﻼ]/u;
 const LTR = /[\p{L}\p{N}]/u;
+// Invisible bidi controls (marks, embeddings, isolates such as the cards' LRI…PDI around years).
+// They have no glyph; the runs' own directions already put the text in order.
+const BIDI_CONTROL = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/u;
 
 type Run = { face: number; text: string; rtl: boolean | null };
 
 /** Splits text into runs drawn by one face, each with its direction (null = neutral). */
-function itemize(text: string, style: Style, fonts: FontSet, unsupported: string[]): Run[] {
+function itemize(text: string, style: TextStyle, fonts: FontSet, unsupported: string[]): Run[] {
   const runs: Run[] = [];
   for (const char of text) {
+    if (BIDI_CONTROL.test(char)) continue;
     const cp = char.codePointAt(0)!;
     const dir = RTL.test(char) ? true : LTR.test(char) ? false : null;
     const last = runs.at(-1);
@@ -169,7 +174,18 @@ const fmt = (n: number) => String(Math.round(n * 100) / 100);
 
 type Placed = { font: KitFont; run: Run; width: number; layout: ReturnType<KitFont["layout"]> };
 
-function drawText(text: string, x: number, y: number, style: Style, fonts: FontSet, out: string[]) {
+/**
+ * Appends the outlines of `text`, anchored at (x, y), to `out` as SVG path commands (M, L, Q, C
+ * and Z, absolute). Shaped by fontkit, so Arabic script joins; bidi runs are put in visual order.
+ */
+export function outlineText(
+  text: string,
+  x: number,
+  y: number,
+  style: TextStyle,
+  fonts: FontSet,
+  out: string[],
+): { drawn: boolean; unsupported: string[] } {
   const unsupported: string[] = [];
   const runs = visualOrder(itemize(text, style, fonts, unsupported), style.rtl);
   if (runs.length === 0) return { drawn: false, unsupported };
@@ -238,7 +254,7 @@ export function textToPaths(root: Element, fonts: FontSet): TextToPathsResult {
     const x = num(text.getAttribute("x"), 0);
     const y = num(text.getAttribute("y"), 0);
     // Each positioned <tspan> is its own chunk; anything else follows on the text's position.
-    const chunks: { x: number; y: number; text: string; style: Style }[] = [];
+    const chunks: { x: number; y: number; text: string; style: TextStyle }[] = [];
     let plain = "";
     for (const node of text.childNodes) {
       if (node.nodeType === 1 && (node as Element).localName === "tspan") {
@@ -260,7 +276,7 @@ export function textToPaths(root: Element, fonts: FontSet): TextToPathsResult {
     const d: string[] = [];
     let drawn = false;
     for (const chunk of chunks) {
-      const r = drawText(chunk.text, chunk.x, chunk.y, chunk.style, fonts, d);
+      const r = outlineText(chunk.text, chunk.x, chunk.y, chunk.style, fonts, d);
       drawn ||= r.drawn;
       result.unsupported.push(...r.unsupported);
     }

@@ -28,7 +28,8 @@ type Worked = { rels: Relationship[] | null; failed: boolean };
  * unions): renaming someone or editing a note just rephrases the sentences.
  */
 export function useRelation(fns: KinshipFns = realKinship): RelationState {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? i18n.language;
   const doc = useEditor((s) => s.doc);
   const pair = useEditor((s) => s.relation);
   const aId = pair?.aId ?? null;
@@ -60,10 +61,13 @@ export function useRelation(fns: KinshipFns = realKinship): RelationState {
       return { explanation: null, failed: worked.failed };
     }
     try {
-      return { explanation: phraseRelations(doc, aId, bId, worked.rels, t, fns), failed: false };
+      return {
+        explanation: phraseRelations(doc, aId, bId, worked.rels, t, fns, language),
+        failed: false,
+      };
     } catch {
       return { explanation: null, failed: true };
     }
-  }, [doc, worked, aId, bId, t, fns]);
+  }, [doc, worked, aId, bId, t, fns, language]);
   return { pair, ...answer };
 }

@@ -98,6 +98,34 @@ function woff2Instance(base: RawFont, bytes: Uint8Array, coords: number[]): RawF
   return font;
 }
 
+type AnchorFn = (
+  markRecord: { markAnchor?: unknown } | null,
+  baseAnchor: unknown,
+  i: number,
+) => void;
+type GposProcessor = { applyAnchor: AnchorFn; skipsNullAnchors?: true };
+
+/**
+ * fontkit 2.0.4 crashes on a NULL anchor in a mark-attachment lookup ("Cannot destructure
+ * 'xCoordinate'"). Noto Nastaliq Urdu has them (ڑ in جوڑنے). OpenType says a NULL anchor means the
+ * mark doesn't attach to that glyph, so it is skipped and the mark keeps its own position.
+ * fontkit's GPOS processor is one class, so patching its prototype once covers every font.
+ */
+function skipNullAnchors(font: RawFont): void {
+  const engine = (font as unknown as { _layoutEngine?: { engine?: { GPOSProcessor?: object } } })
+    ._layoutEngine?.engine;
+  const gpos = engine?.GPOSProcessor;
+  if (!gpos) return;
+  const proto = Object.getPrototypeOf(gpos) as GposProcessor;
+  if (proto.skipsNullAnchors || typeof proto.applyAnchor !== "function") return;
+  const applyAnchor = proto.applyAnchor;
+  proto.applyAnchor = function (this: GposProcessor, markRecord, baseAnchor, i) {
+    if (!baseAnchor || !markRecord?.markAnchor) return;
+    applyAnchor.call(this, markRecord, baseAnchor, i);
+  };
+  proto.skipsNullAnchors = true;
+}
+
 type LoadedFace = FontFace & { base: RawFont; isWoff2: boolean; instances: Map<number, KitFont> };
 
 export type FontSet = {
@@ -114,6 +142,7 @@ export function createFontSet(kit: FontkitModule, faces: FontFace[]): FontSet {
       const base = kit.create(face.bytes as unknown as Buffer) as unknown as RawFont;
       if (!("layout" in base)) continue; // a collection, not a font
       const isWoff2 = (base as unknown as { type?: string }).type === "WOFF2";
+      skipNullAnchors(base);
       loaded.push({ ...face, base, isWoff2, instances: new Map() });
     } catch {
       // A face fontkit can't read is skipped; its text falls back to another face.

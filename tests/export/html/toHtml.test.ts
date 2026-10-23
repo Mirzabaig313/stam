@@ -16,6 +16,13 @@ function scripts(source: string): { attrs: string; body: string }[] {
   }));
 }
 
+/** Families of the page's Arabic-script @font-face rules. */
+const faces = (page: string) =>
+  [...page.matchAll(/@font-face{font-family:"([^"]+)"[^}]*unicode-range:U\+0600/g)].map(
+    (m) => m[1],
+  );
+const urduT = (key: string) => (key === "export.html.fit" ? "اسکرین کے مطابق" : key);
+
 describe("toHtml", () => {
   test("is one complete document with the SVG, inline CSS and an inline viewer", () => {
     expect(html.startsWith("<!doctype html>")).toBe(true);
@@ -28,6 +35,15 @@ describe("toHtml", () => {
       'type="application/json" id="stam-data"',
       "",
     ]);
+  });
+
+  test("the page around the tree wears the export theme", () => {
+    expect(html).toContain('<html lang="en" dir="ltr">');
+    const dark = toHtml(fixtureSvg, fixturePeople, { ...fixtureMeta, theme: "dark" });
+    expect(dark).toContain('<html lang="en" dir="ltr" data-theme="dark">');
+    expect(dark).toMatch(/\[data-theme=dark\]\{[^}]*--ground:#0f110f/);
+    const print = toHtml(fixtureSvg, fixturePeople, { ...fixtureMeta, theme: "print" });
+    expect(print).toContain('data-theme="print"');
   });
 
   test("contains no external URLs apart from SVG namespaces", () => {
@@ -88,5 +104,25 @@ describe("toHtml", () => {
     const english = toHtml(fixtureSvg, [], fixtureMeta);
     expect(english).toContain("Search by name");
     expect(english).toContain("23 October 2026");
+  });
+
+  test("embeds the Arabic-script fonts its own words need, unless the SVG already does", () => {
+    const latin = [fixturePeople[0]!];
+    expect(faces(toHtml(fixtureSvg, latin, fixtureMeta))).toEqual([]);
+    expect(faces(html)).toEqual(["Archivo Variable"]); // هانا
+    const urdu = toHtml(fixtureSvg, [], { ...fixtureMeta, lang: "ur", dir: "rtl" }, urduT);
+    expect(faces(urdu)).toEqual(["Archivo Variable", "Noto Nastaliq Urdu"]);
+    expect(urdu).toMatch(/html\[lang\|="ur"\] body{font-family:"Noto Nastaliq Urdu"/);
+    // Names and details count too: an Arabic name in an English page.
+    const named = [{ ...fixturePeople[0]!, nativeName: "علي" }];
+
+    expect(faces(toHtml(fixtureSvg, named, fixtureMeta))).toEqual(["Archivo Variable"]);
+    // Already in the SVG (as renderTreeSvg embeds it): not twice.
+    const naskh = /@font-face{[^}]*}/.exec(urdu)![0];
+    const withNaskh = {
+      ...fixtureSvg,
+      svg: fixtureSvg.svg.replace("<style>", `<style>${naskh}\n`),
+    };
+    expect(faces(toHtml(withNaskh, named, fixtureMeta))).toEqual(["Archivo Variable"]);
   });
 });

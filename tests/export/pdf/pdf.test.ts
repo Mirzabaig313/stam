@@ -88,6 +88,11 @@ describe("toPosterPdf", () => {
   });
 });
 
+/** A guide titled in Urdu, and the same guide with no title. */
+const urdu = (key: string) => (key === "export.pdf.guideTitle" ? "جوڑنے کی رہنمائی" : "صفحہ");
+const untitled = (key: string) => (key === "export.pdf.guideTitle" ? "" : "صفحہ");
+const curves = (content: string) => content.match(/ c\n/g)?.length ?? 0;
+
 describe("toTiledPdf", () => {
   test("has the assembly guide plus one page per tile", async () => {
     const options = { page: "A4", scale: 2.5, overlapMm: 10 } as const;
@@ -96,6 +101,23 @@ describe("toTiledPdf", () => {
     const { text, doc } = await open(await toTiledPdf(fixture, options));
     expect(text.startsWith("%PDF")).toBe(true);
     expect(doc.getPageCount()).toBe(layout.pageCount);
+  });
+
+  test("draws its guide and labels as outlines in the export fonts, not as Helvetica text", async () => {
+    const options = { page: "A4", scale: 2.5, overlapMm: 10 } as const;
+    const { doc } = await open(await toTiledPdf(fixture, options));
+    for (let i = 0; i < doc.getPageCount(); i++) {
+      expect(pageContent(doc, i)).not.toMatch(/\bBT\b/);
+    }
+  });
+
+  test("draws an Urdu guide, though the tree embeds no Nastaliq", async () => {
+    const options = { page: "A4", scale: 2.5, overlapMm: 10 } as const;
+    const withTitle = pageContent((await open(await toTiledPdf(fixture, options, urdu))).doc, 0);
+    const without = pageContent((await open(await toTiledPdf(fixture, options, untitled))).doc, 0);
+    expect(withTitle).not.toMatch(/\bBT\b/);
+    // The title's outlines: many curves more than the same page without it.
+    expect(curves(withTitle) - curves(without)).toBeGreaterThan(50);
   });
 });
 

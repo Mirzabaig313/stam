@@ -10,7 +10,7 @@ import { Edges } from "@/ui/canvas/Edges";
 import { rowNumeral, rowsOf } from "@/ui/canvas/GenerationRuler";
 import { PersonCard } from "@/ui/cards/PersonCard";
 
-import { fontFaceCss, fontsFor } from "./fonts";
+import { fontFaceCss, fontsFor, scriptCss } from "./fonts";
 import { applyPrivacy, withoutDates } from "./privacy";
 import { selectScope } from "./scope";
 import { PALETTES, themeCss } from "./theme";
@@ -247,8 +247,9 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
 /**
  * The family as one standalone SVG string, the source of every export format. Cards, connectors
  * and the ruler are the canvas's own (static cards), drawn at full detail with the theme's colours
- * resolved, Archivo embedded, and photos inline. Privacy and the dates option are applied to the
- * document first; the scope picks the layout. Sizes are CSS px.
+ * resolved, Archivo (and the Arabic-script fonts the text needs) embedded, and photos inline.
+ * Privacy and the dates option are applied to the document first; the scope picks the layout.
+ * Sizes are CSS px.
  *
  * `dir: "rtl"` mirrors the tree as the canvas does; `visibleRect` stays in layout coordinates.
  */
@@ -289,7 +290,10 @@ export function renderTreeSvg(
     { identifierPrefix: "stam-x-" },
   );
 
-  const css = `${fontFaceCss(fontsFor(doc))}\n${themeCss(opts.theme)}`;
+  const fonts = fontsFor(doc, [title, subtitle]);
+  const css = [fontFaceCss(fonts), themeCss(opts.theme), scriptCss(fonts)]
+    .filter(Boolean)
+    .join("\n");
   const label = escapeXml(title || input.doc.name);
   const svg =
     `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK_NS}" width="${geo.width}" height="${geo.height}"` +

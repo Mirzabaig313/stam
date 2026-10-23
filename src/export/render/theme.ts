@@ -3,7 +3,7 @@ import type { ExportTheme } from "@/export/types";
 import { EXPORT_FONT_FAMILY } from "./fonts";
 
 /**
- * Token colours resolved to literals (the `light` set is tokens.css / canvas.css). Exports carry no
+ * Token colours resolved to literals (the `light` and `dark` sets are tokens.css). Exports carry no
  * CSS variables, and translucent colours are written as colour + opacity instead of rgba(), which
  * PDF and some SVG renderers handle poorly.
  */
@@ -28,6 +28,15 @@ export const PALETTES: Record<ExportTheme, Palette> = {
     lineOpacity: 0.14,
     card: "#ffffff",
     deceased: "#eceee9",
+    edgeOpacity: 0.55,
+  },
+  dark: {
+    ground: "#0f110f",
+    ink: "#e8eae6",
+    muted: "#9aa29b",
+    lineOpacity: 0.16,
+    card: "#1c201c",
+    deceased: "#141714",
     edgeOpacity: 0.55,
   },
   // White ground, black ink, no fills.

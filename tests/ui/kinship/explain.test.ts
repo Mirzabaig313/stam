@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
+import i18next from "i18next";
+
 import type { Relationship } from "@/core/kinship/types";
-import { explainRelation, type KinshipFns } from "@/ui/kinship/explain";
+import ar from "@/i18n/locales/ar.json";
+import ur from "@/i18n/locales/ur.json";
+import { explainRelation, type KinshipFns, realKinship } from "@/ui/kinship/explain";
 
 import { famAdoption, famCousinMarriage, famSimple } from "../../fixtures/families";
 import { t as realT } from "../i18n";
@@ -95,3 +99,28 @@ describe("explainRelation with the real calculator", () => {
     });
   });
 });
+
+describe("explainRelation in the interface language", () => {
+  test("Urdu: the sentence is Urdu, so there is no separate Urdu term", async () => {
+    const tUr = await localT("ur", ur);
+    const out = explainRelation(famSimple(), "dad", "c1", tUr, realKinship, "ur");
+    expect(out!.results).toMatchObject([{ text: "Ahmed Khan، Ali Khan کا والد ہے", urdu: null }]);
+    expect(out!.results[0]!.parts).toEqual([{ name: "a" }, "، ", { name: "b" }, " کا والد ہے"]);
+  });
+
+  test("Arabic: the Arabic sentence, still with the Urdu term", async () => {
+    const tAr = await localT("ar", ar);
+    const out = explainRelation(famSimple(), "mom", "c2", tAr, realKinship, "ar");
+    expect(out!.results).toMatchObject([{ text: "Sara Khan هي أم Zainab Khan", urdu: "والدہ" }]);
+  });
+});
+
+async function localT(lng: string, translation: object): Promise<typeof realT> {
+  const i18n = i18next.createInstance();
+  await i18n.init({
+    lng,
+    resources: { [lng]: { translation } },
+    interpolation: { escapeValue: false },
+  });
+  return i18n.t as typeof realT;
+}

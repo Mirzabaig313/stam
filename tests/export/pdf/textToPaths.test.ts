@@ -88,6 +88,20 @@ describe("textToPaths", () => {
     expect(mixedLo - latinLo).toBeLessThan(2);
   });
 
+  test("an RTL card's isolated years (LRI…PDI) draw like the bare years, ending at x", () => {
+    // The card's year line in RTL: start anchor on an RTL text, the LTR run in an isolate.
+    const svg = mount(
+      `<svg xmlns="http://www.w3.org/2000/svg"><text x="120" y="50" direction="rtl" font-family="Archivo Variable" font-size="11">⁦1920 – †1999⁩</text><text x="120" y="50" direction="rtl" font-family="Archivo Variable" font-size="11">1920 – †1999</text></svg>`,
+    );
+    const result = textToPaths(svg, fonts);
+    expect(result.unsupported).toEqual([]);
+    const [isolated, bare] = [...svg.querySelectorAll("path")].map((p) => p.getAttribute("d"));
+    expect(isolated).toBe(bare!);
+    const [, hi] = xExtent(isolated!);
+    expect(hi).toBeLessThanOrEqual(120);
+    expect(hi).toBeGreaterThan(115);
+  });
+
   test("characters no embedded font has are reported and dropped; all-unsupported text stays", () => {
     const svg = mount(
       `<svg xmlns="http://www.w3.org/2000/svg"><text font-family="Archivo Variable">Ali 山</text><text>山田</text></svg>`,
