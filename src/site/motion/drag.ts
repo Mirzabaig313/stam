@@ -34,26 +34,28 @@ export function startDrag(): (() => void) | undefined {
   const [A, B] = DRAG_FRAMES;
   const room = {
     x: A.bounds.x - 140,
-    y: A.bounds.y - 50,
+    y: A.bounds.y - 40,
     width: A.bounds.width + 280,
-    height: A.bounds.height + 60,
+    height: A.bounds.height + 50,
   };
 
-  const s = { dir: 0, lift: 0, carry: 0, reflow: 0, mark: 0 };
+  // lift, carry: Ines rises clear of her row and travels; room: her siblings slide over to make
+  // space while she hovers; drop: she settles into the gap. No frame puts text over text.
+  const s = { dir: 0, lift: 0, carry: 0, room: 0, drop: 0, mark: 0 };
 
   const render = () => {
     const [from, to] = s.dir === 0 ? [A, B] : [B, A];
-    const blend = blendFrames(from, to, s.reflow);
+    const blend = blendFrames(from, to, s.room);
     const home = cardOf(from, KEY);
     const dest = cardOf(to, KEY);
     const mx = markerX(from, to);
     // The carried card is lifted above the row, so the siblings it passes stay readable.
     const dropX = mx - CARD_W / 2;
     const carriedX = home.x + (dropX - home.x) * s.carry;
-    const lifted = home.y - 44 * s.lift;
-    const t = settle(s.reflow);
-    const x = s.reflow > 0 ? dropX + (dest.x - dropX) * t : carriedX;
-    const y = s.reflow > 0 ? lifted + (dest.y - lifted) * t : lifted;
+    const lifted = home.y - 84 * s.lift;
+    const t = settle(s.drop);
+    const x = s.drop > 0 ? dropX + (dest.x - dropX) * t : carriedX;
+    const y = s.drop > 0 ? home.y - 84 + 84 * t : lifted;
 
     const card = blend.cards.find((c) => c.key === KEY)!;
     card.x = x;
@@ -71,11 +73,12 @@ export function startDrag(): (() => void) | undefined {
 
   const tl = gsap.timeline({ repeat: -1, paused: true, onUpdate: render });
   for (const dir of [0, 1]) {
-    tl.set(s, { dir, lift: 0, carry: 0, reflow: 0, mark: 0 })
-      .to(s, { lift: 1, duration: 0.3, ease: "power3.out" }, "+=1.1")
+    tl.set(s, { dir, lift: 0, carry: 0, room: 0, drop: 0, mark: 0 })
+      .to(s, { lift: 1, duration: 0.35, ease: "power3.out" }, "+=1.1")
       .to(s, { carry: 1, duration: 1.3, ease: "power2.inOut" })
       .to(s, { mark: 1, duration: 0.25, ease: "power3.out" }, "-=0.55")
-      .to(s, { reflow: 1, lift: 0, mark: 0, duration: 0.9, ease: "none" })
+      .to(s, { room: 1, duration: 0.8, ease: "none" })
+      .to(s, { drop: 1, lift: 0, mark: 0, duration: 0.7, ease: "none" }, "-=0.2")
       .to({}, { duration: 1.4 });
   }
 

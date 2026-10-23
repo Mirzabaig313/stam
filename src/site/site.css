@@ -618,6 +618,13 @@ dd {
   stroke-width: 2;
 }
 
+/* A path previewed under the pointer: the accent, dashed, until the click makes it solid. */
+.edge--preview {
+  stroke: var(--accent);
+  stroke-width: 1.75;
+  stroke-dasharray: 5 4;
+}
+
 .edge--on {
   stroke: var(--accent);
   stroke-width: 2;
@@ -1006,7 +1013,7 @@ dd {
 
 @keyframes slide-lock {
   from {
-    translate: 0.35em 0;
+    translate: 0.12em 0;
   }
 }
 
@@ -1231,8 +1238,17 @@ html:not(.motion) .chapter__count .chapter__of {
   z-index: 2;
 }
 
+.live--stage {
+  container-type: inline-size;
+}
+
 .live--stage .live__view {
   block-size: 100%;
+}
+
+/* The stage's row rules stop at the caption's divider. */
+.live--stage .ruler__mark::after {
+  inline-size: calc(100cqi - var(--margin));
 }
 
 .stage__caption {
@@ -1349,9 +1365,8 @@ html:not(.motion) .chapter__count .chapter__of {
   /* Phones: one sticky screen. The tree sits above, the current chapter below it. */
   .motion .stage {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: min(52svh, 460px) auto;
-    align-content: center;
-    padding-block: calc(var(--header-h) + 8px) 4svh;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding-block: calc(var(--header-h) + 8px) 3svh;
     padding-inline-end: 0;
   }
 
@@ -1597,6 +1612,7 @@ html:not(.motion) .live--drag {
 
 .format--soon .format__name {
   font-size: var(--t-body);
+  color: var(--ink);
 }
 
 /* The group label says it; the per-row status stays for screen readers. */
@@ -2064,7 +2080,7 @@ html:not(.motion) .live--drag {
   background:
     linear-gradient(var(--line) 0 0) var(--margin) 0 / 1px 100% no-repeat,
     var(--ground);
-  padding-block-start: clamp(64px, 12svh, 120px);
+  padding-block-start: clamp(48px, 8svh, 96px);
   overflow: clip;
 }
 
@@ -2175,7 +2191,7 @@ html:not(.motion) .live--drag {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--gutter);
-  padding-block: calc(var(--header-h) + clamp(48px, 10svh, 120px)) clamp(40px, 6svh, 72px);
+  padding-block: calc(var(--header-h) + clamp(48px, 10svh, 120px)) clamp(24px, 3svh, 40px);
   padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
 }
 
@@ -2555,7 +2571,7 @@ html:not(.motion) .live--drag {
 
 /* The new page's own intro waits until its rows have cleared. */
 .vt-enter {
-  --enter: 0.32s;
+  --enter: 0.62s;
 }
 
 html:not(.motion) .curtain {

@@ -50,6 +50,14 @@ export function Calculator() {
     [result],
   );
 
+  // With a pointer, the path from the first person to the card under it is drawn in advance,
+  // so hovering already speaks the calculator's language. The sentence waits for the click.
+  const [hovered, setHovered] = useState<string | null>(null);
+  const preview = useMemo(() => {
+    const target = hovered && hovered !== a && hovered !== b ? hovered : null;
+    return target ? edgesOnPath(relationship(FINAL_DOC, a, target)?.path ?? []) : new Set<string>();
+  }, [a, b, hovered]);
+
   const pick = (key: string) => {
     setPicked(([first, second]) => (second === null ? [first, key] : [key, null]));
   };
@@ -73,6 +81,7 @@ export function Calculator() {
             <StaticTree
               frame={FINAL}
               highlight={highlight}
+              preview={preview}
               renderCard={(key, style) => {
                 const state = key === a ? "a" : key === b ? "b" : onPath.has(key) ? "path" : "";
                 return (
@@ -83,6 +92,10 @@ export function Calculator() {
                     style={style}
                     aria-pressed={key === a || key === b}
                     onClick={() => pick(key)}
+                    onPointerEnter={(e) => {
+                      if (e.pointerType === "mouse") setHovered(key);
+                    }}
+                    onPointerLeave={() => setHovered(null)}
                   >
                     <CardBody personKey={key} />
                   </button>

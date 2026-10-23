@@ -4,7 +4,7 @@
 import { edgeClass, edgePath } from "@/site/components/Tree";
 import { type Blend, type Box, padded, rowCentre } from "@/site/sample/frames";
 
-import { clamp01 } from "./env";
+import { clamp01, isMobile } from "./env";
 
 export type Camera = { s: number; tx: number; ty: number };
 
@@ -96,11 +96,14 @@ export function draw(live: LiveTreeView, blend: Blend, camera: Camera, lift?: st
     if (!drawn.has(id)) el.style.opacity = "0";
   }
 
-  // Rows not yet reached stay ruled but faint: the register page is ready before the family is.
-  const ghost = live.root.classList.contains("live--stage") ? 0.3 : 0;
+  // On the desktop stage the next row is already ruled, faintly: the register is ready before
+  // the family reaches it.
+  const ghost = live.root.classList.contains("live--stage") && !isMobile() ? 0.3 : 0;
+  const next = Math.ceil(blend.rows);
   live.marks.forEach((mark, row) => {
     const y = ty + rowCentre(row) * s;
     mark.style.transform = `translate3d(0, ${y}px, 0) translateY(-50%)`;
-    mark.style.opacity = String(Math.max(ghost, clamp01(blend.rows - row)));
+    const shown = clamp01(blend.rows - row);
+    mark.style.opacity = String(row <= next ? Math.max(ghost, shown) : shown);
   });
 }

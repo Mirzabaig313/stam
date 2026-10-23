@@ -104,6 +104,8 @@ export type StaticTreeProps = {
   renderCard?: (key: string, style: CSSProperties) => ReactNode;
   /** Edge ids drawn in the accent colour. */
   highlight?: ReadonlySet<string>;
+  /** Edge ids drawn as a lighter accent preview (a path under the pointer). */
+  preview?: ReadonlySet<string>;
   /** Index used by CSS for a row-by-row entrance. */
   stagger?: boolean;
   children?: ReactNode;
@@ -116,6 +118,7 @@ export function StaticTree({
   pad = 24,
   renderCard,
   highlight,
+  preview,
   stagger = false,
   children,
 }: StaticTreeProps) {
@@ -135,7 +138,7 @@ export function StaticTree({
         {frame.edges.map((edge) => (
           <path
             key={edge.id}
-            className={`${edgeClass(edge)}${highlight?.has(edge.id) ? " edge--on" : ""}`}
+            className={`${edgeClass(edge)}${highlight?.has(edge.id) ? " edge--on" : preview?.has(edge.id) ? " edge--preview" : ""}`}
             d={edgePath(edge.points, edge.kind, edge.status)}
             style={stagger ? ({ "--row": edgeRow(edge) } as CSSProperties) : undefined}
           />

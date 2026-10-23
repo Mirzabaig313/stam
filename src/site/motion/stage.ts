@@ -7,14 +7,11 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { chapters } from "@/site/content";
-import { FINAL, FRAMES } from "@/site/data";
+import { FRAMES } from "@/site/data";
 import { type Blend, CARD_W, frameAt, padded, settle } from "@/site/sample/frames";
 
 import { clamp01, isMobile } from "./env";
 import { bindLiveTree, type Camera, draw, fit, type LiveTreeView, measure } from "./liveTree";
-
-/** The finished tree, padded: phones keep its rows in fixed places from the first chapter. */
-const WHOLE = padded(FINAL.bounds, 24);
 
 /** The people each chapter adds on its newest row, as a span of layout x (card edges). */
 const ADDED = FRAMES.map((frame, i) => {
@@ -26,29 +23,37 @@ const ADDED = FRAMES.map((frame, i) => {
 });
 
 /**
- * The phone camera. One scale for the whole story, so the four rows are ruled in their places
- * from the start and fill as you scroll, the way a register page does. Sideways it frames the
- * current tree when it fits, and otherwise pans to keep the chapter's new people in view.
+ * The phone camera. It frames the tree as it stands, as large as the screen allows; when a row
+ * grows wider than the phone it zooms out only as far as the chapter's newest row needs, and
+ * pans to keep those people whole. Returns the tree's height on screen too, so the caption can
+ * sit right under the last row.
  */
-function phoneCamera(live: LiveTreeView, blend: Blend, position: number): Camera {
-  const { w, h } = live.size;
-  const s = Math.max(0.55, Math.min(0.74, h / WHOLE.height));
-  const ty = (h - WHOLE.height * s) / 2 - WHOLE.y * s;
+function phoneCamera(
+  live: LiveTreeView,
+  blend: Blend,
+  position: number,
+  room: number,
+): Camera & { height: number } {
+  const { w } = live.size;
   const b = padded(blend.bounds, 16);
-  if (b.width * s <= w) return { s, tx: (w - b.width * s) / 2 - b.x * s, ty };
   const i = Math.floor(position);
   const t = settle(position - i);
   const from = ADDED[i]!;
   const to = ADDED[i + 1] ?? from;
   const min = from.min + (to.min - from.min) * t;
   const max = from.max + (to.max - from.max) * t;
+  const whole = Math.min(1.1, w / b.width, (room * 0.8) / b.height);
+  const newest = Math.min(0.74, Math.max(0.4, (w - 28) / (max - min)));
+  const s = Math.max(whole, newest);
+  const height = b.height * s;
+  if (b.width * s <= w) return { s, tx: (w - b.width * s) / 2 - b.x * s, ty: -b.y * s, height };
   const edge = 14;
   let tx = w / 2 - ((min + max) / 2) * s;
-  // Keep the new people inside the frame, then never show past the tree's own edges.
+  // Keep the newest row whole, then never show past the tree's own edges.
   tx = Math.min(tx, edge - min * s);
   tx = Math.max(tx, w - edge - max * s);
   tx = Math.min(-b.x * s, Math.max(w - (b.x + b.width) * s, tx));
-  return { s, tx, ty };
+  return { s, tx, ty: -b.y * s, height };
 }
 
 /** How far into a chapter (px) its frame is complete; past it the finished frame holds. */
@@ -76,11 +81,22 @@ export function startStage(): (() => void) | undefined {
 
   const render = () => {
     const blend = frameAt(FRAMES, current);
-    draw(
-      live,
-      blend,
-      isMobile() ? phoneCamera(live, blend, current) : fit(live, blend.bounds, 1.6),
-    );
+    if (!isMobile()) {
+      if (caption) caption.style.translate = "";
+      draw(live, blend, fit(live, blend.bounds, 1.6));
+      return;
+    }
+    // Phones: the tree and its caption are one block, centred in the screen. The caption
+    // follows the last row up and down (a transform, so nothing re-lays out).
+    const gap = 28;
+    const captionH = caption?.offsetHeight ?? 0;
+    const room = live.size.h + captionH;
+    const cam = phoneCamera(live, blend, current, live.size.h - gap);
+    const top = Math.max(0, (room - (cam.height + gap + captionH)) / 2);
+    draw(live, blend, { s: cam.s, tx: cam.tx, ty: cam.ty + top });
+    if (caption) {
+      caption.style.translate = `0 ${(top + cam.height + gap - live.size.h).toFixed(1)}px`;
+    }
   };
 
   const line = "center";
