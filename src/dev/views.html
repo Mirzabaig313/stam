@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Views demo</title>
+    <style>
+      html,
+      body,
+      #root {
+        block-size: 100%;
+        margin: 0;
+      }
+      body {
+        background: #f4f5f2;
+        color: #111311;
+        font-family: "Archivo Variable", system-ui, sans-serif;
+        font-size: 13px;
+      }
+      .demo {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        block-size: 100%;
+      }
+      .demo__bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding-block: 8px;
+        padding-inline: 12px;
+        border-block-end: 1px solid rgba(17, 19, 17, 0.14);
+      }
+      .demo__bar button {
+        font: inherit;
+        padding-block: 4px;
+        padding-inline: 10px;
+        background: #ffffff;
+        color: inherit;
+        border: 1px solid #111311;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      .demo__bar button[aria-pressed="true"] {
+        background: #111311;
+        color: #f4f5f2;
+      }
+      .demo__title {
+        font-weight: 600;
+        margin-inline-end: 8px;
+      }
+      .demo__note {
+        color: #5a615b;
+        margin-inline-start: auto;
+      }
+      .demo__stage {
+        min-block-size: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./ViewsDemo.tsx"></script>
+  </body>
+</html>

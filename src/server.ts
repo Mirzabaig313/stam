@@ -2,6 +2,7 @@ import { serve } from "bun";
 
 import appHtml from "./app.html";
 import canvasDemoHtml from "./dev/canvas.html";
+import viewsDemoHtml from "./dev/views.html";
 import siteHtml from "./index.html";
 
 const isDev = process.env.NODE_ENV !== "production";
@@ -16,6 +17,8 @@ const server = serve({
     // Manual check of the canvas on bigFamily(?n=N). This server is for `bun dev` only;
     // production serves dist/, whose build entrypoints do not include the demo.
     "/dev/canvas": canvasDemoHtml,
+    // The fan chart and the timeline on a generated pedigree (?view=fan|timeline&g=2..7).
+    "/dev/views": viewsDemoHtml,
     // Anything else gets the public 404 page (rendered by the same entry, from the path).
     "/*": siteHtml,
   },
