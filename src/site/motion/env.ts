@@ -1,0 +1,11 @@
+// Media queries and the one easing family. Read at call time, never at import, so the modules
+// are safe to import while prerendering.
+
+export const prefersReducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+export const isTouch = () => matchMedia("(hover: none), (pointer: coarse)").matches;
+export const isMobile = () => matchMedia("(max-width: 767px)").matches;
+
+/** expo-out for everything that settles; expo-in-out only for page-sized moves. */
+export const ease = { out: "expo.out", inOut: "expo.inOut", soft: "power3.out" } as const;
+
+export const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
