@@ -1,5 +1,5 @@
 export type ImportErrorCode =
-  "NOT_JSON" | "NOT_STAM" | "FUTURE_VERSION" | "INVALID_TREE" | "TOO_LARGE";
+  "NOT_JSON" | "NOT_STAM" | "NOT_GEDCOM" | "FUTURE_VERSION" | "INVALID_TREE" | "TOO_LARGE";
 
 /**
  * Thrown for any file or stored tree we cannot accept. The UI translates by `code`; the

@@ -1,0 +1,64 @@
+garbage before the header
+0 HEAD
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Good /One/
+1 SEX M
+1 BIRT
+2 DATE 31 FEB 1900
+1 BIRT
+2 DATE 1901
+1 FAMS @F1@
+1 FAMC @F1@
+0 @I1@ INDI
+1 NAME Duplicate
+0 @I2@ INDI
+1 NAME Two
+1 SEX F
+1 FAMC @F1@
+1 FAMC @F2@
+5 DATE level jump
+0 @I3@ INDI
+1 NAME Three
+1 SEX F
+1 FAMS @F2@
+0 @I4@ INDI
+1 SEX M
+1 FAMS @F2@
+1 FAMC @F4@
+0 @I5@ INDI
+1 NAME Five
+1 FAMS @F4@
+1 FAMC @F5@
+0 @I6@ INDI
+1 NAME Six
+1 SEX M
+1 FAMS @F5@
+1 FAMC @F4@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CHIL @I1@
+1 CHIL @I2@
+1 CHIL @I2@
+1 CHIL @I99@
+0 @F2@ FAM
+1 WIFE @I3@
+1 HUSB @I4@
+1 HUSB @I1@
+1 CHIL @I2@
+0 @F3@ FAM
+1 CHIL @I2@
+0 @F4@ FAM
+1 HUSB @I5@
+1 CHIL @I4@
+1 CHIL @I6@
+0 @F5@ FAM
+1 HUSB @I6@
+1 CHIL @I5@
+0 @F6@ FAM
+1 MARR
+2 DATE not a date at all
+0 @X1@ _CUSTOM
+1 _FOO bar
+this line has no level and joins the one before
+0 TRLR

@@ -1,0 +1,107 @@
+0 HEAD
+1 SOUR PAF
+2 NAME Personal Ancestral File
+2 VERS 5.2
+1 DEST ANSTFILE
+1 DATE 1 JAN 2020
+1 SUBM @U1@
+1 GEDC
+2 VERS 5.5.1
+2 FORM LINEAGE-LINKED
+1 CHAR UTF-8
+0 @U1@ SUBM
+1 NAME Jane Doe
+0 @I1@ INDI
+1 NAME Ahmed /Khan/
+2 GIVN Ahmed
+2 SURN Khan
+2 NICK Billu
+1 NAME احمد خان
+2 TYPE native
+1 SEX M
+1 BIRT
+2 DATE ABT 1900
+2 PLAC Lahore, Punjab
+1 DEAT
+2 DATE 12 MAR 1970
+2 PLAC Karachi
+1 NOTE First line of a long note th
+2 CONC at continues here.
+2 CONT Second line, mail: a@@b.example
+1 FAMS @F1@
+1 FAMS @F2@
+1 CHAN
+2 DATE 1 JAN 2020
+0 @I2@ INDI
+1 NAME Fatima /Bibi/
+1 SEX F
+1 BIRT
+2 DATE BET 1900 AND 1905
+1 DEAT Y
+1 NOTE @N1@
+1 FAMS @F1@
+0 @I3@ INDI
+1 NAME Zainab /Khan/
+1 SEX F
+1 BIRT
+2 DATE 2 FEB 1925
+1 FAMC @F1@
+0 @I4@ INDI
+1 NAME Omar /Khan/
+1 SEX M
+1 BIRT
+2 DATE AFT 1930
+1 FAMC @F1@
+2 PEDI adopted
+0 @I5@ INDI
+1 NAME Yusuf
+1 SEX M
+1 FAMC @F1@
+2 PEDI foster
+0 @I6@ INDI
+1 NAME Sara /Ali/
+1 SEX F
+1 BIRT
+2 DATE BEF 1910
+1 FAMS @F2@
+0 @I7@ INDI
+1 NAME Bilal /Khan/ Jr.
+1 SEX M
+1 BIRT
+2 DATE FROM 1940 TO 1945
+1 FAMC @F2@
+2 PEDI birth
+0 @I8@ INDI
+1 NAME Mystery /Person/
+1 SEX U
+1 FAMS @F3@
+0 @I9@ INDI
+1 NAME Loner
+1 OCCU Farmer
+1 FAMC @F3@
+0 @F1@ FAM
+1 HUSB @I1@
+1 WIFE @I2@
+1 MARR
+2 DATE 1922
+2 PLAC Lahore
+1 CHIL @I3@
+1 CHIL @I4@
+1 CHIL @I5@
+0 @F2@ FAM
+1 HUSB @I1@
+1 WIFE @I6@
+1 MARR Y
+1 DIV
+2 DATE 1950
+1 CHIL @I7@
+0 @F3@ FAM
+1 WIFE @I8@
+1 CHIL @I9@
+2 _FREL Step
+2 _MREL Step
+0 @N1@ NOTE A shared note
+1 CONT on two lines
+0 @S1@ SOUR
+1 TITL Census 1901
+0 TRLR
