@@ -7,6 +7,7 @@ import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isFocusView, resolveFocus, VIEW_MODES } from "@/ui/store/viewLayouts";
 
 import { Icon, type IconName } from "./Icon";
+import { Tip } from "./Tip";
 
 const ICONS: Record<ViewMode, IconName> = {
   family: "viewFamily",
@@ -26,24 +27,23 @@ export function ViewSwitcher() {
     <fieldset className="view-switcher" aria-label={t("views.switcher")}>
       {VIEW_MODES.map((mode, index) => {
         const label = t(`views.mode.${mode}`);
-        const tipId = `view-hint-${mode}`;
         return (
           <span key={mode} className="view-switcher__item">
-            <button
-              type="button"
-              className="view-switcher__button"
-              aria-pressed={viewMode === mode}
-              aria-keyshortcuts={`Alt+${index + 1}`}
-              aria-describedby={tipId}
-              onClick={() => store.getState().setViewMode(mode)}
-            >
-              <Icon name={ICONS[mode]} />
-              <span className="view-switcher__label">{label}</span>
-            </button>
-            <span role="tooltip" id={tipId} className="view-switcher__tip">
-              <span className="view-switcher__tip-text">{t(`views.hint.${mode}`)}</span>
-              <kbd className="view-switcher__tip-key">Alt+{index + 1}</kbd>
-            </span>
+            <Tip hint={t(`views.hint.${mode}`)} shortcut={`Alt+${index + 1}`}>
+              {(tipId) => (
+                <button
+                  type="button"
+                  className="view-switcher__button"
+                  aria-pressed={viewMode === mode}
+                  aria-keyshortcuts={`Alt+${index + 1}`}
+                  aria-describedby={tipId}
+                  onClick={() => store.getState().setViewMode(mode)}
+                >
+                  <Icon name={ICONS[mode]} />
+                  <span className="view-switcher__label">{label}</span>
+                </button>
+              )}
+            </Tip>
           </span>
         );
       })}

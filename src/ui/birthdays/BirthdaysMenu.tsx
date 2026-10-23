@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { onThisDay, upcomingBirthdays } from "@/core/birthdays";
 import { Icon } from "@/ui/app/Icon";
+import { Tip } from "@/ui/app/Tip";
 import { personLabel } from "@/ui/panels/fields";
 import { useEditor } from "@/ui/store/useEditor";
 
@@ -81,23 +82,27 @@ export function BirthdaysMenu({ today = () => new Date(), onShow }: BirthdaysMen
 
   return (
     <div className="menu" ref={root} data-menu>
-      <button
-        ref={trigger}
-        type="button"
-        className="icon-button birthdays-button"
-        aria-label={label}
-        title={label}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        onClick={() => setOpen((o) => !o)}
-      >
-        <Icon name="cake" />
-        {soon > 0 && (
-          <span className="birthdays-badge" aria-hidden="true">
-            {soon}
-          </span>
+      <Tip hint={t("toolbar.hint.birthdays")} align="end">
+        {(tipId) => (
+          <button
+            ref={trigger}
+            type="button"
+            className="icon-button birthdays-button"
+            aria-label={label}
+            aria-describedby={tipId}
+            aria-expanded={open}
+            aria-haspopup="dialog"
+            onClick={() => setOpen((o) => !o)}
+          >
+            <Icon name="cake" />
+            {soon > 0 && (
+              <span className="birthdays-badge" aria-hidden="true">
+                {soon}
+              </span>
+            )}
+          </button>
         )}
-      </button>
+      </Tip>
       {open && (
         <section className="menu-panel birthdays-panel" aria-label={t("birthdays.title")}>
           <h2 className="birthdays-heading">{t("birthdays.title")}</h2>

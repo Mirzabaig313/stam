@@ -12,6 +12,7 @@ import { downloadBackup } from "./downloadBackup";
 import { Icon, type IconName } from "./Icon";
 import { useRepo } from "./RepoContext";
 import { SaveStatus } from "./SaveStatus";
+import { shortcutLabel, Tip } from "./Tip";
 import { FanGenerations, FocusControl, ViewSwitcher } from "./ViewSwitcher";
 
 export type ToolbarProps = {
@@ -40,9 +41,16 @@ function IconButton({
   hasMenu,
   ref,
   keepFocus,
+  hint,
+  shortcut,
+  align,
 }: {
   icon: IconName;
   label: string;
+  /** Short description shown on hover and keyboard focus. */
+  hint?: string;
+  shortcut?: string;
+  align?: "center" | "end";
   onClick: () => void;
   disabled?: boolean;
   pressed?: boolean;
@@ -53,13 +61,13 @@ function IconButton({
   /** Keeps the focus where it is on press (Undo/Redo must not blur an open inline editor). */
   keepFocus?: boolean;
 }) {
-  return (
+  const button = (tipId?: string) => (
     <button
       ref={ref}
       type="button"
       className="icon-button"
       aria-label={label}
-      title={label}
+      aria-describedby={tipId}
       aria-pressed={pressed}
       aria-expanded={expanded}
       aria-haspopup={hasMenu ? "menu" : undefined}
@@ -69,6 +77,12 @@ function IconButton({
     >
       <Icon name={icon} />
     </button>
+  );
+  if (!hint) return button();
+  return (
+    <Tip hint={hint} shortcut={shortcut} align={align}>
+      {button}
+    </Tip>
   );
 }
 
@@ -192,6 +206,11 @@ function BackupMenu({ onOpenExport }: { onOpenExport?: () => void }) {
         ref={trigger}
         icon="menu"
         label={t("toolbar.menu")}
+        hint={t("toolbar.hint.menu")}
+        shortcut={
+          onOpenExport ? t("toolbar.hint.exportKeys", { keys: shortcutLabel("E") }) : undefined
+        }
+        align="end"
         expanded={open}
         hasMenu
         onClick={() => setOpen((o) => !o)}
@@ -304,6 +323,8 @@ export function Toolbar({
         <IconButton
           icon="undo"
           label={t("toolbar.undo")}
+          hint={t("toolbar.hint.undo")}
+          shortcut={shortcutLabel("Z")}
           disabled={!canUndo || readOnlyView}
           keepFocus
           onClick={() => store.getState().undo()}
@@ -311,17 +332,44 @@ export function Toolbar({
         <IconButton
           icon="redo"
           label={t("toolbar.redo")}
+          hint={t("toolbar.hint.redo")}
+          shortcut={shortcutLabel("Z", { shift: true })}
           disabled={!canRedo || readOnlyView}
           keepFocus
           onClick={() => store.getState().redo()}
         />
-        <IconButton icon="zoomOut" label={t("toolbar.zoomOut")} onClick={onZoomOut} />
-        <IconButton icon="zoomIn" label={t("toolbar.zoomIn")} onClick={onZoomIn} />
-        <IconButton icon="fit" label={t("toolbar.fit")} onClick={onFit} />
-        <IconButton icon="search" label={t("toolbar.search")} onClick={onOpenSearch} />
+        <IconButton
+          icon="zoomOut"
+          label={t("toolbar.zoomOut")}
+          hint={t("toolbar.hint.zoomOut")}
+          shortcut={t("toolbar.hint.zoomKeys")}
+          onClick={onZoomOut}
+        />
+        <IconButton
+          icon="zoomIn"
+          label={t("toolbar.zoomIn")}
+          hint={t("toolbar.hint.zoomIn")}
+          shortcut={t("toolbar.hint.zoomKeys")}
+          onClick={onZoomIn}
+        />
+        <IconButton
+          icon="fit"
+          label={t("toolbar.fit")}
+          hint={t("toolbar.hint.fit")}
+          onClick={onFit}
+        />
+        <IconButton
+          icon="search"
+          label={t("toolbar.search")}
+          hint={t("toolbar.hint.search")}
+          shortcut={shortcutLabel("F")}
+          onClick={onOpenSearch}
+        />
         <IconButton
           icon="focus"
           label={t("toolbar.focusMode")}
+          hint={t("toolbar.hint.focusMode")}
+          align="end"
           pressed={focusMode}
           onClick={() => store.getState().setFocusMode(!focusMode)}
         />
@@ -329,6 +377,9 @@ export function Toolbar({
           <IconButton
             icon="relate"
             label={t("kinship.panel.open")}
+            hint={t("toolbar.hint.relate")}
+            shortcut={t("toolbar.hint.relateKeys")}
+            align="end"
             pressed={relationOpen}
             onClick={onToggleRelation}
           />
