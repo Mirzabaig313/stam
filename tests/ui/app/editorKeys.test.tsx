@@ -1,8 +1,11 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import { act, cleanup } from "@testing-library/react";
 
+import { useEditorKeys } from "@/ui/app/useEditorKeys";
+
 import { famSimple } from "../../fixtures/families";
+import { renderWithStore } from "../../fixtures/panelEnv";
 import { cardOf, renderEditorCanvas, withFakeCanvasSize } from "../cards/quickAddEnv";
 
 withFakeCanvasSize();
@@ -107,5 +110,58 @@ describe("editor shortcuts", () => {
     act(() => cardOf("c1").focus());
     await user.keyboard("{Alt>}{ArrowLeft}{/Alt}");
     expect(childOrder(store.getState().doc!)).toEqual(["c2", "c1", "c3"]);
+  });
+});
+
+/** A key press as an Arabic keyboard layout reports it: an Arabic `key`, the physical `code`. */
+function press(code: string, key: string, mods: KeyboardEventInit = {}) {
+  act(() => {
+    document.body.dispatchEvent(
+      new KeyboardEvent("keydown", { code, key, bubbles: true, cancelable: true, ...mods }),
+    );
+  });
+}
+
+function Keys(props: { onOpenSearch: () => void; onOpenExport: () => void }) {
+  useEditorKeys({ ...props, onRequestDelete: () => {} });
+  return null;
+}
+
+describe("shortcuts on non-Latin keyboard layouts", () => {
+  test("undo and redo follow the physical Z and Y keys (Arabic layout)", async () => {
+    const { store } = await renderEditorCanvas(famSimple());
+    const nick = () => store.getState().doc!.persons.c1!.nickname;
+    edit(store);
+    press("KeyZ", "ئ", { ctrlKey: true });
+    expect(nick()).toBeUndefined();
+    press("KeyY", "غ", { ctrlKey: true });
+    expect(nick()).toBe("Al");
+    press("KeyZ", "ئ", { metaKey: true });
+    expect(nick()).toBeUndefined();
+    press("KeyZ", "ئ", { metaKey: true, shiftKey: true });
+    expect(nick()).toBe("Al");
+  });
+
+  test("search and export follow the physical F and E keys (Urdu layout)", async () => {
+    const search = mock(() => {});
+    const exp = mock(() => {});
+    await renderWithStore(<Keys onOpenSearch={search} onOpenExport={exp} />, famSimple());
+    press("KeyF", "ف", { ctrlKey: true });
+    press("KeyE", "ع", { metaKey: true });
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(exp).toHaveBeenCalledTimes(1);
+  });
+
+  test("a Latin layout's letters still win over the physical key (AZERTY Ctrl+Z)", async () => {
+    const { store } = await renderEditorCanvas(famSimple());
+    const nick = () => store.getState().doc!.persons.c1!.nickname;
+    edit(store);
+    // On AZERTY the key labelled Z is where QWERTY has W.
+    press("KeyW", "z", { ctrlKey: true });
+    expect(nick()).toBeUndefined();
+    // …and the key in QWERTY's Z place types "w": not undo.
+    edit(store);
+    press("KeyZ", "w", { ctrlKey: true });
+    expect(nick()).toBe("Al");
   });
 });

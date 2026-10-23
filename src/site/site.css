@@ -38,6 +38,23 @@
   --card: #ecede9;
   --avatar: #d7dad4;
   --paper: #fbfbf9;
+  /* The ink band (privacy, page-transition rows) and what sits on it. */
+  --on-curtain: #f4f5f2;
+  --on-curtain-muted: #a9b0aa;
+  --on-curtain-line: rgb(244 245 242 / 0.3);
+  --on-curtain-faint: rgb(244 245 242 / 0.14);
+  --on-curtain-focus: #9eaeff;
+  /* Text on an ink fill (a hovered export format, the code sheet). */
+  --inverse-muted: #a3aaa4;
+  --inverse-soft: #dfe3dd;
+  --on-accent: #ffffff;
+  --accent-tint: #e6e9fb;
+  --accent-tint-strong: #dde2fb;
+  --shadow: rgb(17 19 17 / 0.35);
+  --shadow-soft: rgb(17 19 17 / 0.08);
+  --ink-55: rgb(17 19 17 / 0.55);
+  --ink-50: rgb(17 19 17 / 0.5);
+  --ink-35: rgb(17 19 17 / 0.35);
 
   --font: "Archivo Variable", "Archivo Fallback", system-ui, sans-serif;
   --font-wide: "Archivo Variable", "Archivo Wide Fallback", system-ui, sans-serif;
@@ -57,6 +74,72 @@
   --header-h: 64px;
 
   color-scheme: light;
+}
+
+/* Dark: the user's theme from the app's settings (flags.js sets data-theme before first paint),
+   else the system's. Keep the two blocks identical (tests/ui/settings/tokenContrast.test.ts). */
+:root[data-theme="dark"] {
+  --ground: #0f110f;
+  --ink: #e8eae6;
+  --muted: #9aa29b;
+  --line: rgb(232 234 230 / 0.16);
+  --rule: rgb(232 234 230 / 0.08);
+  --connector: rgb(232 234 230 / 0.4);
+  --accent: #6f84ff;
+  --curtain: #20241f;
+  --card: #1c201c;
+  --avatar: #2f342f;
+  --paper: #161916;
+  --on-curtain: #e8eae6;
+  --on-curtain-muted: #a9b0aa;
+  --on-curtain-line: rgb(232 234 230 / 0.3);
+  --on-curtain-faint: rgb(232 234 230 / 0.14);
+  --on-curtain-focus: #9eaeff;
+  --inverse-muted: #4a514b;
+  --inverse-soft: #2a2e2a;
+  --on-accent: #0f110f;
+  --accent-tint: #232a52;
+  --accent-tint-strong: #2b3363;
+  --shadow: rgb(0 0 0 / 0.55);
+  --shadow-soft: rgb(0 0 0 / 0.3);
+  --ink-55: rgb(232 234 230 / 0.55);
+  --ink-50: rgb(232 234 230 / 0.5);
+  --ink-35: rgb(232 234 230 / 0.35);
+
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --ground: #0f110f;
+    --ink: #e8eae6;
+    --muted: #9aa29b;
+    --line: rgb(232 234 230 / 0.16);
+    --rule: rgb(232 234 230 / 0.08);
+    --connector: rgb(232 234 230 / 0.4);
+    --accent: #6f84ff;
+    --curtain: #20241f;
+    --card: #1c201c;
+    --avatar: #2f342f;
+    --paper: #161916;
+    --on-curtain: #e8eae6;
+    --on-curtain-muted: #a9b0aa;
+    --on-curtain-line: rgb(232 234 230 / 0.3);
+    --on-curtain-faint: rgb(232 234 230 / 0.14);
+    --on-curtain-focus: #9eaeff;
+    --inverse-muted: #4a514b;
+    --inverse-soft: #2a2e2a;
+    --on-accent: #0f110f;
+    --accent-tint: #232a52;
+    --accent-tint-strong: #2b3363;
+    --shadow: rgb(0 0 0 / 0.55);
+    --shadow-soft: rgb(0 0 0 / 0.3);
+    --ink-55: rgb(232 234 230 / 0.55);
+    --ink-50: rgb(232 234 230 / 0.5);
+    --ink-35: rgb(232 234 230 / 0.35);
+
+    color-scheme: dark;
+  }
 }
 
 @media (max-width: 767px) {
@@ -155,7 +238,7 @@ dd {
 
 ::selection {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 :focus-visible {
@@ -257,8 +340,8 @@ dd {
 
 .btn--ghost {
   background: transparent;
-  color: var(--ground);
-  box-shadow: inset 0 0 0 1px rgb(244 245 242 / 0.55);
+  color: var(--on-curtain);
+  box-shadow: inset 0 0 0 1px var(--on-curtain-line);
 }
 
 /* Hover: an ink-on-paper fill slides in from the start of the button and locks, while the
@@ -680,7 +763,7 @@ dd {
 }
 
 .card--deceased {
-  border-color: rgb(17 19 17 / 0.55);
+  border-color: var(--ink-55);
 }
 
 .card__avatar {
@@ -851,7 +934,7 @@ dd {
 
 .card--live.is-lifted {
   scale: 1.04;
-  box-shadow: 0 14px 28px -12px rgb(17 19 17 / 0.35);
+  box-shadow: 0 14px 28px -12px var(--shadow);
   z-index: 2;
 }
 
@@ -1798,7 +1881,7 @@ html:not(.motion) .live--drag {
 
   .format:hover .format__text,
   .format:hover .format__status {
-    color: #a3aaa4;
+    color: var(--inverse-muted);
   }
 
   .format:hover .format__status.is-available {
@@ -1838,7 +1921,7 @@ html:not(.motion) .live--drag {
 .sheet {
   position: absolute;
   inset: 0;
-  filter: drop-shadow(0 1px 0 var(--line)) drop-shadow(0 10px 24px rgb(17 19 17 / 0.08));
+  filter: drop-shadow(0 1px 0 var(--line)) drop-shadow(0 10px 24px var(--shadow-soft));
 }
 
 .sheet__paper {
@@ -1883,7 +1966,7 @@ html:not(.motion) .live--drag {
 }
 
 .sheet__tiles span {
-  border: 1px dashed rgb(17 19 17 / 0.35);
+  border: 1px dashed var(--ink-35);
   margin: -0.5px;
 }
 
@@ -1894,7 +1977,7 @@ html:not(.motion) .live--drag {
   padding: 1.1rem 1.25rem;
   overflow: hidden;
   background: var(--ink);
-  color: #dfe3dd;
+  color: var(--inverse-soft);
   border-radius: var(--radius);
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: clamp(0.62rem, 0.5rem + 0.35vw, 0.8rem);
@@ -2073,13 +2156,13 @@ html:not(.motion) .live--drag {
 .card--pick.is-b {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 1.5)) var(--accent);
-  background: #e6e9fb;
+  background: var(--accent-tint);
 }
 
 .card--pick.is-a .card__avatar,
 .card--pick.is-b .card__avatar {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 @media (hover: hover) {
@@ -2088,7 +2171,7 @@ html:not(.motion) .live--drag {
     box-shadow:
       inset 0 0 0 max(1px, calc(var(--u) * 2.5)) var(--accent),
       0 calc(var(--u) * 8) calc(var(--u) * 18) calc(var(--u) * -8) rgb(43 71 245 / 0.45);
-    background: #dde2fb;
+    background: var(--accent-tint-strong);
     translate: calc(var(--u) * 4) 0;
   }
 }
@@ -2120,7 +2203,7 @@ html:not(.motion) .live--drag {
   padding-block: clamp(96px, 16svh, 180px);
   padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
   background: var(--curtain);
-  color: var(--ground);
+  color: var(--on-curtain);
   position: relative;
   z-index: 1;
 }
@@ -2131,7 +2214,7 @@ html:not(.motion) .live--drag {
 }
 
 .privacy :focus-visible {
-  outline-color: #9eaeff;
+  outline-color: var(--on-curtain-focus);
 }
 
 .privacy__title {
@@ -2152,7 +2235,7 @@ html:not(.motion) .live--drag {
   align-content: start;
   gap: 0.7rem;
   padding-block-start: 1rem;
-  border-block-start: 1px solid rgb(244 245 242 / 0.3);
+  border-block-start: 1px solid var(--on-curtain-line);
 }
 
 .privacy__fact dt {
@@ -2164,7 +2247,7 @@ html:not(.motion) .live--drag {
 }
 
 .privacy__fact dd {
-  color: #a9b0aa;
+  color: var(--on-curtain-muted);
   font-size: var(--t-s);
   max-inline-size: 30ch;
 }
@@ -2545,7 +2628,7 @@ html:not(.motion) .live--drag {
 }
 
 .card--empty {
-  border: max(1px, calc(var(--u) * 1.5)) dashed rgb(17 19 17 / 0.5);
+  border: max(1px, calc(var(--u) * 1.5)) dashed var(--ink-50);
   background: var(--ground);
   color: var(--muted);
   grid-template-columns: minmax(0, 1fr);
@@ -2664,10 +2747,10 @@ html:not(.motion) .live--drag {
   grid-template-columns: var(--margin) minmax(0, 1fr);
   align-items: center;
   background:
-    linear-gradient(rgb(244 245 242 / 0.14) 0 0) 0 0 / 100% 1px no-repeat,
-    linear-gradient(rgb(244 245 242 / 0.14) 0 0) var(--margin) 0 / 1px 100% no-repeat,
+    linear-gradient(var(--on-curtain-faint) 0 0) 0 0 / 100% 1px no-repeat,
+    linear-gradient(var(--on-curtain-faint) 0 0) var(--margin) 0 / 1px 100% no-repeat,
     var(--curtain);
-  color: #a3aaa4;
+  color: var(--on-curtain-muted);
   clip-path: inset(0 100% 0 0);
   /* One row of the curtain is one generation row: 0.045 s apart, like the hero's rows. */
   --delay: calc(var(--k) * 0.045s);
@@ -2722,30 +2805,110 @@ html:not(.motion) .curtain {
 /* ------------------------------------------------------------------ reduced motion */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion="full"]),
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after {
     animation: none !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 
-  .curtain {
+  :root:not([data-motion="full"]) .curtain {
     display: none;
   }
 
-  .btn__label::after {
+  :root:not([data-motion="full"]) .btn__label::after {
     visibility: hidden;
   }
 
-  .btn:hover .btn__text,
-  .btn:focus-visible .btn__text {
+  :root:not([data-motion="full"]) .btn:hover .btn__text,
+  :root:not([data-motion="full"]) .btn:focus-visible .btn__text {
     translate: none;
   }
 
-  .btn:hover,
-  .btn:focus-visible {
+  :root:not([data-motion="full"]) .btn:hover,
+  :root:not([data-motion="full"]) .btn:focus-visible {
     text-decoration: underline;
     text-underline-offset: 0.25em;
   }
+}
+
+/* reduced motion: chosen in the app */
+:root[data-motion="reduce"],
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-motion="reduce"] .curtain {
+  display: none;
+}
+
+:root[data-motion="reduce"] .btn__label::after {
+  visibility: hidden;
+}
+
+:root[data-motion="reduce"] .btn:hover .btn__text,
+:root[data-motion="reduce"] .btn:focus-visible .btn__text {
+  translate: none;
+}
+
+:root[data-motion="reduce"] .btn:hover,
+:root[data-motion="reduce"] .btn:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+
+/* ---- Right to left ------------------------------------------------------------------------
+ * Fills, underlines and slides run from the inline start, and arrows point the way of reading. */
+
+.btn__fill:dir(rtl),
+.nav-link:dir(rtl)::before,
+.text-link:dir(rtl)::before,
+.format__marker:dir(rtl),
+.format:dir(rtl)::before {
+  transform-origin: right center;
+}
+
+.btn__label:dir(rtl)::after {
+  translate: 115% 0;
+}
+
+.btn__arrow:dir(rtl) {
+  scale: -1 1;
+}
+
+.sheet__code:dir(rtl) {
+  translate: 24px 0;
+}
+
+.preview[data-sheet="file"] .sheet__code:dir(rtl) {
+  translate: 0 0;
+}
+
+@media (hover: hover) {
+  .btn:hover .btn__text:dir(rtl) {
+    translate: -115% 0;
+  }
+
+  .btn:hover .btn__arrow:dir(rtl) {
+    translate: -5px 0;
+  }
+
+  .format:hover .format__name:dir(rtl),
+  .format[aria-pressed="true"]:hover .format__name:dir(rtl) {
+    translate: -6px 0;
+  }
+}
+
+.btn:focus-visible .btn__text:dir(rtl) {
+  translate: -115% 0;
+}
+
+.btn:focus-visible .btn__arrow:dir(rtl) {
+  translate: -5px 0;
 }

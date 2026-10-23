@@ -161,3 +161,15 @@ describe("tiled page count", () => {
     expect(tiledPageGuard(401)).toBe("refuse");
   });
 });
+
+describe("GEDCOM", () => {
+  const doc = { ...famSimple(), name: "Khan Family" };
+  test("saves as .ged, privacy on by default (the files get shared), no size estimate", () => {
+    expect(exportFileName(doc, "gedcom", new Date(2026, 9, 5))).toBe("khan-family-2026-10-05.ged");
+    const s = switchFormat(defaultSettings(), "gedcom");
+    expect(s.privacy).toBe(true);
+    expect(s.includePhotos).toBe(false);
+    const layout = layoutFamily(doc, { rootId: doc.rootPersonId! });
+    expect(estimateOutput(s, { doc, layout, viewRootId: null, selectedId: null })).toBeNull();
+  });
+});

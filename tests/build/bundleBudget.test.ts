@@ -55,4 +55,13 @@ describe("checkBudget", () => {
     const result = await checkBudget(dist, "app.html", 250 * 1024);
     expect(result.problems.join("\n")).toMatch(/deep\.js.*embedded font base64/);
   });
+
+  test("fails when the Urdu or Arabic strings load up front (they load when chosen)", async () => {
+    await writeFile(
+      join(dist, "deep.js"),
+      'export const y={_review:"Machine-assisted translation. Needs review by a native speaker."};',
+    );
+    const result = await checkBudget(dist, "app.html", 250 * 1024);
+    expect(result.problems.join("\n")).toMatch(/deep\.js.*Urdu or Arabic strings/);
+  });
 });

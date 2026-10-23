@@ -7,6 +7,9 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.E2E_PORT ?? 4400);
 const root = fileURLToPath(new URL("..", import.meta.url));
 
+/** Specs that run only in their own language project. */
+const LANGUAGE_SPECS = ["rtl.spec.ts", "urdu.spec.ts"];
+
 export default defineConfig({
   testDir: ".",
   testMatch: "*.spec.ts",
@@ -20,11 +23,29 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "webkit", use: { ...devices["Desktop Safari"] } },
+    { name: "chromium", testIgnore: LANGUAGE_SPECS, use: { ...devices["Desktop Chrome"] } },
+    { name: "webkit", testIgnore: LANGUAGE_SPECS, use: { ...devices["Desktop Safari"] } },
+    // Firefox is opt-in (E2E_FIREFOX=1): Playwright's Firefox build does not start on every
+    // machine (on macOS 27 it exits with "Could not find profile folder").
+    ...(process.env.E2E_FIREFOX === "1"
+      ? [{ name: "firefox", testIgnore: LANGUAGE_SPECS, use: { ...devices["Desktop Firefox"] } }]
+      : []),
     {
       name: "mobile",
+      testIgnore: LANGUAGE_SPECS,
       use: { ...devices["Desktop Chrome"], viewport: { width: 390, height: 844 }, hasTouch: true },
+    },
+    // Right to left: an Arabic locale; rtl.spec.ts puts the page in Arabic RTL (see its notes).
+    // Urdu: the real Urdu interface in Nastaliq (urdu.spec.ts), Pakistani locale.
+    {
+      name: "urdu",
+      testMatch: "urdu.spec.ts",
+      use: { ...devices["Desktop Chrome"], locale: "ur-PK", timezoneId: "Asia/Karachi" },
+    },
+    {
+      name: "rtl",
+      testMatch: "rtl.spec.ts",
+      use: { ...devices["Desktop Chrome"], locale: "ar", timezoneId: "Asia/Karachi" },
     },
   ],
   webServer: {

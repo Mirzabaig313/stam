@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import * as family from "@/core/layout/family";
 import { ExportDialog } from "@/ui/export/ExportDialog";
 import type { ExportRequest } from "@/ui/export/exporters";
+import { DEFAULT_SETTINGS, setCurrentSettings } from "@/ui/settings/settings";
 
 import { docOf, famSimple, person, union } from "../../fixtures/families";
 import { renderWithStore } from "../../fixtures/panelEnv";
@@ -163,6 +164,22 @@ describe("ExportDialog", () => {
     expect(downloads[0]).toMatch(/^fixture-\d{4}-\d{2}-\d{2}\.png$/);
   });
 
+  test("the theme offers light, dark and print, starting from the app's theme", async () => {
+    setCurrentSettings({ ...DEFAULT_SETTINGS, theme: "dark" });
+    try {
+      const { user } = await open();
+      const theme = screen.getByLabelText("Style") as HTMLSelectElement;
+      expect([...theme.options].map((o) => o.value)).toEqual(["light", "dark", "print"]);
+      expect(theme.value).toBe("dark");
+      await user.selectOptions(theme, "print");
+      await user.click(screen.getByRole("button", { name: "Export" }));
+      await waitFor(() => expect(requests).toHaveLength(1));
+      expect(requests[0]!.settings.theme).toBe("print");
+    } finally {
+      setCurrentSettings(DEFAULT_SETTINGS);
+    }
+  });
+
   test("a reduced scale is reported and the dialog stays open", async () => {
     outcome = "warn";
     const { user, closed } = await open();
@@ -280,5 +297,37 @@ describe("ExportDialog", () => {
     expect(box(/Include photos/).checked).toBe(true);
     await user.click(radio(/SVG/));
     expect(box(/Include photos/).checked).toBe(false);
+  });
+});
+
+describe("ExportDialog: GEDCOM", () => {
+  test("GEDCOM defaults to privacy on, and says why", async () => {
+    const { user } = await open();
+    await user.click(radio(/GEDCOM/));
+    expect(box(/Privacy mode/).checked).toBe(true);
+    expect(
+      screen.getByText("Living people show their name only; GEDCOM files are often shared."),
+    ).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(requests[0]!.settings.privacy).toBe(true);
+  });
+
+  test("offers GEDCOM with privacy only: the whole tree, no photos, no drawing options", async () => {
+    const { user } = await open();
+    await user.click(box(/Include photos/));
+    await user.click(radio(/GEDCOM/));
+    expect(screen.getByText(/other family tree apps/)).toBeTruthy();
+    expect(screen.queryByText("What to include")).toBeNull();
+    expect(screen.queryByLabelText("Title")).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /Include photos/ })).toBeNull();
+    // Privacy can be turned off, for a private backup or another app of one's own.
+    await user.click(box(/Privacy mode/));
+    await user.click(screen.getByRole("button", { name: "Export" }));
+    await waitFor(() => expect(downloads).toHaveLength(1));
+    expect(downloads[0]).toMatch(/\.ged$/);
+    expect(requests[0]!.settings.format).toBe("gedcom");
+    expect(requests[0]!.settings.privacy).toBe(false);
+    expect(requests[0]!.input.photos).toEqual({});
   });
 });

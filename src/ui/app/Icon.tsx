@@ -22,11 +22,22 @@ const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
+/**
+ * Icons that point along the reading direction flip in RTL (undo turns back toward the start;
+ * the descendants and timeline views run from the right). Zoom, fit, search and the rest don't.
+ */
+const MIRRORED: ReadonlySet<IconName> = new Set([
+  "undo",
+  "redo",
+  "viewDescendants",
+  "viewTimeline",
+]);
+
 /** A 16px stroke icon. Decorative: the button around it carries the label. */
 export function Icon({ name }: { name: IconName }) {
   return (
     <svg
-      className="icon"
+      className={MIRRORED.has(name) ? "icon icon--mirror" : "icon"}
       viewBox="0 0 16 16"
       width="16"
       height="16"

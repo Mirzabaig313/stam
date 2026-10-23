@@ -8,6 +8,7 @@ import { createRoot, hydrateRoot } from "react-dom/client";
 
 import { PAGE_META } from "./head";
 import { startMotion } from "./motion";
+import { prefersReducedMotion } from "./motion/env";
 import { type PageName, SitePage } from "./pages";
 
 function pageFromPath(path: string): PageName {
@@ -36,7 +37,23 @@ if (el.firstElementChild) {
 } else {
   // Dev: no prerendered markup and no flags script, so set both up before the first render.
   root.classList.add("js");
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) root.classList.add("motion");
+  try {
+    const chosen = JSON.parse(localStorage.getItem("stam:settings") ?? "null") as {
+      theme?: unknown;
+    } | null;
+    if (typeof chosen?.theme === "string") {
+      root.setAttribute("data-theme", chosen.theme === "dark" ? "dark" : "light");
+    }
+  } catch {
+    // no cached theme: follow the system
+  }
+  try {
+    const motion = localStorage.getItem("stam:motion");
+    if (motion === "reduce" || motion === "full") root.setAttribute("data-motion", motion);
+  } catch {
+    // no cached choice: follow the system
+  }
+  if (!prefersReducedMotion()) root.classList.add("motion");
   document.title = PAGE_META[page].title;
   createRoot(el).render(app);
 }

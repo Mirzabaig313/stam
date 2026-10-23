@@ -17,7 +17,7 @@ Bun 1.4.4 or newer.
 | `bun fmt`        | Format (`bun fmt --check` to verify)                               |
 | `bun run lint`   | Lint with oxlint                                                   |
 | `bun test`       | Run unit and property tests                                        |
-| `bun run e2e`    | Build, serve `dist/` and run Playwright (3 projects)               |
+| `bun run e2e`    | Build, serve `dist/` and run Playwright (5 projects)               |
 | `bun run bench`  | Run layout benchmarks                                              |
 | `bun run verify` | Type check, format check, lint and tests (10000 property runs)     |
 
@@ -33,6 +33,15 @@ server renders them on the client.
 Install the browsers once with `bunx playwright install chromium webkit`. `bun run e2e` builds the app,
 serves `dist/` with `scripts/serve-dist.ts` (which emulates `_redirects` and `_headers`) and runs the
 specs in `e2e/` on Chromium, WebKit and a 390x844 mobile viewport. `bun test` only runs `tests/`.
+
+Two language projects run their own spec only: `rtl` drives the real Arabic interface
+(`rtl.spec.ts`) and `urdu` the real Urdu one (`urdu.spec.ts`, Nastaliq and offline). Selectors read
+the app's own locale files through `e2e/strings.ts`, so they use the real Urdu and Arabic words.
+
+Firefox is opt-in: `E2E_FIREFOX=1 bun run e2e` adds a `firefox` project (install it with
+`bunx playwright install firefox`). It is off by default because Playwright's Firefox does not start
+on every machine (on macOS 27 it exits with "Could not find profile folder"), and it has not been
+run against this suite yet.
 
 The server listens on port 4400 by default. Set `E2E_PORT` to use another one, for example
 `E2E_PORT=4471 bun run e2e`. The run never reuses a server that is already listening (it could be

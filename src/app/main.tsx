@@ -1,5 +1,6 @@
 // Fonts and styles first, so the first paint is already themed.
 import "@fontsource-variable/archivo/wdth.css";
+import "@/i18n/fonts.css";
 import "@/ui/styles/app.css";
 
 import { StrictMode } from "react";
@@ -7,11 +8,20 @@ import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
 import { i18n } from "@/i18n";
+import { registerShellWorker } from "@/offline/register";
 import { openStamDb } from "@/storage/db";
 import { createTreeRepo, type TreeRepo } from "@/storage/treeRepo";
 import { AppRoutes } from "@/ui/app/AppRoutes";
 import { DbNotice, resetDbNotice, showDbNotice } from "@/ui/app/DbNotice";
 import { RepoContext } from "@/ui/app/RepoContext";
+import { offerUpdate, UpdateToast } from "@/ui/app/UpdateToast";
+import { startMotion } from "@/ui/settings/motion";
+import { startSettings } from "@/ui/settings/settings";
+
+// The cached settings, at once: theme, colour mode, language and direction are right on the first
+// paint (production builds also run src/app/boot.js before any of this loads).
+const cachedReady = startSettings();
+void startMotion();
 
 const elem = document.getElementById("root")!;
 
@@ -51,7 +61,20 @@ async function openRepo(): Promise<TreeRepo | undefined> {
   }
 }
 
+// Offline support (FR §8): production builds only, so the dev server's hot reload is never
+// served from a cache. This entry is /app's alone, so the landing page never registers it.
+if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
+  void registerShellWorker({
+    container: navigator.serviceWorker,
+    onUpdate: offerUpdate,
+    reload: () => window.location.reload(),
+  });
+}
+
 const repo = await openRepo();
+// What the repo holds wins over the cache (another device's cache, or a cleared one).
+// Either way, the first render waits for the chosen language's strings (Urdu and Arabic load on demand).
+await (repo ? Promise.all([startSettings(repo), startMotion(repo)]) : cachedReady);
 
 root.render(
   <StrictMode>
@@ -67,5 +90,6 @@ root.render(
         <p role="alert">{i18n.t("app.storageUnavailable")}</p>
       </main>
     )}
+    <UpdateToast />
   </StrictMode>,
 );

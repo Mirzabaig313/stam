@@ -125,6 +125,7 @@ export function BirthdaysMenu({ today = () => new Date(), onShow }: BirthdaysMen
                       onClick={() => show(b.personId)}
                     >
                       <bdi className="birthdays-name">{nameOf(b.personId)}</bdi>
+                      {/* A space, so the visible text reads as words inside the label. */}{" "}
                       <span className="muted">{details}</span>
                     </button>
                   </li>

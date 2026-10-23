@@ -1,5 +1,6 @@
 import type { TFunction } from "i18next";
 
+import { applyPrivacy } from "@/export/render/privacy";
 import type { ExportInput } from "@/export/types";
 
 import { allowsTransparent, type ExportSettings, posterPageSpec, toExportOptions } from "./formats";
@@ -32,14 +33,15 @@ const isScaleLimit = (code: string | undefined): code is ScaleLimit =>
   code === "SIDE_LIMIT" || code === "AREA_LIMIT";
 
 /** The paper colour behind an export, resolved from the tokens (exports carry no CSS variables). */
-const GROUND = { light: "#f4f5f2", print: "#ffffff" } as const;
+const GROUND = { light: "#f4f5f2", dark: "#0f110f", print: "#ffffff" } as const;
 
-/** The four lazy module loads; tests pass fakes, so no module registry is touched. */
+/** The lazy module loads; tests pass fakes, so no module registry is touched. */
 export type Loaders = {
   render: () => Promise<typeof import("@/export/render")>;
   raster: () => Promise<typeof import("@/export/raster")>;
   pdf: () => Promise<typeof import("@/export/pdf")>;
   html: () => Promise<typeof import("@/export/html")>;
+  gedcom: () => Promise<typeof import("@/io/gedcom")>;
 };
 
 export const lazyLoaders: Loaders = {
@@ -47,6 +49,7 @@ export const lazyLoaders: Loaders = {
   raster: () => import("@/export/raster"),
   pdf: () => import("@/export/pdf"),
   html: () => import("@/export/html"),
+  gedcom: () => import("@/io/gedcom"),
 };
 
 export type Exporter = (req: ExportRequest) => Promise<ExportResult>;
@@ -57,6 +60,12 @@ export async function runExport(
 ): Promise<ExportResult> {
   const { settings, t } = req;
   if (settings.format === "json") throw new Error("JSON is saved by the backup download");
+  if (settings.format === "gedcom") {
+    // Data, not a drawing: always the whole tree, never photos, nothing rendered.
+    const { writeGedcom } = await load.gedcom();
+    const doc = settings.privacy ? applyPrivacy(req.input.doc) : req.input.doc;
+    return { blob: new Blob([writeGedcom(doc)], { type: "application/x-gedcom" }) };
+  }
   const opts = toExportOptions(settings);
   const render = await load.render();
   const doc = opts.privacy ? render.applyPrivacy(req.input.doc) : req.input.doc;
@@ -116,12 +125,13 @@ export async function runExport(
       const drawn = render.selectScope(input, opts).nodes.map((n) => n.personId);
       const html = toHtml(
         rendered,
-        buildPeople(doc, drawn, opts, t),
+        buildPeople(doc, drawn, opts, t, req.lang),
         {
           title: opts.title ?? doc.name,
           generatedAt: new Intl.DateTimeFormat(req.lang, { dateStyle: "long" }).format(new Date()),
           lang: req.lang,
           dir: req.dir,
+          theme: opts.theme,
         },
         t,
       );

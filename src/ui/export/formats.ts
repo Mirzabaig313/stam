@@ -3,7 +3,8 @@ import type { TreeDocument } from "@/core/model/types";
 import { type PageSpec, tileLayout } from "@/export/pdf/geometry";
 import type { ExportInput, ExportOptions, ExportScope, ExportTheme } from "@/export/types";
 
-export type ExportFormat = "svg" | "png" | "jpeg" | "pdf-poster" | "pdf-tiled" | "html" | "json";
+export type ExportFormat =
+  "svg" | "png" | "jpeg" | "pdf-poster" | "pdf-tiled" | "html" | "gedcom" | "json";
 
 export const FORMATS: readonly ExportFormat[] = [
   "svg",
@@ -12,8 +13,16 @@ export const FORMATS: readonly ExportFormat[] = [
   "pdf-poster",
   "pdf-tiled",
   "html",
+  "gedcom",
   "json",
 ];
+
+export const EXPORT_THEMES: readonly ExportTheme[] = ["light", "dark", "print"];
+
+/** The export theme matching the app's: classic exports as light (its fills are for the screen). */
+export function exportThemeFor(theme: string): ExportTheme {
+  return theme === "dark" || theme === "print" ? theme : "light";
+}
 
 export const SCOPES: readonly ExportScope[] = ["whole", "view", "branch", "visible"];
 export const POSTER_PAGES = ["A4", "A3", "A2", "A1", "A0", "Letter", "Tabloid", "Custom"] as const;
@@ -69,9 +78,12 @@ export function tiledPageGuard(count: number): "ok" | "confirm" | "refuse" {
   return count > TILED_CONFIRM_PAGES ? "confirm" : "ok";
 }
 
-/** FR-X10: privacy is on for HTML and image exports, off for SVG and PDF. */
+/**
+ * FR-X10: privacy is on for HTML and image exports, off for SVG and PDF. On for GEDCOM too: the
+ * files are often shared (uploaded to genealogy sites, sent to relatives).
+ */
 export function privacyDefault(format: ExportFormat): boolean {
-  return format === "html" || format === "png" || format === "jpeg";
+  return format === "html" || format === "png" || format === "jpeg" || format === "gedcom";
 }
 
 export function defaultSettings(): ExportSettings {
@@ -118,6 +130,7 @@ const EXTENSIONS: Record<ExportFormat, string> = {
   "pdf-poster": "pdf",
   "pdf-tiled": "pdf",
   html: "html",
+  gedcom: "ged",
   json: "stam.json",
 };
 
@@ -185,7 +198,7 @@ export function estimateOutput(
   s: ExportSettings,
   input: Omit<ExportInput, "photos">,
 ): OutputEstimate | null {
-  if (s.format === "json") return null;
+  if (s.format === "json" || s.format === "gedcom") return null;
   const size = scopeSize(s.scope, input);
   const width = Math.ceil(size.width + PADDING_PX);
   const height = Math.ceil(size.height + PADDING_PX);

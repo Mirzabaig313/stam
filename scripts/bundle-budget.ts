@@ -1,8 +1,8 @@
 // `bun run scripts/bundle-budget.ts`: the first load of /app (app.html, its stylesheets, its
 // scripts and everything they import statically) must stay within 250 KB gzip, and the export
-// libraries (jsPDF, svg2pdf.js, fontkit, the embedded font base64) must only arrive through
-// `import()`. scripts/build.ts runs this after every build. Font files are not counted: they
-// are already compressed and load only when text is drawn with them.
+// libraries (jsPDF, svg2pdf.js, fontkit, the embedded font base64) and the Urdu and Arabic strings
+// must only arrive through `import()`. scripts/build.ts runs this after every build. Font files are
+// not counted: they are already compressed and load only when text is drawn with them.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -14,6 +14,9 @@ const HEAVY: [marker: string, what: string][] = [
   ["svg2pdf", "svg2pdf.js"],
   ['"gvar"', "fontkit"],
   ["d09GMg", "embedded font base64"],
+  // The `_review` note of ur.json and ar.json: they load with `import()` when chosen. When the
+  // reviewed files drop the note, mark them with another string only they contain.
+  ["Machine-assisted translation", "Urdu or Arabic strings"],
 ];
 
 export type LoadedFile = { name: string; bytes: Uint8Array<ArrayBuffer>; gzip: number };

@@ -113,6 +113,16 @@ describe("runExport", () => {
     });
   });
 
+  test("the HTML page gets the export theme", async () => {
+    await run(req({ ...switchFormat(defaultSettings(), "html"), theme: "dark" }));
+    expect(calls.find((c) => c.fn === "toHtml")!.args[2]).toMatchObject({ theme: "dark" });
+  });
+
+  test("a dark PNG fills its background with the dark ground", async () => {
+    await run(req({ ...switchFormat(defaultSettings(), "png"), theme: "dark" }));
+    expect(calls.find((c) => c.fn === "rasterize")!.args[1]).toMatchObject({ ground: "#0f110f" });
+  });
+
   test("reports a scale the rasteriser had to reduce", async () => {
     rasterResult = { blob: new Blob(["x"]), scale: 2, warning: "AREA_LIMIT" };
     const { warning } = await run(req({ ...switchFormat(defaultSettings(), "png"), scale: 4 }));
@@ -221,6 +231,12 @@ describe("runExport", () => {
   });
 });
 
+/** 14 March 1950 as the locale writes a long date. */
+const fmt = (lang: string) =>
+  new Intl.DateTimeFormat(lang, { dateStyle: "long", timeZone: "UTC" }).format(
+    new Date(Date.UTC(1950, 2, 14)),
+  );
+
 describe("buildPeople", () => {
   const d = docOf(
     [
@@ -255,6 +271,18 @@ describe("buildPeople", () => {
     expect(b!.details).toEqual([]);
   });
 
+  test("dates in the export's language, through Intl", () => {
+    const dated = docOf(
+      [person("a", "Ali", "Khan", "male", { birth: { date: { year: 1950, month: 3, day: 14 } } })],
+      [],
+      "a",
+    );
+    const [ar] = buildPeople(dated, ["a"], { includeDates: true }, t, "ar");
+    expect(ar!.details[0]!.value).toBe(fmt("ar"));
+    const [en] = buildPeople(dated, ["a"], { includeDates: true }, t);
+    expect(en!.details[0]!.value).toBe("14 Mar 1950");
+  });
+
   test("leaves dates out when they are off, keeping places and notes", () => {
     const [a] = buildPeople(d, ["a"], { includeDates: false }, t);
     expect(a!.lifespan).toBe("");
@@ -263,5 +291,39 @@ describe("buildPeople", () => {
       { label: "Died", value: "Karachi" },
       { label: "Notes", value: "Farmer" },
     ]);
+  });
+});
+
+describe("GEDCOM export", () => {
+  const living = docOf(
+    [
+      person("a", "Ann", "Lee", "female", { birth: { date: { year: 1990 } }, notes: "secret" }),
+      person("b", "Bob", "Lee", "male", { isLiving: false, birth: { date: { year: 1900 } } }),
+    ],
+    [],
+    "a",
+  );
+  const gedReq = (privacy: boolean) => ({
+    ...req({ ...switchFormat(defaultSettings(), "gedcom"), privacy }),
+    input: { ...input, doc: living },
+  });
+  const realLoad = { ...load, gedcom: () => import("@/io/gedcom") } as unknown as Loaders;
+
+  test("writes the whole tree as GEDCOM without rendering anything", async () => {
+    const { blob } = await runExport(gedReq(false), realLoad);
+    const text = await blob.text();
+    expect(text).toContain("0 HEAD");
+    expect(text).toContain("1 NAME Ann /Lee/");
+    expect(text).toContain("1990");
+    expect(text).toContain("secret");
+    expect(calls.map((c) => c.fn)).not.toContain("renderTreeSvg");
+  });
+
+  test("privacy mode strips the living and keeps the dead", async () => {
+    const text = await (await runExport(gedReq(true), realLoad)).blob.text();
+    expect(text).toContain("1 NAME Ann /Lee/");
+    expect(text).not.toContain("1990");
+    expect(text).not.toContain("secret");
+    expect(text).toContain("1900");
   });
 });

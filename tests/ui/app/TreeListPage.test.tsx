@@ -41,6 +41,12 @@ function EditorProbe() {
   );
 }
 
+/** `doc` with its first person wearing `photoId`. */
+function withPhoto(doc: ReturnType<typeof famSimple>, photoId: string) {
+  const [id] = Object.keys(doc.persons);
+  return { ...doc, persons: { ...doc.persons, [id!]: { ...doc.persons[id!]!, photoId } } };
+}
+
 function renderList() {
   return renderApp(
     <Routes>
@@ -78,6 +84,13 @@ describe("TreeListPage", () => {
     expect(screen.getByText("0 people")).toBeTruthy();
     expect(screen.queryByText("Create your first tree")).toBeNull();
     expect((await env.repo.listTrees()).map((t) => t.name)).toEqual(["Khan family"]);
+  });
+
+  test("the Stam wordmark links back to the home page", async () => {
+    renderList();
+    const home = await screen.findByRole("link", { name: "Stam home" });
+    expect(home.getAttribute("href")).toBe("/");
+    expect(home.textContent).toBe("Stam");
   });
 
   test("the name prompt starts with a default name", async () => {
@@ -143,7 +156,15 @@ describe("TreeListPage", () => {
   test("an imported photo whose id collides keeps the existing photo untouched", async () => {
     const existing = new Blob(["existing"], { type: "image/png" });
     await env.repo.putPhoto("shared", existing);
-    await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
+    // Another tree uses it, so the clean-up after the import keeps it.
+    const khans = famSimple();
+    const [khanId] = Object.keys(khans.persons);
+    await env.repo.saveTree({
+      ...khans,
+      id: "t1",
+      name: "Khans",
+      persons: { ...khans.persons, [khanId!]: { ...khans.persons[khanId!]!, photoId: "shared" } },
+    });
     const imported = famHalfSiblings();
     const [personId] = Object.keys(imported.persons);
     const doc = {
@@ -278,6 +299,30 @@ describe("TreeListPage", () => {
     await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
     expect(await screen.findByText("Create your first tree")).toBeTruthy();
     expect(await env.repo.listTrees()).toHaveLength(0);
+  });
+
+  test("deleting a tree deletes the photos only it used, and keeps the others", async () => {
+    await env.repo.saveTree(withPhoto({ ...famSimple(), id: "t1", name: "Khans" }, "khan-photo"));
+    await env.repo.saveTree(withPhoto({ ...famHalfSiblings(), id: "t2", name: "Shahs" }, "shah"));
+    await env.repo.putPhoto("khan-photo", new Blob(["k"], { type: "image/png" }));
+    await env.repo.putPhoto("shah", new Blob(["s"], { type: "image/png" }));
+    renderList();
+    const user = userEvent.setup();
+    await screen.findByText("Khans");
+    await user.click(screen.getByRole("button", { name: "Delete Khans" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+    await waitFor(async () => expect(await env.repo.getPhoto("khan-photo")).toBeUndefined());
+    expect(await env.repo.getPhoto("shah")).toBeDefined();
+  });
+
+  test("an import also clears out photos nothing uses any more", async () => {
+    await env.repo.putPhoto("left-over", new Blob(["x"], { type: "image/png" }));
+    const json = await exportStamJson(famHalfSiblings(), {}, { includePhotos: false });
+    renderList();
+    await screen.findByText("Create your first tree");
+    await userEvent.setup().upload(screen.getByLabelText("Import"), new File([json], "x.json"));
+    expect(await screen.findByText("editor opened")).toBeTruthy();
+    await waitFor(async () => expect(await env.repo.getPhoto("left-over")).toBeUndefined());
   });
 
   test("rename and delete tell an editor open on the tree in another tab", async () => {
@@ -429,5 +474,206 @@ describe("TreeListPage", () => {
     renderList();
     await waitFor(() => expect(estimate).toHaveBeenCalled());
     expect(screen.queryByText(/almost full/)).toBeNull();
+  });
+});
+
+describe("TreeListPage: GEDCOM import", () => {
+  const FULL = `${import.meta.dir}/../../fixtures/gedcom/full-551.ged`;
+
+  test("the file picker accepts .ged files", async () => {
+    renderList();
+    await screen.findByText("Create your first tree");
+    expect((screen.getByLabelText("Import") as HTMLInputElement).accept).toContain(".ged");
+  });
+
+  test("a .ged file is saved as a tree, its report shown, and Open tree opens it", async () => {
+    renderList();
+    await screen.findByText("Create your first tree");
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText("Import"),
+      new File([await Bun.file(FULL).text()], "Khan family.ged"),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Import report" });
+    expect(dialog.textContent).toContain("Imported 9 people and 3 families.");
+    expect(dialog.textContent).toContain("3 lines were not imported");
+    expect(dialog.textContent).toContain("Line 80");
+    expect(dialog.textContent).toContain("OCCU");
+    expect(dialog.textContent).toContain("not used by this app");
+    expect(dialog.textContent).toContain("Mystery Person");
+    expect(dialog.querySelector("details")).toBeTruthy();
+    // The skipped lines scroll inside the dialog, so keyboard users can focus the list to scroll
+    // it; it is named by its summary.
+    const list = within(dialog).getByRole("list", { name: "3 lines were not imported" });
+    expect(list.tabIndex).toBe(0);
+    const trees = await env.repo.listTrees();
+    expect(trees.map((t) => [t.name, t.peopleCount])).toEqual([["Khan family", 9]]);
+    await user.click(within(dialog).getByRole("button", { name: "Open tree" }));
+    expect(await screen.findByText("editor opened")).toBeTruthy();
+  });
+
+  test("closing the report stays on the list, which now shows the tree", async () => {
+    renderList();
+    await screen.findByText("Create your first tree");
+    const user = userEvent.setup();
+    await user.upload(
+      screen.getByLabelText("Import"),
+      new File(["0 HEAD\n0 @I1@ INDI\n1 NAME Solo /One/\n1 SEX F\n0 TRLR\n"], "solo.ged"),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Import report" });
+    expect(dialog.textContent).toContain("Imported 1 person and 0 families.");
+    expect(dialog.textContent).toContain("Everything in the file was imported.");
+    await user.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(await screen.findByText("solo")).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("GEDCOM with another extension is still recognised", async () => {
+    renderList();
+    await screen.findByText("Create your first tree");
+    // As if picked with "All files": the picker's filter is only a suggestion.
+    await userEvent
+      .setup({ applyAccept: false })
+      .upload(
+        screen.getByLabelText("Import"),
+        new File(["﻿0 HEAD\r\n0 @I1@ INDI\r\n1 NAME Ann\r\n0 TRLR\r\n"], "export.txt"),
+      );
+    expect(await screen.findByRole("dialog", { name: "Import report" })).toBeTruthy();
+    expect(await env.repo.listTrees()).toHaveLength(1);
+  });
+
+  test("a .ged file that is not GEDCOM shows the reason and adds nothing", async () => {
+    renderList();
+    await screen.findByText("Create your first tree");
+    await userEvent
+      .setup()
+      .upload(screen.getByLabelText("Import"), new File(["just some notes"], "notes.ged"));
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "This file isn't a GEDCOM family tree.",
+    );
+    expect(await env.repo.listTrees()).toHaveLength(0);
+  });
+});
+
+describe("TreeListPage: after a GEDCOM import", () => {
+  test("calls the injected afterImport hook once the tree is saved", async () => {
+    const seen: number[] = [];
+    renderApp(
+      <Routes>
+        <Route
+          path="/app"
+          element={
+            <TreeListPage
+              afterImport={async () => {
+                seen.push((await env.repo.listTrees()).length);
+              }}
+            />
+          }
+        />
+      </Routes>,
+      { repo: env.repo },
+    );
+    await screen.findByText("Create your first tree");
+    await userEvent
+      .setup()
+      .upload(
+        screen.getByLabelText("Import"),
+        new File(["0 HEAD\n0 @I1@ INDI\n1 NAME Ann\n0 TRLR\n"], "a.ged"),
+      );
+    await screen.findByRole("dialog", { name: "Import report" });
+    expect(seen).toEqual([1]);
+  });
+
+  test("by default it clears out photos nothing uses any more", async () => {
+    await env.repo.putPhoto("left-over", new Blob(["x"], { type: "image/png" }));
+    renderApp(
+      <Routes>
+        <Route path="/app" element={<TreeListPage />} />
+      </Routes>,
+      { repo: env.repo },
+    );
+    await screen.findByText("Create your first tree");
+    await userEvent
+      .setup()
+      .upload(
+        screen.getByLabelText("Import"),
+        new File(["0 HEAD\n0 @I1@ INDI\n1 NAME Ann\n0 TRLR\n"], "a.ged"),
+      );
+    await screen.findByRole("dialog", { name: "Import report" });
+    await waitFor(async () => expect(await env.repo.getPhoto("left-over")).toBeUndefined());
+  });
+
+  test("a failing hook does not fail the import", async () => {
+    renderApp(
+      <Routes>
+        <Route
+          path="/app"
+          element={<TreeListPage afterImport={() => Promise.reject(new Error("boom"))} />}
+        />
+      </Routes>,
+      { repo: env.repo },
+    );
+    await screen.findByText("Create your first tree");
+    await userEvent
+      .setup()
+      .upload(
+        screen.getByLabelText("Import"),
+        new File(["0 HEAD\n0 @I1@ INDI\n1 NAME Ann\n0 TRLR\n"], "a.ged"),
+      );
+    expect(await screen.findByRole("dialog", { name: "Import report" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+const bigGedcom = (people: number) =>
+  new File(
+    [
+      "0 HEAD\n" +
+        Array.from({ length: people }, (_, i) => `0 @I${i}@ INDI\n1 NAME P${i} /X/\n`).join("") +
+        "0 TRLR\n",
+    ],
+    "big.ged",
+  );
+
+function renderLargePage() {
+  renderApp(
+    <Routes>
+      <Route path="/app" element={<TreeListPage afterImport={async () => {}} />} />
+    </Routes>,
+    { repo: env.repo },
+  );
+}
+
+describe("TreeListPage: a GEDCOM file larger than the app is tuned for", () => {
+  test("over 5,000 people asks first; Cancel imports nothing", async () => {
+    renderLargePage();
+    await screen.findByText("Create your first tree");
+    const user = userEvent.setup();
+    await user.upload(screen.getByLabelText("Import"), bigGedcom(5001));
+    const ask = await screen.findByRole("dialog", { name: "Large family tree" });
+    expect(ask.textContent).toContain(
+      "This file has 5,001 people; Stam is tuned for up to 5,000. Continue?",
+    );
+    await user.click(within(ask).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(await env.repo.listTrees()).toEqual([]);
+  });
+
+  test("Continue imports it and shows the report", async () => {
+    renderLargePage();
+    await screen.findByText("Create your first tree");
+    const user = userEvent.setup();
+    await user.upload(screen.getByLabelText("Import"), bigGedcom(5001));
+    const ask = await screen.findByRole("dialog", { name: "Large family tree" });
+    await user.click(within(ask).getByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("dialog", { name: "Import report" })).toBeTruthy();
+    expect(await env.repo.listTrees()).toHaveLength(1);
+  });
+
+  test("5,000 people imports without asking", async () => {
+    renderLargePage();
+    await screen.findByText("Create your first tree");
+    await userEvent.setup().upload(screen.getByLabelText("Import"), bigGedcom(5000));
+    expect(await screen.findByRole("dialog", { name: "Import report" })).toBeTruthy();
   });
 });

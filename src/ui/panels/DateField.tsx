@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-import { formatFuzzyDate, type FuzzyDate, parseFuzzyDate } from "@/core/dates/fuzzy";
+import { type FuzzyDate, parseFuzzyDate } from "@/core/dates/fuzzy";
+import { formatDate } from "@/i18n/format";
 
 const QUALIFIER_PREFIX = { about: "abt ", before: "bef ", after: "aft " } as const;
 
@@ -9,7 +10,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 /**
  * The text `parseFuzzyDate` reads back to the same date: "1950-03-14", "abt 1950", "1948–1952".
- * (`formatFuzzyDate` is for display: "14 Mar 1950" can't be parsed.)
+ * (`formatDate` is for display: "14 Mar 1950" can't be parsed.)
  */
 export function toInputText(date: FuzzyDate | undefined): string {
   if (!date || date.year === undefined) return "";
@@ -47,7 +48,7 @@ export function DateField({ label, value, onCommit }: DateFieldProps) {
 }
 
 function DateInput({ label, value, onCommit }: DateFieldProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const inputId = useId();
   const noteId = useId();
   const stored = toInputText(value);
@@ -85,7 +86,12 @@ function DateInput({ label, value, onCommit }: DateFieldProps) {
       />
       {text.trim() !== "" && (
         <p id={noteId} className={invalid ? "field-note field-error" : "field-note"}>
-          {parsed.ok ? formatFuzzyDate(parsed.date) : t("panel.dateError")}
+          {/* Isolated: a date reads in its own direction inside an RTL panel. */}
+          {parsed.ok ? (
+            <bdi>{formatDate(parsed.date, i18n.language, t)}</bdi>
+          ) : (
+            t("panel.dateError")
+          )}
         </p>
       )}
     </div>

@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
 import { BirthdaysMenu } from "@/ui/birthdays/BirthdaysMenu";
+import { SettingsDialog } from "@/ui/settings/SettingsDialog";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
@@ -151,8 +152,14 @@ function TreeName() {
   );
 }
 
-/** The backup menu (FR-X7): an "Include photos" box and the download itself. */
-function BackupMenu({ onOpenExport }: { onOpenExport?: () => void }) {
+/** The menu: export, settings, and the backup (FR-X7) with its "Include photos" box. */
+function BackupMenu({
+  onOpenExport,
+  onOpenSettings,
+}: {
+  onOpenExport?: () => void;
+  onOpenSettings: () => void;
+}) {
   const { t } = useTranslation();
   const repo = useRepo();
   const store = useEditorStore();
@@ -229,6 +236,16 @@ function BackupMenu({ onOpenExport }: { onOpenExport?: () => void }) {
               {t("toolbar.export")}
             </button>
           )}
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setOpen(false);
+              onOpenSettings();
+            }}
+          >
+            {t("settings.open")}
+          </button>
           <label className="check">
             <input
               type="checkbox"
@@ -265,6 +282,7 @@ export function Toolbar({
 }: ToolbarProps) {
   const { t } = useTranslation();
   const store = useEditorStore();
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const canUndo = useEditor((s) => s.canUndo);
   const canRedo = useEditor((s) => s.canRedo);
   const focusMode = useEditor((s) => s.focusMode);
@@ -385,8 +403,9 @@ export function Toolbar({
           />
         )}
         {onShowPerson && <BirthdaysMenu today={today} onShow={onShowPerson} />}
-        <BackupMenu onOpenExport={onOpenExport} />
+        <BackupMenu onOpenExport={onOpenExport} onOpenSettings={() => setSettingsOpen(true)} />
       </div>
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </header>
   );
 }

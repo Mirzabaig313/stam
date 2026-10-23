@@ -5,6 +5,8 @@ import type { ExportInput, ExportScope } from "@/export/types";
 import { Dialog } from "@/ui/app/Dialog";
 import { downloadBackup } from "@/ui/app/downloadBackup";
 import { useRepo } from "@/ui/app/RepoContext";
+import { useTreeDir } from "@/ui/canvas/treeDirection";
+import { currentSettings } from "@/ui/settings/settings";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 
 import { downloadBlob } from "./downloadBlob";
@@ -23,9 +25,11 @@ import {
   CUSTOM_PAGE_MIN_MM,
   defaultSettings,
   estimateOutput,
+  EXPORT_THEMES,
   exportFileName,
   type ExportFormat,
   type ExportSettings,
+  exportThemeFor,
   FORMATS,
   POSTER_PAGES,
   SCOPES,
@@ -164,9 +168,15 @@ function MmField({
 
 export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: ExportDialogProps) {
   const { t, i18n } = useTranslation();
+  // Exports are drawn like the canvas: the tree-direction setting, or the language's.
+  const treeDir = useTreeDir();
   const repo = useRepo();
   const store = useEditorStore();
-  const [s, setS] = useState<ExportSettings>(defaultSettings);
+  // The export starts in the app's own theme where there is a matching one.
+  const [s, setS] = useState<ExportSettings>(() => ({
+    ...defaultSettings(),
+    theme: exportThemeFor(currentSettings().theme),
+  }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [tooMany, setTooMany] = useState<number | null>(null);
@@ -211,6 +221,9 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
     [doc, layout, viewRootId, selectedId, rx, ry, rw, rh, fmt, scp, scl, tpg, tsc],
   );
   const isJson = s.format === "json";
+  // GEDCOM is data, like the backup: the whole tree, no drawing options, no photos.
+  const isGedcom = s.format === "gedcom";
+  const isData = isJson || isGedcom;
   const isImage = s.format === "png" || s.format === "jpeg";
 
   async function run() {
@@ -252,7 +265,7 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
         ...(s.scope === "visible" && visibleRect ? { visibleRect } : {}),
         scope: s.scope,
         repo,
-        includePhotos: s.includePhotos,
+        includePhotos: s.includePhotos && !isGedcom,
         privacy: s.privacy,
       });
       const result = await exporter({
@@ -260,7 +273,7 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
         settings: s,
         t,
         lang: i18n.language,
-        dir: i18n.dir(),
+        dir: treeDir,
       });
       const name = exportFileName(current.doc, s.format);
       downloadBlob(result.blob, name);
@@ -309,13 +322,13 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
           ))}
         </fieldset>
 
-        {!isJson && fallsBack && (
+        {!isData && fallsBack && (
           <p className="notice" role="note">
             {t("export.viewFallback")}
           </p>
         )}
 
-        {!isJson && (
+        {!isData && (
           <fieldset className="export-group">
             <legend className="field-label">{t("export.scope")}</legend>
             {SCOPES.map((scope) => (
@@ -336,7 +349,7 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
 
         <fieldset className="export-group">
           <legend className="field-label">{t("export.options")}</legend>
-          {!isJson && (
+          {!isData && (
             <>
               <TextField
                 label={t("export.titleField")}
@@ -361,7 +374,7 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
               <Select
                 label={t("export.theme")}
                 value={s.theme}
-                options={(["light", "print"] as const).map((v) => ({
+                options={EXPORT_THEMES.map((v) => ({
                   value: v,
                   label: t(`export.themes.${v}`),
                 }))}
@@ -378,19 +391,23 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
                   onChange={(background) => set({ background })}
                 />
               )}
-              <Check
-                label={t("export.privacy")}
-                hint={t("export.privacyHint")}
-                checked={s.privacy}
-                onChange={(privacy) => set({ privacy, privacyTouched: true })}
-              />
             </>
           )}
-          <Check
-            label={t("export.photos")}
-            checked={s.includePhotos}
-            onChange={(includePhotos) => set({ includePhotos, photosTouched: true })}
-          />
+          {!isJson && (
+            <Check
+              label={t("export.privacy")}
+              hint={t(isGedcom ? "export.privacyHintGedcom" : "export.privacyHint")}
+              checked={s.privacy}
+              onChange={(privacy) => set({ privacy, privacyTouched: true })}
+            />
+          )}
+          {!isGedcom && (
+            <Check
+              label={t("export.photos")}
+              checked={s.includePhotos}
+              onChange={(includePhotos) => set({ includePhotos, photosTouched: true })}
+            />
+          )}
         </fieldset>
 
         {isImage && (

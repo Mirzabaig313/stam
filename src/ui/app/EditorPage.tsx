@@ -8,6 +8,7 @@ import { createTabSync } from "@/storage/multitab";
 import { createSaveGuard } from "@/storage/saveGuard";
 import { StaleWriteError } from "@/storage/treeRepo";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
+import { useTreeDir } from "@/ui/canvas/treeDirection";
 import { ExportDialog } from "@/ui/export/ExportDialog";
 import { visibleWorldRect } from "@/ui/export/gatherInput";
 import { usePrintFit } from "@/ui/export/usePrintFit";
@@ -170,7 +171,7 @@ function EditorFrame({
   renderers?: ViewRenderers;
   kinship?: KinshipFns;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const store = useEditorStore();
   const canvasRef = useRef<CanvasHandle>(null);
   /** The fan chart's or the timeline's handle, while one of them is shown. */
@@ -261,7 +262,7 @@ function EditorFrame({
     isOnScreen: (id) =>
       canvasRef.current?.isPersonInView(id, { bottomInset: panelCoverage() }) ?? true,
   });
-  const dir = i18n.dir();
+  const dir = useTreeDir();
 
   /**
    * Search result: expand or re-root the view so the person has a card (see `revealPerson`),
@@ -381,7 +382,7 @@ function EditorFrame({
           </Link>
         </div>
       )}
-      <div className="editor-body">
+      <main className="editor-body" id="main">
         <div data-slot="canvas" className="canvas-slot">
           {/* A tree with no people yet: one "Start with a person" card. */}
           {doc && !layout && <StartCard />}
@@ -441,7 +442,7 @@ function EditorFrame({
             />
           )
         )}
-      </div>
+      </main>
       {searchOpen && <SearchBox onPick={showPerson} onClose={() => setSearchOpen(false)} />}
       {unconnectedOpen && <UnconnectedList onClose={() => setUnconnectedOpen(false)} />}
       {exportOpen && (

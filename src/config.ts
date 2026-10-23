@@ -11,3 +11,6 @@ export const AUTOSAVE_DEBOUNCE_MS = 500;
 
 /** Autosave never waits longer than this while edits keep arriving. */
 export const AUTOSAVE_MAX_WAIT_MS = 1000;
+
+/** The tree size the app is tuned for (layout, views, the bench); bigger imports ask first. */
+export const TUNED_PEOPLE = 5000;

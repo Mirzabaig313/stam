@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Link, Route, Routes } from "react-router";
 
 import { EditorPage } from "./EditorPage";
+import { SkipLink } from "./SkipLink";
 import { TreeListPage } from "./TreeListPage";
 
 function NotFound() {
@@ -18,10 +19,13 @@ function NotFound() {
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/app" element={<TreeListPage />} />
-      <Route path="/app/t/:treeId" element={<EditorPage />} />
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <>
+      <SkipLink />
+      <Routes>
+        <Route path="/app" element={<TreeListPage />} />
+        <Route path="/app/t/:treeId" element={<EditorPage />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
   );
 }

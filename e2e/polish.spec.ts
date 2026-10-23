@@ -1,6 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-import { allCards, card, famSimpleFile } from "./helpers";
+import { allCards, card, chooseTheme, famSimpleFile } from "./helpers";
 
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -85,6 +85,26 @@ test.describe("selection and focus", () => {
     expect(painted.length).toBeLessThanOrEqual(2);
   });
 
+  test("print theme: the selected card has a 3 px double outline, not just a heavier edge", async ({
+    page,
+  }) => {
+    await page.goto("/app");
+    await chooseTheme(page, "print");
+    await openSimpleFamily(page);
+    await card(page, "Ali Khan").click();
+    await page.mouse.move(2, 400);
+    await page.waitForTimeout(400);
+
+    const BLACK = "rgb(0, 0, 0)";
+    const selected = await rings(card(page, "Ali Khan"));
+    const plain = await rings(card(page, "Omar Khan"));
+    // Every print card has a 1.5 px black edge; the selected one a 3 px edge and a ring round it.
+    expect(plain.border).toMatchObject({ stroke: BLACK, width: 1.5 });
+    expect(plain.focus?.opacity).toBe(0);
+    expect(selected.border).toMatchObject({ stroke: BLACK, width: 3 });
+    expect(selected.focus).toMatchObject({ stroke: BLACK, width: 1, opacity: 1 });
+  });
+
   test("an unselected card keeps its 1 px ink border", async ({ page }) => {
     await openSimpleFamily(page);
     await page.mouse.move(2, 400);
@@ -164,5 +184,32 @@ test.describe("cards without dates", () => {
     expect(Math.abs((await middle("Ahmed Khan")) - 36)).toBeLessThanOrEqual(2);
     // With a date line the name sits above the middle, as before.
     expect(await middle("Ali Khan")).toBeLessThan(34);
+  });
+});
+
+test.describe("toolbar tooltips", () => {
+  test("a button's tip hides while its menu is open, and comes back once it closes", async ({
+    page,
+  }) => {
+    test.skip(test.info().project.name === "mobile", "touch screens show no hover tips");
+    await openSimpleFamily(page);
+    const button = page.getByRole("button", { name: "Menu", exact: true });
+    const tip = page.locator(".tip-anchor", { has: button }).locator(".tip");
+    await button.hover();
+    await expect(tip).toHaveCSS("opacity", "1");
+
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    await expect(page.locator(".menu-panel")).toBeVisible();
+    await expect(tip).toBeHidden();
+    // Hovering it again, or keyboard focus on it, does not bring the tip over the menu.
+    await button.hover();
+    await page.waitForTimeout(500);
+    await expect(tip).toBeHidden();
+
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await button.hover();
+    await expect(tip).toHaveCSS("opacity", "1");
   });
 });

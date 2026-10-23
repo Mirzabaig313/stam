@@ -25,6 +25,12 @@ describe("DateField", () => {
     expect(input.getAttribute("aria-invalid")).not.toBe("true");
   });
 
+  test("isolates the preview, so a Latin date keeps its order in an RTL panel", async () => {
+    const { input } = setup();
+    await userEvent.setup().type(input, "1983-10-25");
+    expect(screen.getByText(/^25 Oct 1983$/).tagName).toBe("BDI");
+  });
+
   test("explains an invalid date and marks the input invalid", async () => {
     const { input } = setup();
     await userEvent.setup().type(input, "1950-13");

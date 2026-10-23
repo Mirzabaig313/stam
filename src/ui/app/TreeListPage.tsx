@@ -2,20 +2,25 @@ import { type ChangeEvent, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router";
 
-import { APP_NAME } from "@/config";
+import { APP_NAME, TUNED_PEOPLE } from "@/config";
 import { applyCommand } from "@/core/commands/apply";
 import { createTree } from "@/core/model/tree";
+import type { TreeDocument } from "@/core/model/types";
+import type { GedcomReport } from "@/io/gedcom";
 import { remapPhotoIds } from "@/io/json/remapPhotos";
 import { ImportError, importStamJson } from "@/io/json/stamJson";
 import { recoverAllPending } from "@/storage/journal";
 import { announceTreeChange } from "@/storage/multitab";
 import { requestPersistentStorage } from "@/storage/persist";
+import { cleanUpUnusedPhotos } from "@/storage/photoCleanup";
 import type { TreeMeta } from "@/storage/treeRepo";
+import { SettingsDialog } from "@/ui/settings/SettingsDialog";
 
 import { BackupBanner } from "./BackupBanner";
 import { isBackupDue } from "./backupState";
-import { ConfirmDialog, NamePrompt } from "./Dialog";
+import { ConfirmDialog, Dialog, NamePrompt } from "./Dialog";
 import { downloadBackup } from "./downloadBackup";
+import { GedcomReportDialog } from "./GedcomReportDialog";
 import { relativeTime } from "./relativeTime";
 import { useRepo } from "./RepoContext";
 import { StorageBanner } from "./StorageBanner";
@@ -23,17 +28,36 @@ import { StorageBanner } from "./StorageBanner";
 /** Files bigger than this are refused before they are read into memory. */
 const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
 
+/** A GEDCOM file starts with its header, whatever it is called. */
+const GEDCOM_START = /^\uFEFF?\s*0[ \t]+HEAD\b/i;
+
 type DialogState =
   { kind: "new" } | { kind: "rename"; tree: TreeMeta } | { kind: "delete"; tree: TreeMeta };
 
-export function TreeListPage() {
+export function TreeListPage({
+  afterImport: afterImportProp,
+}: {
+  /** Runs after an imported GEDCOM tree is saved; by default, the unused-photo clean-up. */
+  afterImport?: () => Promise<void>;
+} = {}) {
   const { t, i18n } = useTranslation();
   const repo = useRepo();
+  // Like the JSON import and delete paths: photos no tree, snapshot or unsaved edit uses go.
+  const afterImport = afterImportProp ?? (() => cleanUpUnusedPhotos(repo));
   const navigate = useNavigate();
   const [trees, setTrees] = useState<TreeMeta[] | null>(null);
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [backupDue, setBackupDue] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [largeGedcom, setLargeGedcom] = useState<{
+    doc: TreeDocument;
+    report: GedcomReport;
+    people: number;
+  } | null>(null);
+  const [gedcomImport, setGedcomImport] = useState<{ treeId: string; report: GedcomReport } | null>(
+    null,
+  );
 
   const [version, setVersion] = useState(0);
   const refresh = () => setVersion((v) => v + 1);
@@ -81,6 +105,26 @@ export function TreeListPage() {
     });
   }
 
+  /** GEDCOM: decoded from bytes (it may be ANSEL or Latin-1), saved, then its report is shown. */
+  async function importGedcomFile(file: File) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const { importGedcom } = await import("@/io/gedcom");
+    const name = file.name.replace(/\.[^.]*$/, "").trim() || t("treeList.defaultName");
+    const imported = importGedcom(bytes, { name });
+    const people = Object.keys(imported.doc.persons).length;
+    if (people > TUNED_PEOPLE) setLargeGedcom({ ...imported, people });
+    else await saveGedcom(imported);
+  }
+
+  async function saveGedcom({ doc, report }: { doc: TreeDocument; report: GedcomReport }) {
+    await askToPersistIfFirst();
+    await repo.saveTree(doc);
+    // Housekeeping only: the tree is saved, so a failure here must not fail the import.
+    await afterImport().catch(() => {});
+    setGedcomImport({ treeId: doc.id, report });
+    refresh();
+  }
+
   async function onImport(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget;
     const file = input.files?.[0];
@@ -92,7 +136,16 @@ export function TreeListPage() {
       return;
     }
     try {
-      const imported = await importStamJson(await file.text());
+      if (/\.ged$/i.test(file.name)) {
+        await importGedcomFile(file);
+        return;
+      }
+      const text = await file.text();
+      if (GEDCOM_START.test(text)) {
+        await importGedcomFile(file);
+        return;
+      }
+      const imported = await importStamJson(text);
       await askToPersistIfFirst();
       // An import must never overwrite a stored photo or point at one from another tree.
       const { doc, photos } = await remapPhotoIds(
@@ -102,6 +155,8 @@ export function TreeListPage() {
       );
       for (const [photoId, blob] of Object.entries(photos)) await repo.putPhoto(photoId, blob);
       await repo.saveTree(doc);
+      // Photos of deleted trees, or of an import that failed half way, have nothing to show.
+      await cleanUpUnusedPhotos(repo).catch(() => {});
       // The editor opens next, so a skipped-photo notice rides along as navigation state.
       await navigate(`/app/t/${doc.id}`, {
         state: {
@@ -127,19 +182,25 @@ export function TreeListPage() {
   const defaultName = t("treeList.defaultName");
 
   return (
-    <main className="page">
+    <main className="page" id="main">
       <header className="page-header">
-        <p className="brand">{APP_NAME}</p>
+        {/* The landing page is another document: a full navigation, not a router link. */}
+        <a href="/" className="brand" aria-label={t("app.home", { app: APP_NAME })}>
+          {APP_NAME}
+        </a>
         <div className="page-header-actions">
           <label className="button file-button">
             {t("treeList.import")}
             <input
               type="file"
-              accept=".json,application/json"
+              accept=".json,application/json,.ged"
               className="visually-hidden"
               onChange={(event) => void onImport(event)}
             />
           </label>
+          <button type="button" className="button" onClick={() => setSettingsOpen(true)}>
+            {t("settings.open")}
+          </button>
           <button
             type="button"
             className="button button-primary"
@@ -223,6 +284,41 @@ export function TreeListPage() {
         </ul>
       )}
 
+      {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {largeGedcom && (
+        <Dialog title={t("app.import.gedcom.largeTitle")} onClose={() => setLargeGedcom(null)}>
+          <p className="dialog-body">
+            {t("app.import.gedcom.large", {
+              count: largeGedcom.people,
+              app: APP_NAME,
+              max: TUNED_PEOPLE,
+            })}
+          </p>
+          <div className="dialog-actions">
+            <button type="button" className="button" onClick={() => setLargeGedcom(null)}>
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              className="button button-primary"
+              onClick={() => {
+                const imported = largeGedcom;
+                setLargeGedcom(null);
+                void saveGedcom(imported).catch(() => setMessage(t("app.import.error.UNKNOWN")));
+              }}
+            >
+              {t("app.import.gedcom.continue")}
+            </button>
+          </div>
+        </Dialog>
+      )}
+      {gedcomImport && (
+        <GedcomReportDialog
+          report={gedcomImport.report}
+          onOpen={() => void navigate(`/app/t/${gedcomImport.treeId}`)}
+          onClose={() => setGedcomImport(null)}
+        />
+      )}
       {dialog?.kind === "new" && (
         <NamePrompt
           title={t("treeList.newDialogTitle")}
@@ -269,6 +365,8 @@ export function TreeListPage() {
             void act(async () => {
               await repo.deleteTree(tree.id);
               announceTreeChange(tree.id, "deleted");
+              // Its photos go too, unless another tree uses them. A failure here is harmless.
+              await cleanUpUnusedPhotos(repo).catch(() => {});
             });
           }}
           onClose={() => setDialog(null)}

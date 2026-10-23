@@ -19,6 +19,17 @@ function isTyping(target: EventTarget | null): boolean {
 
 const ARROWS: ReadonlySet<string> = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"]);
 
+/**
+ * The Latin letter a shortcut key stands for. Latin layouts (QWERTY, AZERTY, Dvorak…) go by the
+ * letter typed, so Ctrl+Z is the key labelled Z. Arabic, Urdu and other layouts type no Latin
+ * letter, so the physical key decides (`KeyZ`, the key where QWERTY has Z).
+ */
+export function shortcutLetter(event: Pick<KeyboardEvent, "key" | "code">): string | null {
+  if (/^[a-z]$/i.test(event.key)) return event.key.toLowerCase();
+  const physical = /^Key([A-Z])$/.exec(event.code);
+  return physical ? physical[1]!.toLowerCase() : null;
+}
+
 /** How long to wait for a revealed card to be drawn before focusing it. */
 const REVEAL_WAIT_MS = 300;
 
@@ -107,7 +118,7 @@ export function useEditorKeys(actions: EditorKeyActions): void {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented || document.querySelector("dialog[open]")) return;
       const mod = event.ctrlKey || event.metaKey;
-      const key = event.key.toLowerCase();
+      const key = shortcutLetter(event);
       if (mod && !event.altKey && key === "f") {
         event.preventDefault();
         latest.current.onOpenSearch();
