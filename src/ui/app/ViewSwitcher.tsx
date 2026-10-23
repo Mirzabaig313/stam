@@ -26,19 +26,25 @@ export function ViewSwitcher() {
     <fieldset className="view-switcher" aria-label={t("views.switcher")}>
       {VIEW_MODES.map((mode, index) => {
         const label = t(`views.mode.${mode}`);
+        const tipId = `view-hint-${mode}`;
         return (
-          <button
-            key={mode}
-            type="button"
-            className="view-switcher__button"
-            aria-pressed={viewMode === mode}
-            aria-keyshortcuts={`Alt+${index + 1}`}
-            title={t("views.shortcut", { label, n: index + 1 })}
-            onClick={() => store.getState().setViewMode(mode)}
-          >
-            <Icon name={ICONS[mode]} />
-            <span className="view-switcher__label">{label}</span>
-          </button>
+          <span key={mode} className="view-switcher__item">
+            <button
+              type="button"
+              className="view-switcher__button"
+              aria-pressed={viewMode === mode}
+              aria-keyshortcuts={`Alt+${index + 1}`}
+              aria-describedby={tipId}
+              onClick={() => store.getState().setViewMode(mode)}
+            >
+              <Icon name={ICONS[mode]} />
+              <span className="view-switcher__label">{label}</span>
+            </button>
+            <span role="tooltip" id={tipId} className="view-switcher__tip">
+              <span className="view-switcher__tip-text">{t(`views.hint.${mode}`)}</span>
+              <kbd className="view-switcher__tip-key">Alt+{index + 1}</kbd>
+            </span>
+          </span>
         );
       })}
     </fieldset>

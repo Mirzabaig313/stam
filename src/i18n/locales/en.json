@@ -471,6 +471,14 @@
       "fan": "Fan",
       "timeline": "Timeline"
     },
+    "hint": {
+      "family": "Everyone below one person, with their spouses. Build and edit the tree here.",
+      "pedigree": "One person's parents, grandparents and further ancestors, going up.",
+      "descendants": "Everyone who came from one person, compact and without spouses.",
+      "hourglass": "One person's ancestors above and descendants below.",
+      "fan": "Ancestors in a half circle. Empty slots show who is still missing.",
+      "timeline": "Each life as a bar on a line of years. See who lived at the same time."
+    },
     "shortcut": "{{label}} (Alt+{{n}})",
     "focus": "Focus: <name/>",
     "focusOn": "Focus on {{name}}",
