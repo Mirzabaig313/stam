@@ -1,0 +1,406 @@
+/*
+ * Family-tree canvas. Colours come from the app's design tokens; the fallbacks are the same
+ * light-theme values, so the canvas also renders on its own (dev demo, tests).
+ * Logical properties only. Card radius 6 px; nothing else is rounded.
+ */
+
+.stam-canvas {
+  --_ground: var(--ground, #f4f5f2);
+  --_ink: var(--ink, #111311);
+  --_muted: var(--muted, #5a615b);
+  --_line: var(--line, rgba(17, 19, 17, 0.14));
+  --_accent: var(--accent, #2b47f5);
+  --_card: #ffffff;
+  --_deceased: #eceee9;
+  --_ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  position: relative;
+  inline-size: 100%;
+  block-size: 100%;
+  overflow: hidden;
+  background: var(--_ground);
+  color: var(--_ink);
+  font-family: "Archivo Variable", system-ui, sans-serif;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+}
+
+.stam-canvas[data-panning] {
+  cursor: grabbing;
+}
+
+.stam-canvas__svg {
+  display: block;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* ---- Connectors ------------------------------------------------------------------------- */
+
+/*
+ * Ruling R32: connectors are meaningful graphics, so they need 3:1 against the ground
+ * (WCAG 1.4.11). Ink at 55% over #F4F5F2 is about 4.0:1 (tests/ui/canvas/edgeContrast.test.ts
+ * reads this value and checks it). The faint --line strength is for decoration only (ruler,
+ * dividers). Ink inside one faded group, so overlapping runs do not darken.
+ */
+.stam-edges {
+  stroke: var(--_ink);
+  opacity: 0.55;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+
+.stam-edge {
+  transition: opacity 250ms var(--_ease);
+}
+
+.stam-edge--dimmed {
+  opacity: 0.25;
+}
+
+/* ---- Cards ------------------------------------------------------------------------------ */
+
+.stam-node {
+  transition: opacity 250ms var(--_ease);
+}
+
+.stam-node--dimmed {
+  opacity: 0.25;
+}
+
+.stam-card {
+  cursor: pointer;
+  outline: none;
+}
+
+/* The drawn text and strike sit beside the card's button group (see PersonCard): clicks go to it. */
+.stam-card__decor {
+  pointer-events: none;
+}
+
+.stam-card__bg {
+  fill: var(--_card);
+  stroke: var(--_ink);
+  stroke-width: 1;
+  transition:
+    fill 250ms var(--_ease),
+    stroke 250ms var(--_ease);
+}
+
+/* A soft second edge under the card that appears on hover: the card lifts off the page. */
+.stam-card__lift {
+  fill: var(--_line);
+  opacity: 0;
+  transition: opacity 250ms var(--_ease);
+}
+
+.stam-card:hover .stam-card__lift {
+  opacity: 1;
+}
+
+/* Selection (accent edge) and keyboard focus (ink ring) already mark the card: no third edge. */
+.stam-card--selected .stam-card__lift,
+.stam-card--selected:hover .stam-card__lift,
+.stam-card:focus-visible .stam-card__lift,
+.stam-card:focus-visible:hover .stam-card__lift {
+  opacity: 0;
+}
+
+.stam-card--deceased .stam-card__bg {
+  fill: var(--_deceased);
+}
+
+.stam-card--placeholder .stam-card__bg {
+  fill: var(--_ground);
+  stroke: var(--_muted);
+  stroke-dasharray: 4 3;
+}
+
+.stam-card--linked .stam-card__bg {
+  stroke-dasharray: 6 4;
+}
+
+.stam-card--selected .stam-card__bg {
+  stroke: var(--_accent);
+  stroke-width: 2;
+  stroke-dasharray: none;
+}
+
+.stam-card__focus {
+  fill: none;
+  stroke: var(--_ink);
+  stroke-width: 2;
+  opacity: 0;
+}
+
+.stam-card:focus-visible .stam-card__focus {
+  opacity: 1;
+}
+
+.stam-card__avatar-disc {
+  fill: var(--_line);
+}
+
+.stam-card--placeholder .stam-card__avatar-disc {
+  fill: none;
+  stroke: var(--_muted);
+  stroke-dasharray: 3 3;
+}
+
+.stam-card__avatar-ring {
+  fill: none;
+  stroke: var(--_line);
+}
+
+.stam-card__initials {
+  fill: var(--_ink);
+  letter-spacing: 0.02em;
+}
+
+.stam-card__name {
+  fill: var(--_ink);
+}
+
+.stam-card__name--placeholder {
+  fill: var(--_muted);
+  font-style: italic;
+}
+
+.stam-card__native {
+  fill: var(--_ink);
+}
+
+.stam-card__years {
+  fill: var(--_muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stam-card__gender {
+  fill: var(--_muted);
+}
+
+.stam-card__badge rect {
+  fill: var(--_ink);
+}
+
+.stam-card__badge text {
+  fill: var(--_ground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dots at the lowest detail: deceased muted, placeholders hollow, selection in the accent. */
+.stam-card__dot {
+  fill: var(--_ink);
+}
+
+.stam-card--deceased .stam-card__dot {
+  fill: var(--_muted);
+}
+
+.stam-card--placeholder .stam-card__dot {
+  fill: none;
+  stroke: var(--_muted);
+  stroke-width: 4;
+}
+
+.stam-card--selected .stam-card__dot {
+  fill: var(--_accent);
+}
+
+/* ---- Drag and drop feedback ------------------------------------------------------------- */
+
+.stam-node--drag-source {
+  opacity: 0.3;
+}
+
+/* R36: the accent is for selection and "you" only; an allowed target is dashed ink. */
+.stam-card--drop-target .stam-card__bg {
+  stroke: var(--_ink);
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+}
+
+.stam-card--drop-blocked .stam-card__bg {
+  stroke: var(--_muted);
+  stroke-dasharray: none;
+}
+
+.stam-card__strike {
+  stroke: var(--_muted);
+  stroke-width: 1.5;
+}
+
+.stam-drop-line {
+  stroke: var(--_ink);
+  stroke-width: 2;
+}
+
+.stam-canvas[data-drag],
+.stam-canvas[data-drag] .stam-card {
+  cursor: grabbing;
+}
+
+.stam-canvas[data-drag="blocked"],
+.stam-canvas[data-drag="blocked"] .stam-card {
+  cursor: not-allowed;
+}
+
+/* ---- Card controls (collapse, see original, view family) -------------------------------- */
+
+.stam-card__control {
+  cursor: pointer;
+  outline: none;
+}
+
+.stam-hit {
+  fill: transparent;
+}
+
+.stam-card__chevron path {
+  fill: none;
+  stroke: var(--_muted);
+  stroke-width: 1.5;
+  stroke-linecap: square;
+  transition: stroke 250ms var(--_ease);
+}
+
+.stam-card__chevron:hover path {
+  stroke: var(--_ink);
+}
+
+.stam-card__link text,
+.stam-card__family text {
+  fill: var(--_muted);
+  text-decoration: underline;
+  text-decoration-color: var(--_line);
+  text-underline-offset: 2px;
+  transition: fill 250ms var(--_ease);
+}
+
+.stam-card__link:hover text,
+.stam-card__family:hover text {
+  fill: var(--_ink);
+}
+
+.stam-card__family-bg {
+  fill: var(--_ground);
+}
+
+.stam-card__control:focus-visible .stam-hit,
+.stam-card__control:focus-visible .stam-card__family-bg {
+  stroke: var(--_ink);
+  stroke-width: 1.5;
+}
+
+/* ---- Ruler and minimap ------------------------------------------------------------------
+ * Placed by flex layout, which follows the container's `dir`. Inline insets are avoided on
+ * purpose: the bundler lowers them to left/right keyed on `:lang()`, which ignores `dir`. */
+
+.stam-canvas__chrome {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.stam-ruler {
+  position: relative;
+  flex: none;
+  inline-size: 40px;
+  background: var(--_ground);
+  border-inline-end: 1px solid var(--_line);
+}
+
+/* Numeral centred, with a 6 px tick touching the ruler's inline-end edge. */
+.stam-ruler__label {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  translate: 0 -50%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  font-stretch: 112%;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  color: var(--_muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.stam-ruler__label::before,
+.stam-ruler__label::after {
+  content: "";
+  inline-size: 6px;
+}
+
+.stam-ruler__label::after {
+  border-block-start: 1px solid var(--_line);
+}
+
+.stam-ruler__label--active {
+  color: var(--_ink);
+}
+
+/* ---- HTML overlay for later layers (handles, inline editor) ------------------------------ */
+
+.stam-canvas__overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.stam-canvas__overlay > * {
+  pointer-events: auto;
+}
+
+/* ---- Minimap ---------------------------------------------------------------------------- */
+
+.stam-minimap {
+  align-self: flex-end;
+  margin: 16px;
+  inline-size: 160px;
+  block-size: 120px;
+  background: var(--_ground);
+  border: 1px solid var(--_line);
+  cursor: crosshair;
+  pointer-events: auto;
+}
+
+.stam-minimap svg {
+  display: block;
+}
+
+/* While a new person is being named, the editor must not sit under the minimap (on a phone the
+ * minimap covers a third of the width and hid the ♂/♀ toggles). */
+.stam-canvas:has(.inline-editor) .stam-minimap {
+  display: none;
+}
+
+.stam-minimap__dots {
+  fill: var(--_muted);
+  opacity: 0.6;
+}
+
+.stam-minimap__selected {
+  fill: var(--_accent);
+}
+
+.stam-minimap__view {
+  fill: rgba(17, 19, 17, 0.04);
+  stroke: var(--_ink);
+  stroke-width: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stam-canvas *,
+  .stam-canvas *::before,
+  .stam-canvas *::after {
+    transition: none !important;
+  }
+}
