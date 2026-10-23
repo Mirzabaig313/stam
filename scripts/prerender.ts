@@ -57,13 +57,7 @@ const PAGES: { page: PageName; file: string }[] = [
 
 for (const { page, file } of PAGES) {
   const markup = await render(page);
-  const head = [
-    headFor(page),
-    fontPreload,
-    `<script src="/${flagsName}"></script>`,
-    // Cross-document page transitions; the animations live in site.css.
-    "<style>@view-transition{navigation:auto}</style>",
-  ]
+  const head = [headFor(page), fontPreload, `<script src="/${flagsName}"></script>`]
     .filter(Boolean)
     .join("\n    ");
   const html = shell

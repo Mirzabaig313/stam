@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { APP_PATH, footer, site } from "@/site/content";
 
@@ -109,6 +109,14 @@ export function Shell({ page, children }: { page: PageName; children: ReactNode 
         {children}
       </main>
       <Footer page={page} />
+      {/* The page transition: five ruled rows of ink that slide across, row by row. */}
+      <div className="curtain" aria-hidden="true">
+        {["I", "II", "III", "IV", "V"].map((numeral, k) => (
+          <span key={numeral} className="curtain__row" style={{ "--k": k } as CSSProperties}>
+            <span className="curtain__num">{numeral}</span>
+          </span>
+        ))}
+      </div>
     </>
   );
 }

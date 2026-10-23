@@ -63,11 +63,14 @@ function heroLean() {
 }
 
 /**
- * Leaving a page: the content slides sideways and fades (the rows move off the register), then
- * the browser navigates; the view transition in site.css brings the next page in from the other
- * side while the header stays put.
+ * Leaving a page: five rows of ink slide across the screen one after another and lock, then the
+ * browser navigates. The next page opens covered (flags.js) and its rows slide off the same way,
+ * row by row, while the header stays put. "Settle into rows" at page size.
  */
+const LEAVE_MS = 540;
+
 function pageLeave() {
+  const root = document.documentElement;
   document.addEventListener("click", (e) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
       return;
@@ -77,12 +80,21 @@ function pageLeave() {
     const url = new URL(link.href, location.href);
     if (url.origin !== location.origin || url.pathname === location.pathname) return;
     e.preventDefault();
-    document.documentElement.classList.add("is-leaving");
-    setTimeout(() => location.assign(url.href), 360);
+    root.classList.remove("vt-enter");
+    root.classList.add("is-leaving");
+    try {
+      sessionStorage.setItem("stam:curtain", String(Date.now()));
+    } catch {
+      // Storage refused: the next page simply opens without its curtain.
+    }
+    setTimeout(() => location.assign(url.href), LEAVE_MS);
   });
-  // Back/forward from the cache must not show a page that already left.
+  // Back/forward from the cache: the page left covered, so it comes back the way a new one does.
   addEventListener("pageshow", (e: PageTransitionEvent) => {
-    if (e.persisted) document.documentElement.classList.remove("is-leaving");
+    if (!e.persisted || !root.classList.contains("is-leaving")) return;
+    root.classList.remove("is-leaving", "vt-enter");
+    void root.offsetWidth;
+    root.classList.add("vt-enter");
   });
 }
 
