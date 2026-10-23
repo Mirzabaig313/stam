@@ -96,9 +96,11 @@ export function draw(live: LiveTreeView, blend: Blend, camera: Camera, lift?: st
     if (!drawn.has(id)) el.style.opacity = "0";
   }
 
+  // Rows not yet reached stay ruled but faint: the register page is ready before the family is.
+  const ghost = live.root.classList.contains("live--stage") ? 0.3 : 0;
   live.marks.forEach((mark, row) => {
     const y = ty + rowCentre(row) * s;
     mark.style.transform = `translate3d(0, ${y}px, 0) translateY(-50%)`;
-    mark.style.opacity = String(clamp01(blend.rows - row));
+    mark.style.opacity = String(Math.max(ghost, clamp01(blend.rows - row)));
   });
 }

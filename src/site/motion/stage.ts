@@ -7,38 +7,47 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { chapters } from "@/site/content";
-import { FRAMES } from "@/site/data";
+import { FINAL, FRAMES } from "@/site/data";
 import { type Blend, CARD_W, frameAt, padded, settle } from "@/site/sample/frames";
 
 import { clamp01, isMobile } from "./env";
 import { bindLiveTree, type Camera, draw, fit, type LiveTreeView, measure } from "./liveTree";
 
-/** Phones never zoom out below names-only cards; the camera follows each chapter's new people. */
-const PHONE_MIN_SCALE = 0.62;
+/** The finished tree, padded: phones keep its rows in fixed places from the first chapter. */
+const WHOLE = padded(FINAL.bounds, 24);
 
-/** Centre (layout x) of the people each chapter adds; chapter I is its one person. */
-const FOCUS_X = FRAMES.map((frame, i) => {
+/** The people each chapter adds on its newest row, as a span of layout x (card edges). */
+const ADDED = FRAMES.map((frame, i) => {
   const before = new Set(i > 0 ? FRAMES[i - 1]!.cards.map((c) => c.key) : []);
   const added = frame.cards.filter((c) => !before.has(c.key));
-  const xs = added.map((c) => c.x + CARD_W / 2);
-  return (Math.min(...xs) + Math.max(...xs)) / 2;
+  const newest = Math.max(...added.map((c) => c.row));
+  const xs = added.filter((c) => c.row === newest).map((c) => c.x);
+  return { min: Math.min(...xs), max: Math.max(...xs) + CARD_W };
 });
 
 /**
- * The phone camera: the whole tree while it fits at a readable size; past that it holds the
- * names-only scale and pans along the rows to the people the current chapter adds.
+ * The phone camera. One scale for the whole story, so the four rows are ruled in their places
+ * from the start and fill as you scroll, the way a register page does. Sideways it frames the
+ * current tree when it fits, and otherwise pans to keep the chapter's new people in view.
  */
 function phoneCamera(live: LiveTreeView, blend: Blend, position: number): Camera {
-  const whole = fit(live, blend.bounds, 1.25);
-  if (whole.s >= PHONE_MIN_SCALE) return whole;
-  const s = PHONE_MIN_SCALE;
+  const { w, h } = live.size;
+  const s = Math.max(0.55, Math.min(0.74, h / WHOLE.height));
+  const ty = (h - WHOLE.height * s) / 2 - WHOLE.y * s;
+  const b = padded(blend.bounds, 16);
+  if (b.width * s <= w) return { s, tx: (w - b.width * s) / 2 - b.x * s, ty };
   const i = Math.floor(position);
   const t = settle(position - i);
-  const fx = FOCUS_X[i]! + ((FOCUS_X[i + 1] ?? FOCUS_X[i]!) - FOCUS_X[i]!) * t;
-  const b = padded(blend.bounds, 24);
-  const { w, h } = live.size;
-  const tx = Math.min(-b.x * s, Math.max(w - (b.x + b.width) * s, w / 2 - fx * s));
-  const ty = (h - b.height * s) / 2 - b.y * s;
+  const from = ADDED[i]!;
+  const to = ADDED[i + 1] ?? from;
+  const min = from.min + (to.min - from.min) * t;
+  const max = from.max + (to.max - from.max) * t;
+  const edge = 14;
+  let tx = w / 2 - ((min + max) / 2) * s;
+  // Keep the new people inside the frame, then never show past the tree's own edges.
+  tx = Math.min(tx, edge - min * s);
+  tx = Math.max(tx, w - edge - max * s);
+  tx = Math.min(-b.x * s, Math.max(w - (b.x + b.width) * s, tx));
   return { s, tx, ty };
 }
 

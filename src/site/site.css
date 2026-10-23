@@ -381,30 +381,59 @@ dd {
   background-size: 100% 1px;
 }
 
-/* Secondary links in text keep an underline at rest; it thickens on hover. */
-/* Secondary links keep a hairline underline at rest; on hover a heavier line draws over it
-   from the start, like a connector settling into place. */
+/* Secondary links keep a hairline underline at rest. On hover an ink fill slides along the
+   line from its start and locks, and the link inverts: the export rows' treatment at word size. */
 .text-link {
+  position: relative;
+  isolation: isolate;
   font-weight: 600;
-  padding-block-end: 0.18em;
-  background:
-    linear-gradient(currentColor 0 0) 0 100% / 0% 2.5px no-repeat,
-    linear-gradient(currentColor 0 0) 0 100% / 100% 1px no-repeat;
-  transition: background-size 0.5s var(--ease);
+  padding: 0.12em 0.3em 0.18em;
+  margin-inline: -0.3em;
+  border-radius: 2px;
+  background: linear-gradient(currentColor 0 0) 0.3em 100% / calc(100% - 0.6em) 1px no-repeat;
+  transition: color 0.35s var(--ease);
+}
+
+.text-link::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--ink);
+  transform-origin: left center;
+  scale: 0 1;
+  transition: scale 0.5s var(--ease);
+}
+
+.privacy .text-link::before {
+  background: var(--ground);
 }
 
 @media (hover: hover) {
   .text-link:hover {
-    background-size:
-      100% 2.5px,
-      100% 1px;
+    color: var(--ground);
+  }
+
+  .privacy .text-link:hover {
+    color: var(--ink);
+  }
+
+  .text-link:hover::before {
+    scale: 1 1;
   }
 }
 
 .text-link:focus-visible {
-  background-size:
-    100% 2.5px,
-    100% 1px;
+  color: var(--ground);
+}
+
+.privacy .text-link:focus-visible {
+  color: var(--ink);
+}
+
+.text-link:focus-visible::before {
+  scale: 1 1;
 }
 
 /* ------------------------------------------------------------------ header */
@@ -1264,6 +1293,8 @@ html:not(.motion) .chapter__count .chapter__of {
 .stage__steps {
   grid-row: 5;
   display: grid;
+  /* The rules run from the caption's divider, so the marker sits on its own row. */
+  margin-inline-start: calc(var(--gutter) * -1);
   border-block-start: 1px solid var(--ink);
   font-size: var(--t-xs);
 }
@@ -1274,6 +1305,7 @@ html:not(.motion) .chapter__count .chapter__of {
   grid-template-columns: 2.5rem minmax(0, 1fr);
   align-items: center;
   padding-block: 0.42rem;
+  padding-inline-start: var(--gutter);
   border-block-end: 1px solid var(--line);
   color: var(--muted);
   transition: color 0.4s var(--ease);
@@ -1287,7 +1319,6 @@ html:not(.motion) .chapter__count .chapter__of {
 
 .stage__step-name {
   font-weight: 500;
-  transition: translate 0.5s var(--ease);
 }
 
 .stage__step.is-current {
@@ -1299,8 +1330,8 @@ html:not(.motion) .chapter__count .chapter__of {
   content: "";
   position: absolute;
   inset-block: -1px;
-  inset-inline-start: calc(var(--gutter) * -1 - 1px);
-  inline-size: 3px;
+  inset-inline-start: -1px;
+  inline-size: 4px;
   background: var(--ink);
   scale: 1 0;
   transition: scale 0.45s var(--ease);
@@ -1311,7 +1342,6 @@ html:not(.motion) .chapter__count .chapter__of {
 }
 
 .stage__step.is-current .stage__step-name {
-  translate: 0.6rem 0;
   font-weight: 650;
 }
 
@@ -1383,7 +1413,7 @@ html:not(.motion) .chapter__count .chapter__of {
   column-gap: var(--gutter);
   row-gap: 2.5rem;
   align-items: center;
-  padding-block: clamp(96px, 18svh, 200px);
+  padding-block: clamp(72px, 12svh, 136px);
   padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
 }
 
@@ -1916,6 +1946,12 @@ html:not(.motion) .live--drag {
       inset 0 0 0 max(1px, calc(var(--u) * 2.5)) var(--accent),
       0 calc(var(--u) * 8) calc(var(--u) * 18) calc(var(--u) * -8) rgb(43 71 245 / 0.45);
     background: #dde2fb;
+    translate: calc(var(--u) * 4) 0;
+  }
+
+  .card--pick.is-a:hover .card__avatar,
+  .card--pick.is-b:hover .card__avatar {
+    background: var(--ink);
   }
 }
 
@@ -2107,8 +2143,26 @@ html:not(.motion) .live--drag {
     padding-block-end: 48px;
   }
 
-  .calc {
-    padding-block: 72px;
+  .calc,
+  .drag,
+  .exports,
+  .privacy {
+    padding-block: 64px;
+  }
+
+  .drag {
+    row-gap: 1.75rem;
+  }
+
+  /* The pinned tree fades at the sides of the phone instead of being cut by them. */
+  .live--stage .live__view {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      #000 14px,
+      #000 calc(100% - 14px),
+      transparent 100%
+    );
   }
 }
 
@@ -2121,7 +2175,7 @@ html:not(.motion) .live--drag {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--gutter);
-  padding-block: calc(var(--header-h) + clamp(48px, 10svh, 120px)) clamp(64px, 12svh, 140px);
+  padding-block: calc(var(--header-h) + clamp(48px, 10svh, 120px)) clamp(40px, 6svh, 72px);
   padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
 }
 
@@ -2336,7 +2390,7 @@ html:not(.motion) .live--drag {
   grid-column: 2;
   grid-row: 1;
   justify-self: center;
-  inline-size: min(100% - var(--gutter) * 2, 100cqh * var(--ratio, 2.6), 820px);
+  inline-size: min(100% - var(--gutter) * 2, 100cqh * var(--ratio, 2.6), 1040px);
 }
 
 .card--empty {
@@ -2435,7 +2489,7 @@ html:not(.motion) .live--drag {
   }
 
   .missing__title {
-    font-size: 10.2vw;
+    font-size: 9vw;
   }
 }
 
