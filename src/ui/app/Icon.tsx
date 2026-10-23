@@ -18,6 +18,25 @@ const PATHS = {
   viewTimeline: "M2 4h6M5 8h8M3 12h7",
   relate: "M4.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM11.5 13a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6 6.5l4 3.5",
   cake: "M2.5 8h11v5.5h-11zM2.5 11h11M8 8V5M8 2.5V4",
+  plus: "M8 3v10M3 8h10",
+  person:
+    "M8 7.5a2.75 2.75 0 1 0 0-5.5 2.75 2.75 0 0 0 0 5.5ZM2.5 14c0-3 2.5-4.75 5.5-4.75S13.5 11 13.5 14",
+  chevronDown: "m4 6 4 4 4-4",
+  check: "m3 8.5 3.25 3.25L13 5",
+  trash: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.75 9h6.5l.75-9M6.75 7v4M9.25 7v4",
+  settings:
+    "M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
+  photo: "M2 4h12v9H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z",
+  more: "M3.5 8h.01M8 8h.01M12.5 8h.01",
+  export: "M8 2.5v7.5M4.75 7 8 10.25 11.25 7M2.5 11v2.5h11V11",
+  backup: "M2.5 3h11v3.5h-11zM3.5 6.5v6.5h9V6.5M6.5 9h3",
+  back: "M10 3.5 5.5 8l4.5 4.5",
+  tree: "M5.5 2.5h5v3h-5zM1.5 10.5h5v3h-5zM9.5 10.5h5v3h-5zM8 5.5V8M4 10.5V8h8v2.5",
+  // The tree list's card menu and Import.
+  pencil: "M10.5 2.5l3 3-8 8h-3v-3zM9 4l3 3",
+  copy: "M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3",
+  download: "M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 13.5h11",
+  upload: "M8 10.5v-8M4.5 6 8 2.5 11.5 6M2.5 13.5h11",
 } as const;
 
 export type IconName = keyof typeof PATHS;
@@ -31,20 +50,32 @@ const MIRRORED: ReadonlySet<IconName> = new Set([
   "redo",
   "viewDescendants",
   "viewTimeline",
+  "back",
 ]);
 
-/** A 16px stroke icon. Decorative: the button around it carries the label. */
-export function Icon({ name }: { name: IconName }) {
+/** Icons whose dots must render as dots: round caps on a zero-length segment. */
+const ROUND: ReadonlySet<IconName> = new Set([
+  "more",
+  "chevronDown",
+  "check",
+  "person",
+  "back",
+  "export",
+]);
+
+/** A 16px stroke icon (or `size` px). Decorative: the button around it carries the label. */
+export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   return (
     <svg
       className={MIRRORED.has(name) ? "icon icon--mirror" : "icon"}
       viewBox="0 0 16 16"
-      width="16"
-      height="16"
+      width={size}
+      height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="square"
+      strokeWidth={name === "more" ? 2.5 : 1.5}
+      strokeLinecap={ROUND.has(name) ? "round" : "square"}
+      strokeLinejoin={ROUND.has(name) ? "round" : undefined}
       aria-hidden="true"
       focusable="false"
     >

@@ -11,6 +11,7 @@ import {
   addParent,
   addSibling,
   addSpouse,
+  insertParent,
   reorderChild,
   setChildType,
 } from "./relations";
@@ -38,6 +39,8 @@ function dispatch(draft: Draft<TreeDocument>, cmd: Command, ctx: HandlerContext)
       return addSpouse(draft, cmd, ctx);
     case "addParent":
       return addParent(draft, cmd, ctx);
+    case "insertParent":
+      return insertParent(draft, cmd, ctx);
     case "addSibling":
       return addSibling(draft, cmd, ctx);
     case "reorderChild":

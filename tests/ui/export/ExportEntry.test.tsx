@@ -32,21 +32,21 @@ async function openEditor() {
     </Routes>,
     { repo: env.repo, route: "/app/t/t1" },
   );
-  await screen.findByRole("button", { name: "Menu" });
+  await screen.findByRole("button", { name: "More" });
   return userEvent.setup();
 }
 
 const dialog = () => screen.queryByRole("dialog", { name: "Export" });
 
 describe("opening the export dialog", () => {
-  test("the toolbar menu has an Export… entry", async () => {
+  test("the toolbar's More menu has an Export… entry", async () => {
     const user = await openEditor();
     expect(dialog()).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Menu" }));
-    await user.click(screen.getByRole("button", { name: "Export…" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitem", { name: "Export…" }));
     await waitFor(() => expect(dialog()).not.toBeNull());
     // The menu closed behind it.
-    expect(screen.queryByRole("button", { name: "Download backup (.json)" })).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   test("Ctrl+E and Cmd+E open it; Esc closes it", async () => {

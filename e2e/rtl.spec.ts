@@ -247,7 +247,8 @@ test.describe("screens", () => {
 
   test("birthdays panel", async ({ page }) => {
     await importTree(page, khanFamily());
-    await page.getByRole("button", { name: t("birthdays.open") }).click();
+    await page.getByRole("button", { name: t("toolbar.menu") }).click();
+    await page.getByRole("menuitem", { name: t("birthdays.open") }).click();
     const panel = page.getByRole("region", { name: t("birthdays.title") });
     await expect(panel).toContainText(t("birthdays.inDays", { count: 2 }));
     await expectOnScreen(panel);
@@ -353,7 +354,7 @@ test.describe("core flows", () => {
   test("year lines stay inside their card and clear of the avatar, on canvas and in SVG", async ({
     page,
   }, info) => {
-    // Ahmed's is the long deceased line ("1920 – †1999"); the others are birth years only.
+    // Ahmed's is the long deceased line ("1920 – 1999 · 79 yrs"); the others are birth years only.
     const tree = khanFamily();
     tree.persons.dad = {
       ...tree.persons.dad!,
@@ -361,7 +362,7 @@ test.describe("core flows", () => {
       death: { date: { year: 1999 } },
     };
     await importTree(page, tree);
-    await expect(page.locator(".stam-card__years", { hasText: "1920 – †1999" })).toBeVisible();
+    await expect(page.locator(".stam-card__years", { hasText: "1920 – 1999" })).toBeVisible();
     expect(await page.locator(".stam-canvas .stam-card__years").count()).toBe(4);
     expect(await yearLineProblems(page, ".stam-canvas")).toEqual([]);
 

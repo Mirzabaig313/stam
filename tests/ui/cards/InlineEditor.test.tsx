@@ -53,8 +53,31 @@ describe("InlineEditor", () => {
     expect(added()?.firstName).toBe("");
     expect(document.activeElement).toBe(input());
     const form = input().closest("form")!;
-    // Centred on the card's middle, from its inline-start edge.
-    expect(form.style.transform).toBe("translate(100px, 236px) translateY(-50%)");
+    // In the card's place: centred on the card, at its size (scale 1 at 100 %).
+    expect(form.style.transform).toBe("translate(190px, 236px) translate(-50%, -50%) scale(1)");
+  });
+
+  test("the ✓ button confirms and the ✕ button cancels", async () => {
+    const first = await begin("child", "c1");
+    await first.user.type(input(), "Bilal");
+    await first.user.click(male());
+    await first.user.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(first.added()?.firstName).toBe("Bilal");
+    expect(first.store.getState().editing).toBeNull();
+    cleanup();
+
+    const second = await begin("child", "c1");
+    await second.user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(second.store.getState().editing).toBeNull();
+    expect(second.count()).toBe(second.before);
+  });
+
+  test("a missing gender is a small hint under the card, tied to the name field", async () => {
+    const { user } = await begin("child", "c1");
+    await user.type(input(), "Bilal{Enter}");
+    const hint = screen.getByRole("alert");
+    expect(hint.classList).toContain("inline-editor__hint");
+    expect(input().getAttribute("aria-describedby")).toBe(hint.id);
   });
 
   test("Enter with no gender chosen for a child shows 'Choose ♂ or ♀' and does not commit", async () => {

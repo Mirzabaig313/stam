@@ -6,6 +6,8 @@ import type { Rect, Viewport } from "./viewport";
 
 export const MINIMAP_W = 160;
 export const MINIMAP_H = 120;
+/** A tree drawn with fewer cards fits on the screen: no minimap (on a phone, CSS hides it). */
+export const MINIMAP_MIN_CARDS = 10;
 const PAD = 8;
 /** Smallest dot side in minimap px, so single cards stay visible on huge trees. */
 const MIN_DOT = 1.5;

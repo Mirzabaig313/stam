@@ -70,6 +70,7 @@
   },
   "common": {
     "cancel": "Cancel",
+    "close": "Close",
     "create": "Create",
     "save": "Save",
     "delete": "Delete",
@@ -78,7 +79,7 @@
   },
   "treeList": {
     "title": "Your trees",
-    "empty": "Create your first tree",
+    "empty": "Start your family tree",
     "emptyHint": "Everything stays on this device. Nothing is uploaded.",
     "newTree": "New tree",
     "import": "Import",
@@ -86,20 +87,19 @@
     "copyName": "{{name}} (copy)",
     "people_one": "{{count}} person",
     "people_other": "{{count}} people",
+    "generations_one": "{{count}} generation",
+    "generations_other": "{{count}} generations",
     "edited": "edited {{when}}",
     "loadFailed": "Couldn't read your trees from this browser.",
     "actionFailed": "That didn't work. Try again.",
     "rename": "Rename",
-    "renameAria": "Rename {{name}}",
     "duplicate": "Duplicate",
-    "duplicateAria": "Duplicate {{name}}",
-    "backup": "Backup",
-    "backupAria": "Download backup of {{name}}",
-    "deleteAria": "Delete {{name}}",
     "newDialogTitle": "New tree",
     "renameDialogTitle": "Rename tree",
     "deleteDialogTitle": "Delete this tree?",
-    "deleteDialogBody": "“<name/>” and all the people in it will be removed from this device. This can't be undone."
+    "deleteDialogBody": "“<name/>” and all the people in it will be removed from this device. This can't be undone.",
+    "actionsFor": "Actions for {{name}}",
+    "downloadBackup": "Download backup"
   },
   "banner": {
     "backupDue": "It's been a while since your last backup. Open a tree and choose Download backup to save a copy.",
@@ -133,8 +133,9 @@
       "relate": "Find out how two people are related.",
       "relateKeys": "Select one person, then Shift+click another",
       "birthdays": "Upcoming birthdays and what happened on this day.",
-      "menu": "Export images and PDFs, download a backup.",
-      "exportKeys": "{{keys}} to export"
+      "menu": "Focus mode, birthdays, export, backup and settings.",
+      "exportKeys": "{{keys}} to export",
+      "addPerson": "Add a relative of the selected person."
     },
     "undo": "Undo",
     "redo": "Redo",
@@ -146,11 +147,28 @@
     "unconnected": "{{count}} not connected",
     "unconnectedAria": "{{count}} not connected. Show them.",
     "backTo": "← Back to <name/>",
-    "menu": "Menu",
+    "menu": "More",
     "downloadBackup": "Download backup (.json)",
-    "includePhotos": "Include photos",
     "backupFailed": "Couldn't create the backup.",
-    "export": "Export…"
+    "export": "Export…",
+    "addPerson": "Add person",
+    "addShort": "Add",
+    "zoom": "Zoom",
+    "downloadBackupPhotos": "Download backup with photos",
+    "add": {
+      "to": "Add to {{name}}",
+      "heading": "Add to <name/>",
+      "parent": "Parent",
+      "spouse": "Spouse",
+      "child": "Child",
+      "childWith": "Child with {{name}}",
+      "childAlone": "Child, no partner",
+      "sibling": "Sibling",
+      "selectFirst": "Select someone first",
+      "selectFirstHint": "Click a card, then add their parent, spouse, child or sibling.",
+      "unconnected": "Add someone not connected yet",
+      "noneHere": "This view can't add relatives to this person."
+    }
   },
   "saveStatus": {
     "saving": "Saving…",
@@ -179,11 +197,9 @@
     "notes": "Notes",
     "photo": {
       "upload": "Upload photo",
-      "replace": "Replace photo",
       "remove": "Remove photo",
       "failed": "Couldn't use that photo. Try another image."
     },
-    "partner": "Partner",
     "noPartner": "No partner recorded",
     "status": {
       "label": "Status",
@@ -224,7 +240,54 @@
     "unconnected": {
       "title": "Not connected",
       "none": "Everyone is connected."
-    }
+    },
+    "deceased": "Deceased",
+    "summary": {
+      "span": "{{born}} – {{died}}",
+      "born": "Born {{date}}",
+      "died": "Died {{date}}"
+    },
+    "family": {
+      "title": "Family",
+      "parents": "Parents",
+      "spouses": "Spouses",
+      "children": "Children",
+      "siblings": "Siblings",
+      "half": "half",
+      "addParent": "Add parent",
+      "addSpouse": "Add spouse",
+      "addChild": "Add child",
+      "addSibling": "Add sibling",
+      "add": "Add",
+      "addAbove": "Add a person above"
+    },
+    "union": {
+      "with": "Partnership with {{name}}",
+      "alone": "Partnership with no partner recorded",
+      "since": "{{status}}, {{date}}",
+      "span": "{{status}}, {{start}} – {{end}}",
+      "edit": "Edit partnership with {{name}}",
+      "editAlone": "Edit partnership"
+    },
+    "details": {
+      "title": "Details",
+      "life": "Life",
+      "names": "Names"
+    },
+    "add": {
+      "birthDate": "Add birth date",
+      "birthPlace": "Add birth place",
+      "death": "Add death",
+      "deathLabel": "Death",
+      "nickname": "Add nickname",
+      "nativeName": "Add native name",
+      "notes": "Add notes"
+    },
+    "notesShow": "Show notes",
+    "notesHide": "Hide notes",
+    "photoChange": "Change photo",
+    "sheetExpand": "Expand panel",
+    "sheetCollapse": "Collapse panel"
   },
   "canvas": {
     "region": "Family tree",
@@ -247,6 +310,17 @@
       "linked": "linked copy",
       "hidden_one": "{{count}} hidden descendant",
       "hidden_other": "{{count}} hidden descendants"
+    },
+    "deceased": "Deceased",
+    "empty": {
+      "title": "Every tree starts with one person",
+      "body": "Add yourself, a parent or a grandparent. Everyone else grows from their card."
+    },
+    "age_one": "{{count}} yr",
+    "age_other": "{{count}} yrs",
+    "years": {
+      "born": "b. {{year}}",
+      "died": "d. {{year}}"
     }
   },
   "dnd": {
@@ -268,7 +342,7 @@
     }
   },
   "handles": {
-    "addParent": "Add parent of {{name}}",
+    "addParent": "Add a person above {{name}}",
     "addChild": "Add child of {{name}}",
     "addBesideLeft": "Add spouse or sibling on the left of {{name}}",
     "addBesideRight": "Add spouse or sibling on the right of {{name}}",
@@ -286,12 +360,13 @@
       "child": "New child of {{name}}",
       "spouse": "New spouse of {{name}}",
       "parent": "New parent of {{name}}",
-      "sibling": "New sibling of {{name}}"
+      "sibling": "New sibling of {{name}}",
+      "between": "New parent of {{name}}"
     },
     "unionChooser": {
       "title": "Child of which family?",
       "label": "Choose the family of the new child of {{name}}",
-      "noPartner": "No partner",
+      "noPartner": "Other parent unknown",
       "cancel": "Cancel"
     },
     "error": {
@@ -301,7 +376,10 @@
       "ALREADY_LINKED": "They are already linked.",
       "NOT_FOUND": "This person no longer exists.",
       "INVALID": "That can't be added here."
-    }
+    },
+    "addBetween": "Add a person between {{parents}} and {{name}}",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
   },
   "export": {
     "pdf": {
@@ -599,17 +677,20 @@
     },
     "direction": "Tree direction",
     "directions": {
-      "auto": "Follow the language",
+      "auto": "Auto",
       "ltr": "Left to right",
       "rtl": "Right to left"
     },
+    "directionHint": "Auto follows the interface language.",
     "motion": "Reduce motion",
     "motions": {
-      "system": "Follow this device",
+      "system": "Device",
       "reduce": "On",
       "full": "Off"
     },
-    "motionHint": "Turns off animated moves of the tree and the cards."
+    "motionHint": "Turns off animated moves of the tree and the cards. Device follows your system setting.",
+    "appearance": "Appearance",
+    "layout": "Language and layout"
   },
   "language": {
     "label": "Language",

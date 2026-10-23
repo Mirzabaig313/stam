@@ -1,6 +1,7 @@
 // SVG has no <button>: the bars are groups with an explicit role, as canvas cards are.
 /* oxlint-disable jsx-a11y/prefer-tag-over-role */
 import "@fontsource-variable/archivo/wdth-italic.css";
+import { yearRange } from "@/ui/cards/years";
 import "@/ui/canvas/canvas.css";
 import "./views.css";
 
@@ -18,7 +19,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { lifespanLabel } from "@/core/dates/fuzzy";
 import { CARD_H } from "@/core/layout/constants";
 import { displayName } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
@@ -336,7 +336,7 @@ export const Timeline = forwardRef<ViewHandle, TimelineProps>(function Timeline(
           <BarText
             box={box}
             name={personLabel(person, t)}
-            years={lifespanLabel(person.birth?.date, person.death?.date, person.isLiving)}
+            years={yearRange(person)}
             placeholder={placeholder}
             rtl={rtl}
           />

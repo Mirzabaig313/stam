@@ -18,9 +18,11 @@ import type { LayoutNode } from "@/core/layout/types";
 import { childrenOf, displayName, parentsOf, topmostAncestor } from "@/core/model/tree";
 import type { Person, TreeDocument } from "@/core/model/types";
 import type { Lod } from "@/ui/canvas/viewport";
+import { avatarHue } from "@/ui/design/avatarHue";
 import { generationHue } from "@/ui/settings/colorModes";
 
 import { describePerson, personLabel } from "./describe";
+import { lifeLine } from "./years";
 
 // ---- Text fitting -------------------------------------------------------------------------
 // SVG text does not ellipsize, so names are measured (canvas 2D, same font as the CSS) and cut
@@ -33,6 +35,7 @@ const PLACEHOLDER_FONT: Font = { size: 13, weight: 400, italic: true };
 const NATIVE_FONT: Font = { size: 12, weight: 400 };
 const SMALL_FONT: Font = { size: 11, weight: 400 };
 const BADGE_FONT: Font = { size: 11, weight: 600 };
+const CHIP_FONT: Font = { size: 11, weight: 500 };
 const BIG_NAME_FONT: Font = { size: 26, weight: 600 };
 const BIG_PLACEHOLDER_FONT: Font = { size: 26, weight: 400, italic: true };
 
@@ -103,13 +106,20 @@ export function fitText(text: string, max: number, font: Font): string {
   return `${chars.slice(0, lo).join("").trimEnd()}…`;
 }
 
+/** A life line that is too long drops its age (" · 80 yrs") before it is cut with "…". */
+function fitLifeLine(line: string, max: number): string {
+  if (textWidth(line, SMALL_FONT) <= max) return line;
+  const at = line.lastIndexOf(" · ");
+  return fitText(at > 0 ? line.slice(0, at) : line, max, SMALL_FONT);
+}
+
 // ---- Card geometry (card-local px, inline-start origin) --------------------------------------
 
 const RADIUS = 6;
 const AVATAR_X = 30;
 const AVATAR_R = 18;
 const TEXT_X = 60;
-const TEXT_END = CARD_W - 12;
+const TEXT_END = CARD_W - 10;
 const GLYPH_SPACE = 16;
 const HIT = 24;
 
@@ -138,7 +148,13 @@ export function genderMarkPath(gender: Person["gender"], cx: number): string {
   }
   return `${ring(cx, 9.6, 3.2)}M${cx} 12.8V18.6M${cx - 2.2} 16.2H${cx + 2.2}`;
 }
-const CHEVRON_INSET = 14;
+/** The collapse chevron: a small disc on the card's bottom edge, where the "+N" pill goes. */
+const CHEVRON_R = 10;
+/** The coloured edge at the card's inline start: gender, branch or generation (CSS decides). */
+const SPINE_W = 5;
+/** The "+N" pill of a collapsed branch: on the card's bottom edge, toward the inline end. */
+const PILL_H = 20;
+const PILL_END = 12;
 
 /** "AK" for Ali Khan; "?" for an unnamed placeholder. */
 export function initialsOf(person: Person): string {
@@ -191,6 +207,8 @@ export type PersonCardProps = {
    * also carries its gender and generation hue: `data-color-mode` on <html> picks what is shown.
    */
   branch?: number;
+  /** Today, for ages on the life line; tests pass a fixed date. */
+  now?: Date;
   /**
    * Exports: the drawing only. No roles, focus, handlers or controls, no hover or focus shapes,
    * the drawn text left readable, and `data-person-id` on the card's root group.
@@ -222,6 +240,7 @@ function PersonCardImpl({
   dragRole,
   branch,
   static: isStatic = false,
+  now,
   onSelect,
   onToggleCollapse,
   onViewFamily,
@@ -262,19 +281,27 @@ function PersonCardImpl({
     : "";
   const placeholder = person?.isPlaceholder === true && displayName(person) === "";
   const nativeName = person?.nativeName?.trim() ?? "";
-  const years = person
-    ? lifespanLabel(person.birth?.date, person.death?.date, person.isLiving)
-    : "";
+  // Exports keep their own years line ("1913 – †1964"); the canvas reads "1913–1964".
+  const years = !person
+    ? ""
+    : isStatic
+      ? lifespanLabel(person.birth?.date, person.death?.date, person.isLiving)
+      : lifeLine(person, t, now, dir);
 
   if (!person) return null;
 
   const isCollapsed = collapsed ?? hiddenCount > 0;
   const deceased = !person.isLiving || person.death !== undefined;
+  /** A deceased person with no years: a quiet "Deceased" chip on the years line. */
+  const deceasedChip = !isStatic && !linked && deceased && years === "" && !placeholder;
+  const deceasedText = deceasedChip ? t("canvas.deceased") : "";
+  const deceasedW = deceasedChip ? Math.ceil(textWidth(deceasedText, CHIP_FONT)) + 12 : 0;
   /** Inline-start x to physical x: the card mirrors in RTL. */
   const sx = (x: number) => (dir === "rtl" ? CARD_W - x : x);
 
   const nodeClass = [
     "stam-node",
+    selected && "stam-node--selected",
     dimmed && "stam-node--dimmed",
     dragRole === "source" && "stam-node--drag-source",
   ]
@@ -304,7 +331,7 @@ function PersonCardImpl({
   // Text lines: name, then the native name, then the years (or "see original" on a linked copy).
   // Without a last line the block is centred: a lone name sits on the card's middle.
   // A static (export) card has no "see original" link: a linked copy's last line stays empty.
-  const hasLastLine = isStatic ? !linked && years !== "" : linked || years !== "";
+  const hasLastLine = isStatic ? !linked && years !== "" : linked || years !== "" || deceasedChip;
   const loneName = !hasLastLine && !nativeName;
   const nameY = hasLastLine ? (nativeName ? 25 : 31) : nativeName ? 31 : CARD_H / 2;
   const nativeY = hasLastLine ? 41 : 47;
@@ -338,14 +365,26 @@ function PersonCardImpl({
       </>
     );
   } else {
-    const badge = hiddenCount > 0 ? t("canvas.hiddenBadge", { count: hiddenCount }) : "";
-    const badgeW = badge ? Math.ceil(textWidth(badge, BADGE_FONT)) + 12 : 0;
     shape = (
       <>
         {!isStatic && (
           <rect className="stam-card__lift" y={2} width={CARD_W} height={CARD_H} rx={RADIUS} />
         )}
         <rect className="stam-card__bg" width={CARD_W} height={CARD_H} rx={RADIUS} />
+        {!isStatic && !placeholder && (
+          <>
+            <clipPath id={`${clipId}-card`}>
+              <rect className="stam-card__clip" width={CARD_W} height={CARD_H} rx={RADIUS} />
+            </clipPath>
+            <rect
+              className="stam-card__spine"
+              x={dir === "rtl" ? CARD_W - SPINE_W : 0}
+              width={SPINE_W}
+              height={CARD_H}
+              clipPath={`url(#${clipId}-card)`}
+            />
+          </>
+        )}
       </>
     );
     texts = (
@@ -376,6 +415,8 @@ function PersonCardImpl({
             <>
               <circle
                 className="stam-card__avatar-disc"
+                // A warm hue from the name (not in exports: they keep their own plain disc).
+                data-hue={isStatic || placeholder ? undefined : avatarHue(name)}
                 cx={sx(AVATAR_X)}
                 cy={CARD_H / 2}
                 r={AVATAR_R}
@@ -422,6 +463,20 @@ function PersonCardImpl({
             {fitText(nativeName, TEXT_END - TEXT_X, NATIVE_FONT)}
           </text>
         )}
+        {deceasedChip && (
+          <g className="stam-card__deceased">
+            <rect
+              x={dir === "rtl" ? CARD_W - TEXT_X - deceasedW + 2 : TEXT_X - 2}
+              y={lastLineY - 12}
+              width={deceasedW}
+              height={16}
+              rx={8}
+            />
+            <text x={sx(TEXT_X + 6)} y={lastLineY} fontSize={CHIP_FONT.size}>
+              {deceasedText}
+            </text>
+          </g>
+        )}
         {!linked && years && (
           <text
             className="stam-card__years"
@@ -433,10 +488,10 @@ function PersonCardImpl({
                 with an LTR <tspan>: Chromium and WebKit resolve text-anchor from an only child's
                 direction, so the line would start at x and grow right, over the avatar. The
                 LRI…PDI isolate keeps the text's own RTL direction, so it ends at x on the right. */}
-            {isolateLtr(
-              fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT),
-              dir,
-            )}
+            {isStatic
+              ? isolateLtr(fitText(years, TEXT_END - TEXT_X, SMALL_FONT), dir)
+              : // The life line isolates its own year range (it mixes words and years).
+                fitLifeLine(years, TEXT_END - TEXT_X)}
           </text>
         )}
         {isStatic ? (
@@ -458,26 +513,16 @@ function PersonCardImpl({
             {person.gender === "male" ? "♂" : "♀"}
           </text>
         )}
-        {badge && (
-          <g className="stam-card__badge">
-            <rect x={(CARD_W - badgeW) / 2} y={CARD_H - 9} width={badgeW} height={18} />
-            <text
-              x={CARD_W / 2}
-              y={CARD_H}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={BADGE_FONT.size}
-              fontWeight={BADGE_FONT.weight}
-            >
-              {badge}
-            </text>
-          </g>
-        )}
       </>
     );
   }
 
   const full = lod === "full";
+  const badge =
+    hiddenCount > 0 && isCollapsed ? t("canvas.hiddenBadge", { count: hiddenCount }) : "";
+  const badgeW = badge ? Math.max(PILL_H + 8, Math.ceil(textWidth(badge, BADGE_FONT)) + 16) : 0;
+  /** The pill's centre, physical px: on the bottom edge, its inline end PILL_END from the card's. */
+  const pillX = sx(CARD_W - PILL_END - badgeW / 2);
   const select = () => onSelect?.(personId);
   const toggle = () => onToggleCollapse?.(personId);
   const seeOriginal = () => onSeeOriginal?.(personId);
@@ -546,6 +591,21 @@ function PersonCardImpl({
       </g>
       <g className={decorClass} aria-hidden="true">
         {texts}
+        {full && hasChildren && badge && (
+          <g className="stam-card__badge">
+            <rect x={pillX - badgeW / 2} y={CARD_H - PILL_H / 2} width={badgeW} height={PILL_H} />
+            <text
+              x={pillX}
+              y={CARD_H}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize={BADGE_FONT.size}
+              fontWeight={BADGE_FONT.weight}
+            >
+              {badge}
+            </text>
+          </g>
+        )}
         {dragRole === "blocked" && (
           <line className="stam-card__strike" x1={0} y1={CARD_H} x2={CARD_W} y2={0} />
         )}
@@ -562,13 +622,32 @@ function PersonCardImpl({
           aria-expanded={!isCollapsed}
           onClick={toggle}
           onKeyDown={onActivateKey(toggle)}
-          transform={`translate(${sx(CARD_W - CHEVRON_INSET)} ${CARD_H - CHEVRON_INSET})`}
+          transform={
+            badge
+              ? `translate(${pillX} ${CARD_H})`
+              : `translate(${sx(CARD_W - PILL_END - CHEVRON_R)} ${CARD_H})`
+          }
         >
-          <rect className="stam-hit" x={-HIT / 2} y={-HIT / 2} width={HIT} height={HIT} />
-          <path
-            d={isCollapsed ? "M-2 -4L2 0L-2 4" : "M-4 -2L0 2L4 -2"}
-            transform={dir === "rtl" && isCollapsed ? "scale(-1 1)" : undefined}
-          />
+          {badge ? (
+            // The "+N" pill (drawn in the decor group, under this hit area) is the expand control.
+            <rect
+              className="stam-hit stam-card__pill-hit"
+              x={-badgeW / 2 - 2}
+              y={-HIT / 2}
+              width={badgeW + 4}
+              height={HIT}
+              rx={HIT / 2}
+            />
+          ) : (
+            <>
+              <rect className="stam-hit" x={-HIT / 2} y={-HIT / 2} width={HIT} height={HIT} />
+              <circle className="stam-card__chevron-disc" r={CHEVRON_R} />
+              <path
+                d={isCollapsed ? "M-2 -4L2 0L-2 4" : "M-4 -2L0 2L4 -2"}
+                transform={dir === "rtl" && isCollapsed ? "scale(-1 1)" : undefined}
+              />
+            </>
+          )}
         </g>
       )}
 

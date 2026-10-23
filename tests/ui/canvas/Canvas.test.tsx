@@ -443,10 +443,21 @@ describe("Canvas", () => {
     }
   });
 
-  test("draws the generation ruler and the minimap", () => {
-    const { container } = setup();
+  test("draws the generation ruler; a small tree has no minimap", () => {
+    const { container, layout } = setup();
+    expect(layout.nodes.length).toBeLessThan(10);
     const labels = [...container.querySelectorAll(".stam-ruler__label")].map((l) => l.textContent);
     expect(labels).toEqual(["I", "II", "III"]);
+    expect(container.querySelector(".stam-minimap")).toBeNull();
+  });
+
+  test("a tree of 10 or more cards gets the minimap once part of it is off screen", () => {
+    const { container, layout, ref } = setup({ doc: bigFamily(12) });
+    expect(layout.nodes.length).toBeGreaterThanOrEqual(10);
+    act(() => ref.current!.fit());
+    // All of it in view: the minimap would only cover cards.
+    expect(container.querySelector(".stam-minimap")).toBeNull();
+    for (let i = 0; i < 4; i++) act(() => ref.current!.zoomIn());
     expect(container.querySelector(".stam-minimap")).not.toBeNull();
   });
 });

@@ -155,14 +155,16 @@ describe("EditorPage canvas", () => {
     await user.click(card(/^Ali Khan/));
     expect(container.querySelectorAll(".stam-node--dimmed").length).toBe(0);
 
-    await user.click(screen.getByRole("button", { name: "Focus mode" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Focus mode" }));
     // Ali, his parents stay; his brother and sister are dimmed.
     const dimmed = [...container.querySelectorAll(".stam-node--dimmed")].map(
       (n) => n.querySelector("[aria-label]")?.getAttribute("aria-label") ?? "",
     );
     expect(dimmed.map((l) => l.split(",")[0]).toSorted()).toEqual(["Omar Khan", "Zainab Khan"]);
 
-    await user.click(screen.getByRole("button", { name: "Focus mode" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "Focus mode" }));
     expect(container.querySelectorAll(".stam-node--dimmed").length).toBe(0);
   });
 

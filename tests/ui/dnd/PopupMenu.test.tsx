@@ -12,17 +12,17 @@ afterEach(() => {
   document.documentElement.removeAttribute("dir");
 });
 
-function Box({ at }: { at: [number, number] }) {
-  const { ref, style } = useAnchoredBox(at);
+function Box({ at, opens }: { at: [number, number]; opens?: "end" | "start" }) {
+  const { ref, style } = useAnchoredBox(at, opens);
   return <div ref={ref} data-testid="box" style={{ position: "fixed", ...style }} />;
 }
 
-function placed(at: [number, number]) {
+function placed(at: [number, number], opens?: "end" | "start") {
   HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
     if (this.dataset.testid === "box") return DOMRect.fromRect({ width: 200, height: 100 });
     return originalRect.call(this);
   };
-  const { getByTestId } = render(<Box at={at} />);
+  const { getByTestId } = render(<Box at={at} opens={opens} />);
   const box = getByTestId("box");
   return { left: Number.parseFloat(box.style.left), top: Number.parseFloat(box.style.top) };
 }
@@ -40,5 +40,14 @@ describe("useAnchoredBox", () => {
   test("RTL near the left edge: kept inside the window", () => {
     document.documentElement.dir = "rtl";
     expect(placed([50, 100]).left).toBe(8);
+  });
+
+  test("opening toward the start: LTR to the left of the point, from a menu button's end", () => {
+    expect(placed([500, 100], "start")).toEqual({ left: 300, top: 100 });
+  });
+
+  test("opening toward the start in RTL: to the right of the point", () => {
+    document.documentElement.dir = "rtl";
+    expect(placed([500, 100], "start")).toEqual({ left: 500, top: 100 });
   });
 });

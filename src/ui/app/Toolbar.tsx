@@ -1,17 +1,18 @@
-import { type FormEvent, type Ref, useCallback, useEffect, useRef, useState } from "react";
+import "./toolbar.css";
+
+import { type FormEvent, type Ref, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
-import { BirthdaysMenu } from "@/ui/birthdays/BirthdaysMenu";
 import { SettingsDialog } from "@/ui/settings/SettingsDialog";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
-import { downloadBackup } from "./downloadBackup";
+import { AddPersonButton } from "./AddPerson";
 import { Icon, type IconName } from "./Icon";
-import { useRepo } from "./RepoContext";
+import { MoreMenu } from "./MoreMenu";
 import { SaveStatus } from "./SaveStatus";
 import { shortcutLabel, Tip } from "./Tip";
 import { FanGenerations, FocusControl, ViewSwitcher } from "./ViewSwitcher";
@@ -152,122 +153,6 @@ function TreeName() {
   );
 }
 
-/** The menu: export, settings, and the backup (FR-X7) with its "Include photos" box. */
-function BackupMenu({
-  onOpenExport,
-  onOpenSettings,
-}: {
-  onOpenExport?: () => void;
-  onOpenSettings: () => void;
-}) {
-  const { t } = useTranslation();
-  const repo = useRepo();
-  const store = useEditorStore();
-  const [open, setOpen] = useState(false);
-  const [includePhotos, setIncludePhotos] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLButtonElement>(null);
-
-  /** Closes the panel and returns focus to its button, which the panel was holding. */
-  const close = useCallback(() => {
-    setOpen(false);
-    trigger.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      if (!root.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, close]);
-
-  async function download() {
-    const doc = store.getState().doc;
-    if (!doc) return;
-    setBusy(true);
-    setFailed(false);
-    try {
-      await downloadBackup(repo, doc, { includePhotos });
-      close();
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="menu" ref={root} data-menu>
-      <IconButton
-        ref={trigger}
-        icon="menu"
-        label={t("toolbar.menu")}
-        hint={t("toolbar.hint.menu")}
-        shortcut={
-          onOpenExport ? t("toolbar.hint.exportKeys", { keys: shortcutLabel("E") }) : undefined
-        }
-        align="end"
-        expanded={open}
-        hasMenu
-        onClick={() => setOpen((o) => !o)}
-      />
-      {open && (
-        <div className="menu-panel">
-          {onOpenExport && (
-            <button
-              type="button"
-              className="button"
-              onClick={() => {
-                setOpen(false);
-                onOpenExport();
-              }}
-            >
-              {t("toolbar.export")}
-            </button>
-          )}
-          <button
-            type="button"
-            className="button"
-            onClick={() => {
-              setOpen(false);
-              onOpenSettings();
-            }}
-          >
-            {t("settings.open")}
-          </button>
-          <label className="check">
-            <input
-              type="checkbox"
-              checked={includePhotos}
-              onChange={(event) => setIncludePhotos(event.currentTarget.checked)}
-            />
-            {t("toolbar.includePhotos")}
-          </label>
-          <button type="button" className="button" disabled={busy} onClick={() => void download()}>
-            {t("toolbar.downloadBackup")}
-          </button>
-          {failed && (
-            <p className="notice" role="alert">
-              {t("toolbar.backupFailed")}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function Toolbar({
   autosaver,
   onZoomIn,
@@ -285,8 +170,6 @@ export function Toolbar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const canUndo = useEditor((s) => s.canUndo);
   const canRedo = useEditor((s) => s.canRedo);
-  const focusMode = useEditor((s) => s.focusMode);
-  const relationOpen = useEditor((s) => s.relation !== null);
   // Fan and timeline are read-only: nothing to undo. They zoom and fit through their own handle.
   const readOnlyView = useEditor((s) => isReadOnlyView(s.viewMode));
   // A view root that is the tree root itself has nothing to go back to.
@@ -301,109 +184,113 @@ export function Toolbar({
     return (root && displayName(root)) || t("app.unknownPerson");
   });
 
+  // One row on a desktop: where the tree is (start), how it is drawn (centre), what to do (end).
+  // On a phone the start and end make a top bar and the dock (add, search, views) a bottom bar;
+  // the view's own controls (breadcrumb, focus, fan generations) float under the bar.
   return (
     <header className="toolbar">
-      <div className="toolbar-group">
-        <Link to="/app" className="toolbar-link">
-          {t("toolbar.myTrees")}
+      <div className="toolbar-group toolbar-start">
+        <Link to="/app" className="toolbar-back">
+          <Icon name="back" />
+          <span className="toolbar-back__label">{t("toolbar.myTrees")}</span>
         </Link>
         <TreeName />
-        <SaveStatus autosaver={autosaver} />
-      </div>
-
-      <div className="toolbar-group toolbar-views">
-        <ViewSwitcher />
-        <FocusControl />
-        <FanGenerations />
-      </div>
-
-      {viewRootId !== null && (
-        <button
-          type="button"
-          className="breadcrumb"
-          onClick={() => store.getState().setViewRoot(null)}
-        >
-          <Trans i18nKey="toolbar.backTo" components={{ name: <bdi>{rootName}</bdi> }} />
-        </button>
-      )}
-
-      <div className="toolbar-group toolbar-tools">
         {unconnected > 0 && (
           <button
             type="button"
-            className="badge"
+            className="chip toolbar-unconnected"
+            data-hue="4"
             aria-label={t("toolbar.unconnectedAria", { count: unconnected })}
             onClick={onOpenUnconnected}
           >
             {t("toolbar.unconnected", { count: unconnected })}
           </button>
         )}
-        <IconButton
-          icon="undo"
-          label={t("toolbar.undo")}
-          hint={t("toolbar.hint.undo")}
-          shortcut={shortcutLabel("Z")}
-          disabled={!canUndo || readOnlyView}
-          keepFocus
-          onClick={() => store.getState().undo()}
-        />
-        <IconButton
-          icon="redo"
-          label={t("toolbar.redo")}
-          hint={t("toolbar.hint.redo")}
-          shortcut={shortcutLabel("Z", { shift: true })}
-          disabled={!canRedo || readOnlyView}
-          keepFocus
-          onClick={() => store.getState().redo()}
-        />
-        <IconButton
-          icon="zoomOut"
-          label={t("toolbar.zoomOut")}
-          hint={t("toolbar.hint.zoomOut")}
-          shortcut={t("toolbar.hint.zoomKeys")}
-          onClick={onZoomOut}
-        />
-        <IconButton
-          icon="zoomIn"
-          label={t("toolbar.zoomIn")}
-          hint={t("toolbar.hint.zoomIn")}
-          shortcut={t("toolbar.hint.zoomKeys")}
-          onClick={onZoomIn}
-        />
-        <IconButton
-          icon="fit"
-          label={t("toolbar.fit")}
-          hint={t("toolbar.hint.fit")}
-          onClick={onFit}
-        />
-        <IconButton
-          icon="search"
-          label={t("toolbar.search")}
-          hint={t("toolbar.hint.search")}
-          shortcut={shortcutLabel("F")}
-          onClick={onOpenSearch}
-        />
-        <IconButton
-          icon="focus"
-          label={t("toolbar.focusMode")}
-          hint={t("toolbar.hint.focusMode")}
-          align="end"
-          pressed={focusMode}
-          onClick={() => store.getState().setFocusMode(!focusMode)}
-        />
-        {onToggleRelation && (
+        <SaveStatus autosaver={autosaver} />
+      </div>
+
+      <div className="toolbar-dock">
+        <div className="toolbar-group toolbar-views">
+          <ViewSwitcher />
+        </div>
+        <div className="toolbar-group toolbar-primary">
+          <AddPersonButton />
           <IconButton
-            icon="relate"
-            label={t("kinship.panel.open")}
-            hint={t("toolbar.hint.relate")}
-            shortcut={t("toolbar.hint.relateKeys")}
-            align="end"
-            pressed={relationOpen}
-            onClick={onToggleRelation}
+            icon="search"
+            label={t("toolbar.search")}
+            hint={t("toolbar.hint.search")}
+            shortcut={shortcutLabel("F")}
+            onClick={onOpenSearch}
           />
+        </div>
+      </div>
+
+      <div className="toolbar-group toolbar-tools">
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- a labelled group of buttons */}
+        <div className="zoom-cluster" role="group" aria-label={t("toolbar.zoom")}>
+          <IconButton
+            icon="zoomOut"
+            label={t("toolbar.zoomOut")}
+            hint={t("toolbar.hint.zoomOut")}
+            shortcut={t("toolbar.hint.zoomKeys")}
+            onClick={onZoomOut}
+          />
+          <IconButton
+            icon="fit"
+            label={t("toolbar.fit")}
+            hint={t("toolbar.hint.fit")}
+            onClick={onFit}
+          />
+          <IconButton
+            icon="zoomIn"
+            label={t("toolbar.zoomIn")}
+            hint={t("toolbar.hint.zoomIn")}
+            shortcut={t("toolbar.hint.zoomKeys")}
+            onClick={onZoomIn}
+          />
+        </div>
+        <div className="toolbar-history">
+          <IconButton
+            icon="undo"
+            label={t("toolbar.undo")}
+            hint={t("toolbar.hint.undo")}
+            shortcut={shortcutLabel("Z")}
+            disabled={!canUndo || readOnlyView}
+            keepFocus
+            onClick={() => store.getState().undo()}
+          />
+          <IconButton
+            icon="redo"
+            label={t("toolbar.redo")}
+            hint={t("toolbar.hint.redo")}
+            shortcut={shortcutLabel("Z", { shift: true })}
+            disabled={!canRedo || readOnlyView}
+            keepFocus
+            align="end"
+            onClick={() => store.getState().redo()}
+          />
+        </div>
+        <MoreMenu
+          onOpenExport={onOpenExport}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onToggleRelation={onToggleRelation}
+          onShowPerson={onShowPerson}
+          today={today}
+        />
+      </div>
+
+      <div className="toolbar-context">
+        {viewRootId !== null && (
+          <button
+            type="button"
+            className="breadcrumb"
+            onClick={() => store.getState().setViewRoot(null)}
+          >
+            <Trans i18nKey="toolbar.backTo" components={{ name: <bdi>{rootName}</bdi> }} />
+          </button>
         )}
-        {onShowPerson && <BirthdaysMenu today={today} onShow={onShowPerson} />}
-        <BackupMenu onOpenExport={onOpenExport} onOpenSettings={() => setSettingsOpen(true)} />
+        <FocusControl />
+        <FanGenerations />
       </div>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
     </header>

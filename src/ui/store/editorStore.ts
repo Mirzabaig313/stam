@@ -27,7 +27,7 @@ import {
 /** While edits keep arriving, the tree is snapshotted at most this often. */
 export const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
 
-export type EditingRole = "first" | "child" | "spouse" | "parent" | "sibling";
+export type EditingRole = "first" | "child" | "spouse" | "parent" | "sibling" | "between";
 
 export type EditorState = {
   /** `loading` until `load` settles; `failed` when the tree is missing or unreadable. */

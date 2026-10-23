@@ -35,7 +35,7 @@ async function shot(page: Page, name: string): Promise<void> {
 
 async function importFamily(page: Page): Promise<void> {
   const tree = { ...famSimple(), name: "خان خاندان", id: "e2e-ur-khan" };
-  // One long deceased year line ("1920 – †1999") next to the short birth years.
+  // One long deceased year line ("1920 – 1999 · 79 yrs") next to the short birth years.
   tree.persons.dad = {
     ...tree.persons.dad!,
     birth: { date: { year: 1920 } },
@@ -199,7 +199,32 @@ test("offline in Urdu: after one visit the strings and the Nastaliq font still l
 test("year lines stay inside their card and clear of the avatar", async ({ page }) => {
   await useUrdu(page);
   await importFamily(page);
-  await expect(page.locator(".stam-card__years", { hasText: "1920 – †1999" })).toBeVisible();
+  await expect(page.locator(".stam-card__years", { hasText: "1920 – 1999" })).toBeVisible();
   expect(await page.locator(".stam-canvas .stam-card__years").count()).toBe(4);
   expect(await yearLineProblems(page, ".stam-canvas")).toEqual([]);
+});
+
+test("the toolbar stays one row at 1280 px in Nastaliq", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await useUrdu(page);
+  await importFamily(page);
+  const bar = (await page.getByRole("banner").boundingBox())!;
+  expect(bar.height).toBeLessThanOrEqual(72);
+  for (const key of ["toolbar.addPerson", "toolbar.search", "toolbar.zoomIn", "toolbar.menu"]) {
+    const box = (await page.getByRole("button", { name: t(key), exact: true }).boundingBox())!;
+    expect(box.y, key).toBeGreaterThanOrEqual(bar.y);
+    expect(box.y + box.height, key).toBeLessThanOrEqual(bar.y + bar.height);
+  }
+  const home = (await page.getByRole("link", { name: t("toolbar.myTrees") }).boundingBox())!;
+  expect(home.y + home.height).toBeLessThanOrEqual(bar.y + bar.height);
+  // And in every view, the fan's generations included.
+  const switcher = page.getByRole("group", { name: t("views.switcher") });
+  for (const mode of ["pedigree", "descendants", "hourglass", "fan", "timeline", "family"]) {
+    const button = switcher.getByRole("button", { name: t(`views.mode.${mode}`), exact: true });
+    await button.click();
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    const height = (await page.getByRole("banner").boundingBox())!.height;
+    expect(height, mode).toBeLessThanOrEqual(72);
+  }
+  expect(await clippedControls(page)).toEqual([]);
 });

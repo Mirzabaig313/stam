@@ -28,6 +28,12 @@ export type Command =
     }
   | { type: "addSpouse"; personId: string; spouse: PersonInput; status?: UnionStatus }
   | { type: "addParent"; childId: string; parent: PersonInput }
+  /**
+   * A new generation between a person and their parents: the new person takes the child's place
+   * in its parent union (same position, same child type) and the child becomes the new person's
+   * biological child. Without a parent union it is `addParent`.
+   */
+  | { type: "insertParent"; childId: string; parent: PersonInput; unionId?: string }
   | { type: "addSibling"; personId: string; sibling: PersonInput }
   | { type: "reorderChild"; unionId: string; personId: string; toIndex: number }
   | { type: "setChildType"; unionId: string; personId: string; childType: ChildType }

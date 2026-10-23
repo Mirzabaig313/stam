@@ -3,7 +3,7 @@
 exports[`layoutFamily famSimple snapshot 1`] = `
 {
   "bounds": {
-    "height": 240,
+    "height": 208,
     "width": 620,
     "x": 0,
     "y": 0,
@@ -44,7 +44,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
         ],
         [
           90,
-          168,
+          136,
         ],
       ],
       "unionId": "u1",
@@ -68,7 +68,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
         ],
         [
           310,
-          168,
+          136,
         ],
       ],
       "unionId": "u1",
@@ -92,7 +92,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
         ],
         [
           530,
-          168,
+          136,
         ],
       ],
       "unionId": "u1",
@@ -125,7 +125,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
       "nodeId": "c1",
       "personId": "c1",
       "x": 0,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -134,7 +134,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
       "nodeId": "c2",
       "personId": "c2",
       "x": 220,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -143,7 +143,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
       "nodeId": "c3",
       "personId": "c3",
       "x": 440,
-      "y": 168,
+      "y": 136,
     },
   ],
   "primaryNode": {
@@ -160,7 +160,7 @@ exports[`layoutFamily famSimple snapshot 1`] = `
 exports[`layoutFamily famRemarriage snapshot 1`] = `
 {
   "bounds": {
-    "height": 240,
+    "height": 208,
     "width": 620,
     "x": 0,
     "y": 0,
@@ -201,7 +201,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
         ],
         [
           90,
-          168,
+          136,
         ],
       ],
       "unionId": "m1",
@@ -225,7 +225,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
         ],
         [
           310,
-          168,
+          136,
         ],
       ],
       "unionId": "m1",
@@ -265,7 +265,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
         ],
         [
           530,
-          168,
+          136,
         ],
       ],
       "unionId": "m2",
@@ -307,7 +307,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
       "nodeId": "a1",
       "personId": "a1",
       "x": 0,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -316,7 +316,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
       "nodeId": "a2",
       "personId": "a2",
       "x": 220,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -325,7 +325,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
       "nodeId": "a3",
       "personId": "a3",
       "x": 440,
-      "y": 168,
+      "y": 136,
     },
   ],
   "primaryNode": {
@@ -343,7 +343,7 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
 exports[`layoutFamily famHalfSiblings snapshot 1`] = `
 {
   "bounds": {
-    "height": 240,
+    "height": 208,
     "width": 620,
     "x": 0,
     "y": 0,
@@ -384,7 +384,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
         ],
         [
           90,
-          168,
+          136,
         ],
       ],
       "unionId": "u1",
@@ -408,7 +408,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
         ],
         [
           310,
-          168,
+          136,
         ],
       ],
       "unionId": "u1",
@@ -448,7 +448,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
         ],
         [
           530,
-          168,
+          136,
         ],
       ],
       "unionId": "u2",
@@ -490,7 +490,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
       "nodeId": "k1",
       "personId": "k1",
       "x": 0,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -499,7 +499,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
       "nodeId": "k2",
       "personId": "k2",
       "x": 220,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -508,7 +508,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
       "nodeId": "k3",
       "personId": "k3",
       "x": 440,
-      "y": 168,
+      "y": 136,
     },
   ],
   "primaryNode": {
@@ -526,7 +526,7 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
 exports[`layoutFamily famCousinMarriage snapshot 1`] = `
 {
   "bounds": {
-    "height": 576,
+    "height": 480,
     "width": 824,
     "x": 0,
     "y": 0,
@@ -567,7 +567,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
         ],
         [
           90,
-          168,
+          136,
         ],
       ],
       "unionId": "ug",
@@ -591,7 +591,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
         ],
         [
           522,
-          168,
+          136,
         ],
       ],
       "unionId": "ug",
@@ -602,11 +602,11 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           180,
-          204,
+          172,
         ],
         [
           212,
-          204,
+          172,
         ],
       ],
       "status": "married",
@@ -619,19 +619,19 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           196,
-          204,
+          172,
         ],
         [
           196,
-          264,
+          232,
         ],
         [
           90,
-          264,
+          232,
         ],
         [
           90,
-          336,
+          272,
         ],
       ],
       "unionId": "up1",
@@ -642,11 +642,11 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           180,
-          372,
+          308,
         ],
         [
           212,
-          372,
+          308,
         ],
       ],
       "status": "married",
@@ -659,19 +659,19 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           196,
-          372,
+          308,
         ],
         [
           196,
-          432,
+          368,
         ],
         [
           196,
-          432,
+          368,
         ],
         [
           196,
-          504,
+          408,
         ],
       ],
       "unionId": "uc",
@@ -682,11 +682,11 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           612,
-          204,
+          172,
         ],
         [
           644,
-          204,
+          172,
         ],
       ],
       "status": "married",
@@ -699,19 +699,19 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "points": [
         [
           628,
-          204,
+          172,
         ],
         [
           628,
-          264,
+          232,
         ],
         [
           628,
-          264,
+          232,
         ],
         [
           628,
-          336,
+          272,
         ],
       ],
       "unionId": "up2",
@@ -744,7 +744,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "p1",
       "personId": "p1",
       "x": 0,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -753,7 +753,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "s1",
       "personId": "s1",
       "x": 212,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 2,
@@ -762,7 +762,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "cousin1",
       "personId": "cousin1",
       "x": 0,
-      "y": 336,
+      "y": 272,
     },
     {
       "generation": 2,
@@ -771,7 +771,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "cousin2~1",
       "personId": "cousin2",
       "x": 212,
-      "y": 336,
+      "y": 272,
     },
     {
       "generation": 3,
@@ -780,7 +780,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "kid",
       "personId": "kid",
       "x": 106,
-      "y": 504,
+      "y": 408,
     },
     {
       "generation": 1,
@@ -789,7 +789,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "p2",
       "personId": "p2",
       "x": 432,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -798,7 +798,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "s2",
       "personId": "s2",
       "x": 644,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 2,
@@ -807,7 +807,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
       "nodeId": "cousin2",
       "personId": "cousin2",
       "x": 538,
-      "y": 336,
+      "y": 272,
     },
   ],
   "primaryNode": {
@@ -828,7 +828,7 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
 exports[`layoutFamily famAdoption snapshot 1`] = `
 {
   "bounds": {
-    "height": 240,
+    "height": 208,
     "width": 400,
     "x": 0,
     "y": 0,
@@ -869,7 +869,7 @@ exports[`layoutFamily famAdoption snapshot 1`] = `
         ],
         [
           90,
-          168,
+          136,
         ],
       ],
       "unionId": "ua",
@@ -893,7 +893,7 @@ exports[`layoutFamily famAdoption snapshot 1`] = `
         ],
         [
           310,
-          168,
+          136,
         ],
       ],
       "unionId": "ua",
@@ -926,7 +926,7 @@ exports[`layoutFamily famAdoption snapshot 1`] = `
       "nodeId": "k1",
       "personId": "k1",
       "x": 0,
-      "y": 168,
+      "y": 136,
     },
     {
       "generation": 1,
@@ -935,7 +935,7 @@ exports[`layoutFamily famAdoption snapshot 1`] = `
       "nodeId": "k2",
       "personId": "k2",
       "x": 220,
-      "y": 168,
+      "y": 136,
     },
   ],
   "primaryNode": {

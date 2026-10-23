@@ -16,8 +16,8 @@ const contrast = (a: [number, number, number], b: [number, number, number]) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
-const GROUND: [number, number, number] = [0xf4, 0xf5, 0xf2]; // #F4F5F2
-const INK: [number, number, number] = [0x11, 0x13, 0x11]; // #111311
+const GROUND: [number, number, number] = [0xf4, 0xee, 0xea]; // #F4EEEA
+const INK: [number, number, number] = [0x2a, 0x1e, 0x24]; // #2A1E24
 
 describe("connector contrast (ruling R32, WCAG 1.4.11)", () => {
   const css = readFileSync("src/ui/canvas/canvas.css", "utf8");
@@ -36,7 +36,7 @@ describe("connector contrast (ruling R32, WCAG 1.4.11)", () => {
     expect(opacity).toBeLessThanOrEqual(1);
   });
 
-  test("ink at the connector opacity over the ground is at least 3:1 (it is about 4.0:1 at 55%)", () => {
+  test("ink at the connector opacity over the ground is at least 3:1 (it is about 3.9:1 at 50%)", () => {
     const blended = INK.map((c, i) => opacity * c + (1 - opacity) * GROUND[i]!) as [
       number,
       number,

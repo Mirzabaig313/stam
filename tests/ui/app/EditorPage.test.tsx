@@ -288,7 +288,7 @@ describe("EditorPage", () => {
 describe("AppRoutes", () => {
   test("/app is the tree list, unknown paths are not found with a link back", async () => {
     renderApp(<AppRoutes />, { repo: env.repo, route: "/app" });
-    expect(await screen.findByText("Create your first tree")).toBeTruthy();
+    expect(await screen.findByText("Start your family tree")).toBeTruthy();
     cleanup();
     renderApp(<AppRoutes />, { repo: env.repo, route: "/nowhere" });
     expect(screen.getByText("Page not found")).toBeTruthy();

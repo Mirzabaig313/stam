@@ -117,10 +117,10 @@ test("6. a JSON export imports as a second tree with the same people", async ({ 
   await addChild(page, "Ahmed Khan", "Ali", "Male");
   await addChild(page, "Ahmed Khan", "Omar", "Male");
 
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "More" }).click();
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    page.getByRole("button", { name: "Download backup (.json)" }).click(),
+    page.getByRole("menuitem", { name: "Download backup (.json)" }).click(),
   ]);
   const path = info.outputPath("export.stam.json");
   await download.saveAs(path);
@@ -132,7 +132,7 @@ test("6. a JSON export imports as a second tree with the same people", async ({ 
   await expect(allCards(page)).toHaveCount(3);
 
   await page.getByRole("link", { name: "My trees" }).click();
-  const rows = page.locator(".tree-row");
+  const rows = page.locator(".tree-card");
   await expect(rows).toHaveCount(2);
   for (const row of await rows.all()) await expect(row).toContainText("3 people");
 });
@@ -179,4 +179,42 @@ test("8. Esc during an inline add removes the new card and leaves nothing to red
   await page.keyboard.press("ControlOrMeta+Shift+z");
   await expect(allCards(page)).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+});
+
+test("9. the panel's Family section adds a child and shows a relative; details appear on demand", async ({
+  page,
+}) => {
+  await createTree(page, "E2E family");
+  await startWithPerson(page, "Ahmed Khan", "Male");
+  await card(page, "Ahmed Khan").click();
+  const panel = page.getByRole("complementary", { name: "Person details" });
+  await expect(panel.getByRole("heading", { name: "Ahmed Khan" })).toBeVisible();
+
+  // "+ Add" under Children uses quick add: a new card with the inline editor.
+  await panel
+    .getByRole("group", { name: "Children" })
+    .getByRole("button", { name: "Add child" })
+    .click();
+  await fillInlineEditor(page, "Ali", "Male");
+  await expect(card(page, "Ali Khan")).toBeVisible();
+  const children = panel.getByRole("group", { name: "Children" });
+  await expect(children.getByRole("button", { name: "Ali Khan" })).toBeVisible();
+
+  // A relative's chip selects them, and their card is brought into view.
+  await children.getByRole("button", { name: "Ali Khan" }).click();
+  await expect(panel.getByRole("heading", { name: "Ali Khan" })).toBeVisible();
+  await expect(card(page, "Ali Khan")).toHaveClass(/stam-card--selected/);
+  await expect(card(page, "Ali Khan")).toBeInViewport();
+  await expect(
+    panel.getByRole("group", { name: "Parents" }).getByRole("button", { name: "Ahmed Khan" }),
+  ).toBeVisible();
+
+  // Empty details are "+" buttons; one reveals its field with the focus in it.
+  await expect(panel.getByLabel("Birth date", { exact: true })).toHaveCount(0);
+  await panel.getByRole("button", { name: "Add birth date" }).click();
+  await expect(panel.getByLabel("Birth date", { exact: true })).toBeFocused();
+  await page.keyboard.type("1980");
+  await page.keyboard.press("Enter");
+  // The header's life line is the cards' own: "b. 1980" and the age.
+  await expect(panel.locator(".sheet__header")).toContainText(/b\. 1980 · \d+ yrs/);
 });

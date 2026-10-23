@@ -86,7 +86,7 @@ export function GedcomReportDialog({
   const notesCut = warnings.some((w) => w.code === "NOTES_CUT" || w.code === "NOTES_FULL");
   const summaryId = useId();
   return (
-    <Dialog title={t("app.import.gedcom.title")} onClose={onClose}>
+    <Dialog title={t("app.import.gedcom.title")} onClose={onClose} closeButton={false}>
       <div className="dialog-body import-report">
         <p>
           {t("app.import.gedcom.counts", {

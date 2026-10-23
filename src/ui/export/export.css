@@ -1,8 +1,6 @@
 /* Export dialog */
 .dialog:has(.export-form) {
   inline-size: min(560px, calc(100% - 2 * var(--gutter)));
-  max-block-size: calc(100% - 2 * var(--gutter));
-  overflow-y: auto;
 }
 
 .export-form {

@@ -30,7 +30,7 @@ export function UnconnectedList({ onPick, onClose }: UnconnectedListProps) {
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Element | null;
       // The badge toggles the list itself; closing here too would reopen it on the click.
-      if (target?.closest(".badge") || root.current?.contains(target)) return;
+      if (target?.closest(".toolbar-unconnected") || root.current?.contains(target)) return;
       closeRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {

@@ -59,8 +59,8 @@ async function openTree(page: Page): Promise<void> {
 }
 
 async function openSettings(page: Page) {
-  await page.getByRole("button", { name: "Menu" }).click();
-  await page.getByRole("button", { name: "Settings" }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: "Settings" }).click();
   return page.getByRole("dialog", { name: "Settings" });
 }
 
@@ -160,8 +160,9 @@ test.describe("themes", () => {
       ground: getComputedStyle(document.documentElement).getPropertyValue("--ground").trim(),
     }));
     expect(early.theme).toBe("dark");
-    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(15, 17, 15)");
-    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0f110f");
+    // The app's dark ground (tokens.css, M6); the landing page keeps its own below.
+    await expect(page.locator("body")).toHaveCSS("background-color", "rgb(26, 20, 24)");
+    await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#1a1418");
   });
 
   test("the landing page follows the system, unless a theme was chosen", async ({ page }, info) => {

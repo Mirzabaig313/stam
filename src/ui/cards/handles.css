@@ -1,7 +1,7 @@
 /*
  * Quick add: "+" handles, the inline editor, the side and union choosers, and the empty tree's
- * start card. Tokens with light fallbacks, like canvas.css. Only cards (and the editor standing in
- * for one) are rounded. The accent is never used: it is reserved for selection.
+ * start card. Tokens with light fallbacks, like canvas.css. Handles are round "+" buttons; the
+ * editor stands in for a card and has its radius. The accent marks the add action on hover.
  *
  * Handles and the editor sit in the canvas's HTML overlay at physical screen px (the canvas
  * mirrors itself for RTL and reports boxes on screen), so they are placed with `left: 0; top: 0`
@@ -11,13 +11,16 @@
 .quick-add,
 .inline-editor,
 .quick-add__refused {
-  --_ground: var(--ground, #f4f5f2);
-  --_ink: var(--ink, #111311);
-  --_muted: var(--muted, #5a615b);
-  --_line: var(--line, rgba(17, 19, 17, 0.14));
-  --_card: var(--card, #ffffff);
-  --_hover: var(--hover, rgba(17, 19, 17, 0.06));
+  --_ground: var(--ground, #f4eeea);
+  --_ink: var(--ink, #2a1e24);
+  --_muted: var(--muted, #6a5960);
+  --_line: var(--line, rgba(42, 30, 36, 0.14));
+  --_card: var(--card, #fffcfa);
+  --_hover: var(--hover, rgba(42, 30, 36, 0.06));
   --_ease: var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
+  --_accent: var(--accent, #7c2a5c);
+  --_on-accent: var(--on-accent, #ffffff);
+  --_edge: var(--line-strong, rgba(42, 30, 36, 0.3));
 
   position: absolute;
   left: 0;
@@ -51,13 +54,14 @@
   inline-size: 24px;
   block-size: 24px;
   padding: 0;
-  border: 1px solid var(--_ink);
-  border-radius: 0;
+  border: 1px solid var(--_edge);
+  border-radius: 50%;
   background: var(--_card);
   color: var(--_ink);
+  box-shadow: var(--shadow-1, 0 1px 2px rgba(92, 48, 66, 0.08));
   font: inherit;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1;
   cursor: pointer;
   animation: quick-add-in 250ms var(--_ease);
@@ -68,8 +72,9 @@
 
 .quick-add__handle:hover,
 .quick-add__handle[aria-expanded="true"] {
-  background: var(--_ink);
-  color: var(--_ground);
+  border-color: var(--_accent);
+  background: var(--_accent);
+  color: var(--_on-accent);
 }
 
 .quick-add__handle:focus-visible,
@@ -93,17 +98,19 @@
   display: flex;
   flex-direction: column;
   min-inline-size: 140px;
-  padding-block: 4px;
-  border: 1px solid var(--_ink);
-  background: var(--_card);
-  box-shadow: 0 2px 0 var(--_line);
+  padding: 6px;
+  border: 1px solid var(--_line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-overlay, #fffcfa);
+  box-shadow: var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
 }
 
 .quick-add__menu button,
 .union-chooser button {
-  min-block-size: 32px;
+  min-block-size: 34px;
   padding-inline: 12px;
   border: 0;
+  border-radius: var(--radius-sm, 8px);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -146,38 +153,64 @@
 
 /* ---- Inline editor ---------------------------------------------------------------------------- */
 
+/*
+ * The inline editor takes the card's place: the card's size, corners and surface, with the name
+ * where the card's name goes, ♂ | ♀ as a segmented pill and ✓ / ✕ beside it. One accent ring
+ * says it is being edited; the field itself has only a quiet underline.
+ */
 .inline-editor {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: 1fr 1fr;
+  column-gap: 10px;
   align-items: center;
-  gap: 8px;
   box-sizing: border-box;
+  inline-size: 180px;
+  block-size: 72px;
   margin: 0;
-  padding: 10px;
-  border: 2px solid var(--_ink);
-  border-radius: var(--radius-card, 6px);
+  padding-block: 6px;
+  padding-inline: 12px 8px;
+  border: 0;
+  border-radius: var(--radius-card, 12px);
   background: var(--_card);
-  box-shadow: 0 4px 0 var(--_line);
+  box-shadow:
+    0 0 0 2px var(--_accent),
+    var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
+  transform-origin: center;
   user-select: text;
   -webkit-user-select: text;
+  animation: quick-add-in 140ms var(--_ease);
+}
+
+.inline-editor__avatar {
+  display: grid;
+  grid-row: 1 / 3;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 50%;
+  background: var(--surface-sunken, #ebe3de);
+  color: var(--ink-3, #8f7d85);
 }
 
 .inline-editor__name {
-  flex: 1;
+  align-self: end;
   min-inline-size: 0;
-  block-size: 32px;
-  padding-inline: 8px;
-  border: 1px solid var(--_line);
+  block-size: 26px;
+  padding: 0 2px;
+  border: 0;
+  border-block-end: 1px solid var(--_edge);
   border-radius: 0;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  transition: border-color 140ms var(--_ease);
 }
 
 .inline-editor__name:focus {
-  border-color: var(--_ink);
+  border-block-end-color: var(--_accent);
   outline: none;
 }
 
@@ -186,46 +219,65 @@
   font-weight: 400;
 }
 
-.inline-editor__gender {
+.inline-editor__row {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 4px;
+  min-inline-size: 0;
 }
 
-.inline-editor__toggle {
-  display: grid;
-  place-items: center;
-  inline-size: 32px;
-  block-size: 32px;
-  padding: 0;
-  border: 1px solid var(--_line);
-  border-radius: 0;
-  background: transparent;
-  color: var(--_ink);
-  font: inherit;
-  font-size: 16px;
-  cursor: pointer;
-  transition:
-    background-color 250ms var(--_ease),
-    color 250ms var(--_ease);
+/* ♂ | ♀: the segmented pill, compact. */
+.inline-editor__gender.segmented {
+  flex-wrap: nowrap;
+  padding: 2px;
 }
 
-/* Must choose: the toggles are drawn strong until one is pressed. */
-.inline-editor__gender--required .inline-editor__toggle {
-  border-color: var(--_ink);
-  border-style: dashed;
+.inline-editor__toggle.segmented__option {
+  min-block-size: 22px;
+  min-inline-size: 26px;
+  padding-inline: 6px;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .inline-editor__toggle[aria-pressed="true"] {
-  border-color: var(--_ink);
-  background: var(--_ink);
-  color: var(--_ground);
+  background: var(--surface-raised, #fffcfa);
+  color: var(--_ink);
+  box-shadow:
+    var(--shadow-1, 0 1px 2px rgba(92, 48, 66, 0.08)),
+    0 0 0 1px var(--_line);
 }
 
-.inline-editor__message {
-  flex-basis: 100%;
+/* A gender is still needed: the pill says so with the accent, and the hint below says why. */
+.inline-editor__gender--missing.segmented {
+  box-shadow: inset 0 0 0 1.5px var(--_accent);
+}
+
+.inline-editor__actions {
+  display: flex;
+  flex: none;
+}
+
+.inline-editor .icon-button--sm {
+  inline-size: 24px;
+  block-size: 24px;
+}
+
+.inline-editor__ok {
+  color: var(--_accent);
+}
+
+/* Below the card, in its own small tag. */
+.inline-editor__hint {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-start: 0;
   margin: 0;
+  min-block-size: 24px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* ---- A refused add ------------------------------------------------------------------------- */
@@ -233,7 +285,9 @@
 .quick-add__refused {
   max-inline-size: 240px;
   margin: 0;
-  padding: 6px 10px;
+  padding-block: 6px;
+  padding-inline: 10px;
+  border-radius: var(--radius-sm, 8px);
   background: var(--_ink);
   color: var(--_ground);
   font-size: 12px;
@@ -247,44 +301,80 @@
   display: grid;
   place-content: center;
   justify-items: center;
-  gap: 12px;
-  background: var(--ground, #f4f5f2);
+  gap: 14px;
+  padding: 16px;
+  background:
+    radial-gradient(
+      ellipse 60% 50% at 50% 45%,
+      color-mix(in srgb, var(--surface-raised, #fffcfa) 70%, transparent),
+      transparent 70%
+    ),
+    var(--ground, #f4eeea);
+}
+
+/* The album page: a raised sheet with the art, the invitation and one empty photo slot. */
+.start-page {
+  inline-size: min(420px, 100%);
+  padding: 32px 28px 28px;
+  border: 1px solid var(--line, rgba(42, 30, 36, 0.14));
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface-raised, #fffcfa);
+  box-shadow: var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
+  animation: start-page-in var(--dur-panel, 320ms) var(--ease-out, ease-out);
+}
+
+.start-page .empty-state__body p {
+  margin: 0;
+}
+
+@keyframes start-page-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
 }
 
 .start-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  inline-size: 220px;
-  block-size: 72px;
+  inline-size: 260px;
+  block-size: 76px;
   padding-inline: 16px;
-  border: 1px dashed var(--ink, #111311);
-  border-radius: var(--radius-card, 6px);
-  background: var(--card, #ffffff);
-  color: var(--ink, #111311);
+  border: 1.5px dashed var(--line-strong, rgba(42, 30, 36, 0.3));
+  border-radius: var(--radius-card, 12px);
+  background: var(--card, #fffcfa);
+  color: var(--ink, #2a1e24);
   font: inherit;
   font-size: 14px;
   font-weight: 600;
+  box-shadow: var(--shadow-1, 0 1px 2px rgba(92, 48, 66, 0.08));
   cursor: pointer;
-  transition: border-style 250ms var(--ease, ease);
+  transition:
+    border-color 250ms var(--ease, ease),
+    box-shadow 250ms var(--ease, ease);
 }
 
 .start-card:hover {
   border-style: solid;
+  border-color: var(--accent, #7c2a5c);
+  box-shadow: var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
 }
 
 .start-card__plus {
   display: grid;
   place-items: center;
-  inline-size: 36px;
-  block-size: 36px;
-  border: 1px solid var(--ink, #111311);
-  font-size: 20px;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: var(--accent, #7c2a5c);
+  color: var(--on-accent, #ffffff);
+  font-size: 22px;
   font-weight: 500;
 }
 
 .start-card__hint {
   margin: 0;
-  color: var(--muted, #5a615b);
+  color: var(--muted, #6a5960);
   font-size: 13px;
 }

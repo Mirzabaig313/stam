@@ -17,6 +17,7 @@ export type OpKind =
   | "addChild"
   | "addSpouse"
   | "addParent"
+  | "insertParent"
   | "addSibling"
   | "reorderChild"
   | "relinkAsChild"
@@ -49,6 +50,7 @@ export const BUILD_KINDS: readonly OpKind[] = [
   "addChild",
   "addSpouse",
   "addParent",
+  "insertParent",
   "addSibling",
   "reorderChild",
   "relinkAsChild",
@@ -71,6 +73,7 @@ const WEIGHTS: Record<OpKind, number> = {
   addChild: 8,
   addSpouse: 4,
   addParent: 3,
+  insertParent: 2,
   addSibling: 3,
   reorderChild: 3,
   relinkAsChild: 3,
@@ -158,6 +161,14 @@ export function resolveOp(doc: TreeDocument, op: FamilyOp): Command | null {
       };
     case "addParent":
       return { type: "addParent", childId: a, parent: personInput(op) };
+    case "insertParent": {
+      // Mostly the child's own parent union; sometimes any union that holds it.
+      const holding = Object.values(doc.unions).filter((u) =>
+        u.children.some((c) => c.personId === a),
+      );
+      const unionId = holding.length > 0 && op.c % 3 === 0 ? pick(holding, op.b).id : undefined;
+      return { type: "insertParent", childId: a, parent: personInput(op), unionId };
+    }
     case "addSibling":
       return { type: "addSibling", personId: a, sibling: personInput(op) };
     case "reorderChild": {

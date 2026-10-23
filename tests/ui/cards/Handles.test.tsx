@@ -2,7 +2,9 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
 
-import { famSimple } from "../../fixtures/families";
+import { parentsOf } from "@/core/model/tree";
+
+import { docOf, famSimple, person, union } from "../../fixtures/families";
 import { remarried } from "./fixtures";
 import { cardOf, hover, nameInput, renderEditorCanvas, withFakeCanvasSize } from "./quickAddEnv";
 
@@ -23,7 +25,7 @@ describe("quick-add handles", () => {
     expect(handlesOf("dad")).toBeNull();
     hover("dad");
     expect(handleNames("dad")).toEqual([
-      "Add parent of Ahmed Khan",
+      "Add a person above Ahmed Khan",
       "Add spouse or sibling on the left of Ahmed Khan",
       "Add spouse or sibling on the right of Ahmed Khan",
       "Add child of Ahmed Khan",
@@ -54,17 +56,38 @@ describe("quick-add handles", () => {
     act(() => cardOf("c2").focus());
     await user.tab();
     expect(document.activeElement?.getAttribute("aria-label")).toBe(
-      "Add spouse or sibling on the left of Zainab Khan",
+      "Add a person between Ahmed Khan and Sara Khan and Zainab Khan",
     );
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(cardOf("c2"));
   });
 
-  test("the top handle is hidden when the person has two biological parents", async () => {
-    await renderEditorCanvas(famSimple());
+  test("with two parents the top handle puts a person between them and the child", async () => {
+    const { store, user } = await renderEditorCanvas(famSimple());
     hover("c1");
-    expect(handleNames("c1")).not.toContain("Add parent of Ali Khan");
-    expect(handleNames("c1")).toContain("Add child of Ali Khan");
+    const top = screen.getByRole("button", {
+      name: "Add a person between Ahmed Khan and Sara Khan and Ali Khan",
+    });
+    expect(top.getAttribute("aria-haspopup")).toBeNull();
+    expect(top.getAttribute("title")).toBe(top.getAttribute("aria-label"));
+    await user.click(top);
+    expect(screen.queryByRole("menu")).toBeNull();
+    const editing = store.getState().editing!;
+    expect(editing).toMatchObject({ role: "between", fromId: "c1" });
+    const doc = store.getState().doc!;
+    expect(doc.unions["u1"]!.children.map((c) => c.personId)).toEqual(
+      ["c1", "c2", "c3"].map((id) => (id === "c1" ? editing.personId : id)),
+    );
+    expect(parentsOf(doc, "c1")).toEqual([editing.personId]);
+  });
+
+  test("with no parents the top handle adds a parent, as it always has", async () => {
+    const { store, user } = await renderEditorCanvas(famSimple());
+    hover("dad");
+    const top = screen.getByRole("button", { name: "Add a person above Ahmed Khan" });
+    await user.click(top);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(store.getState().editing).toMatchObject({ role: "parent", fromId: "dad" });
   });
 
   test("the bottom handle adds a child with an empty name and opens the editor over it", async () => {
@@ -148,7 +171,7 @@ describe("quick-add handles", () => {
     const { store, user } = await renderEditorCanvas(famSimple());
     const before = store.getState().doc;
     hover("dad");
-    await user.click(screen.getByRole("button", { name: "Add parent of Ahmed Khan" }));
+    await user.click(screen.getByRole("button", { name: "Add a person above Ahmed Khan" }));
     await user.type(nameInput(), "Yusuf{Escape}");
     expect(Object.keys(store.getState().doc!.persons)).toEqual(Object.keys(before!.persons));
     expect(store.getState().doc!.rootPersonId).toBe("dad");
@@ -230,7 +253,7 @@ describe("quick-add handles in the focus views", () => {
       store.getState().select(null);
     });
     hover("dad");
-    expect(handleNames("dad")).toEqual(["Add parent of Ahmed Khan"]);
+    expect(handleNames("dad")).toEqual(["Add a person above Ahmed Khan"]);
   });
 
   test("the descendants view offers only Add child", async () => {
@@ -252,12 +275,50 @@ describe("quick-add handles in the focus views", () => {
       store.getState().select(null);
     });
     hover("dad");
-    expect(handleNames("dad")).toEqual(["Add parent of Ahmed Khan"]);
+    expect(handleNames("dad")).toEqual(["Add a person above Ahmed Khan"]);
     hover("c1");
     expect(handleNames("c1")).toEqual([
+      "Add a person between Ahmed Khan and Sara Khan and Ali Khan",
       "Add spouse or sibling on the left of Ali Khan",
       "Add spouse or sibling on the right of Ali Khan",
       "Add child of Ali Khan",
     ]);
+  });
+});
+
+/** Ismail with his son Haider: Haider's real father is missing between them. */
+const ismail = () =>
+  docOf(
+    [person("ismail", "Ismail", "Khan", "male"), person("haider", "Haider", "Khan", "male")],
+    [union("u", ["ismail"], ["haider"], "partner")],
+    "ismail",
+  );
+
+describe("a person above (the owner's case)", () => {
+  test("the top handle says it goes between Ismail and Haider", async () => {
+    await renderEditorCanvas(ismail());
+    hover("haider");
+    expect(handleNames("haider")[0]).toBe("Add a person between Ismail Khan and Haider Khan");
+  });
+
+  test("Ismail, then Ahmed, then Haider, in one undo step", async () => {
+    const { store, user } = await renderEditorCanvas(ismail());
+    hover("haider");
+    await user.click(
+      screen.getByRole("button", { name: "Add a person between Ismail Khan and Haider Khan" }),
+    );
+    expect(store.getState().editing).toMatchObject({ role: "between", fromId: "haider" });
+    await user.type(nameInput(), "Ahmed");
+    await user.click(screen.getByRole("button", { name: "Male" }));
+    await user.keyboard("{Enter}");
+    const doc = store.getState().doc!;
+    const ahmed = Object.values(doc.persons).find((p) => p.firstName === "Ahmed")!;
+    // One word: the last name comes from Haider.
+    expect(ahmed.lastName).toBe("Khan");
+    expect(parentsOf(doc, "haider")).toEqual([ahmed.id]);
+    expect(parentsOf(doc, ahmed.id)).toEqual(["ismail"]);
+    act(() => store.getState().undo());
+    expect(parentsOf(store.getState().doc!, "haider")).toEqual(["ismail"]);
+    expect(store.getState().doc!.persons[ahmed.id]).toBeUndefined();
   });
 });

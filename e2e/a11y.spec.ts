@@ -20,8 +20,48 @@ test("the tree list has no serious or critical accessibility violations", async 
 test("a tree list with a tree has none either", async ({ page }) => {
   await openSimpleFamily(page);
   await page.getByRole("link", { name: "My trees" }).click();
-  await expect(page.locator(".tree-row")).toHaveCount(1);
+  await expect(page.locator(".tree-card")).toHaveCount(1);
+  await expect(page.locator(".tree-card .tree-preview")).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
+});
+
+test("the tree list's cards open with the keyboard, and their menu is reachable", async ({
+  page,
+  browserName,
+}) => {
+  await openSimpleFamily(page);
+  await page.getByRole("link", { name: "My trees" }).click();
+  const link = page.getByRole("link", { name: "Simple family" });
+  const more = page.getByRole("button", { name: "Actions for Simple family" });
+  await link.focus();
+  await page.keyboard.press("Tab");
+  await expect(more).toBeFocused();
+  await page.keyboard.press("Enter");
+  const menu = page.getByRole("menu", { name: "Simple family" });
+  await expect(menu.getByRole("menuitem", { name: "Rename" })).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(menu.getByRole("menuitem", { name: "Delete" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(more).toBeFocused();
+  // Safari leaves links out of the Tab order unless the user turns them on.
+  if (browserName === "webkit") await link.focus();
+  else await page.keyboard.press("Shift+Tab");
+  await expect(link).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(allCards(page)).toHaveCount(5);
+});
+
+test("the tree list is one column on a phone and two or more on a desktop", async ({ page }) => {
+  await openSimpleFamily(page);
+  await page.getByRole("link", { name: "My trees" }).click();
+  await expect(page.locator(".tree-card")).toHaveCount(1);
+  const columns = await page
+    .locator(".tree-grid")
+    .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  const width = page.viewportSize()!.width;
+  if (width < 640) expect(columns).toBe(1);
+  else expect(columns).toBeGreaterThanOrEqual(2);
 });
 
 test("the editor with the simple family has none", async ({ page }) => {
@@ -99,7 +139,8 @@ test("the How are we related? panel, with a result, has none", async ({ page }) 
 
 test("the birthdays panel has none", async ({ page }) => {
   await openBirthdayFamily(page);
-  await page.getByRole("button", { name: /^Birthdays/ }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await page.getByRole("menuitem", { name: /^Birthdays/ }).click();
   await expect(page.getByRole("region", { name: "Upcoming birthdays" })).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 });
@@ -117,9 +158,15 @@ test("the export dialog has none, for every format", async ({ page }) => {
   }
 });
 
-test("the backup menu, search and the delete dialog have none", async ({ page }) => {
+test("the More menu, the Add chooser, search and the delete dialog have none", async ({ page }) => {
   await openSimpleFamily(page);
-  await page.getByRole("button", { name: "Menu" }).click();
+  await page.getByRole("button", { name: "More" }).click();
+  await expect(page.getByRole("menu", { name: "More" })).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Add person" }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
   await page.keyboard.press("Escape");
 
@@ -129,7 +176,10 @@ test("the backup menu, search and the delete dialog have none", async ({ page })
   await page.keyboard.press("Escape");
 
   await page.getByRole("link", { name: "My trees" }).click();
-  await page.getByRole("button", { name: /^Delete / }).click();
+  await page.getByRole("button", { name: /^Actions for / }).click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  expect(await blockingViolations(page)).toEqual([]);
+  await page.getByRole("menuitem", { name: "Delete" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(await blockingViolations(page)).toEqual([]);
 });

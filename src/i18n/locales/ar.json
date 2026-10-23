@@ -107,6 +107,7 @@
   },
   "common": {
     "cancel": "إلغاء",
+    "close": "إغلاق",
     "create": "إنشاء",
     "save": "حفظ",
     "delete": "حذف",
@@ -115,7 +116,7 @@
   },
   "treeList": {
     "title": "أشجارك",
-    "empty": "أنشئ شجرتك الأولى",
+    "empty": "ابدأ شجرة عائلتك",
     "emptyHint": "كل شيء يبقى على هذا الجهاز. لا يُرفع أي شيء.",
     "newTree": "شجرة جديدة",
     "import": "استيراد",
@@ -127,20 +128,23 @@
     "people_few": "{{count, number}} أشخاص",
     "people_many": "{{count, number}} شخصًا",
     "people_other": "{{count, number}} شخص",
+    "generations_zero": "لا أجيال",
+    "generations_one": "جيل واحد",
+    "generations_two": "جيلان",
+    "generations_few": "{{count, number}} أجيال",
+    "generations_many": "{{count, number}} جيلًا",
+    "generations_other": "{{count, number}} جيل",
     "edited": "عُدّلت {{when}}",
     "loadFailed": "تعذّرت قراءة أشجارك من هذا المتصفح.",
     "actionFailed": "لم ينجح ذلك. حاول مرة أخرى.",
     "rename": "إعادة تسمية",
-    "renameAria": "إعادة تسمية {{name}}",
     "duplicate": "نسخ",
-    "duplicateAria": "نسخ {{name}}",
-    "backup": "نسخة احتياطية",
-    "backupAria": "تنزيل نسخة احتياطية من {{name}}",
-    "deleteAria": "حذف {{name}}",
     "newDialogTitle": "شجرة جديدة",
     "renameDialogTitle": "إعادة تسمية الشجرة",
     "deleteDialogTitle": "هل تريد حذف هذه الشجرة؟",
-    "deleteDialogBody": "ستُزال «<name/>» وكل الأشخاص فيها من هذا الجهاز. لا يمكن التراجع عن ذلك."
+    "deleteDialogBody": "ستُزال «<name/>» وكل الأشخاص فيها من هذا الجهاز. لا يمكن التراجع عن ذلك.",
+    "actionsFor": "إجراءات {{name}}",
+    "downloadBackup": "تنزيل نسخة احتياطية"
   },
   "banner": {
     "backupDue": "مرّ وقت طويل منذ آخر نسخة احتياطية. افتح شجرة واختر «تنزيل نسخة احتياطية» لحفظ نسخة.",
@@ -174,8 +178,9 @@
       "relate": "اعرف صلة القرابة بين شخصين.",
       "relateKeys": "حدد شخصًا، ثم انقر على آخر مع Shift",
       "birthdays": "أعياد الميلاد القادمة وما حدث في مثل هذا اليوم.",
-      "menu": "صدّر الصور وملفات PDF، ونزّل نسخة احتياطية.",
-      "exportKeys": "{{keys}} للتصدير"
+      "menu": "وضع التركيز وأعياد الميلاد والتصدير والنسخ الاحتياطي والإعدادات.",
+      "exportKeys": "{{keys}} للتصدير",
+      "addPerson": "أضف قريبًا للشخص المحدد."
     },
     "undo": "تراجع",
     "redo": "إعادة",
@@ -187,11 +192,28 @@
     "unconnected": "غير متصلين: {{count, number}}",
     "unconnectedAria": "غير متصلين: {{count, number}}. اعرضهم.",
     "backTo": "→ العودة إلى <name/>",
-    "menu": "القائمة",
+    "menu": "المزيد",
     "downloadBackup": "تنزيل نسخة احتياطية (.json)",
-    "includePhotos": "تضمين الصور",
     "backupFailed": "تعذّر إنشاء النسخة الاحتياطية.",
-    "export": "تصدير…"
+    "export": "تصدير…",
+    "addPerson": "إضافة شخص",
+    "addShort": "إضافة",
+    "zoom": "التكبير",
+    "downloadBackupPhotos": "تنزيل نسخة احتياطية مع الصور",
+    "add": {
+      "to": "إضافة إلى {{name}}",
+      "heading": "إضافة إلى <name/>",
+      "parent": "والد أو والدة",
+      "spouse": "زوج أو زوجة",
+      "child": "ابن أو ابنة",
+      "childWith": "ابن أو ابنة مع {{name}}",
+      "childAlone": "ابن أو ابنة، بلا شريك",
+      "sibling": "أخ أو أخت",
+      "selectFirst": "حدد شخصًا أولًا",
+      "selectFirstHint": "انقر على بطاقة، ثم أضف والدًا أو زوجًا أو ابنًا أو أخًا.",
+      "unconnected": "إضافة شخص غير مرتبط بعد",
+      "noneHere": "لا يمكن في هذا العرض إضافة أقارب لهذا الشخص."
+    }
   },
   "saveStatus": {
     "saving": "جارٍ الحفظ…",
@@ -220,11 +242,9 @@
     "notes": "ملاحظات",
     "photo": {
       "upload": "رفع صورة",
-      "replace": "استبدال الصورة",
       "remove": "إزالة الصورة",
       "failed": "تعذّر استخدام تلك الصورة. جرّب صورة أخرى."
     },
-    "partner": "الزوج أو الشريك",
     "noPartner": "لا يوجد زوج مسجّل",
     "status": {
       "label": "الحالة",
@@ -269,7 +289,54 @@
     "unconnected": {
       "title": "غير متصلين",
       "none": "الجميع متصلون."
-    }
+    },
+    "deceased": "متوفّى",
+    "summary": {
+      "span": "{{born}} – {{died}}",
+      "born": "وُلد {{date}}",
+      "died": "توفّي {{date}}"
+    },
+    "family": {
+      "title": "العائلة",
+      "parents": "الوالدان",
+      "spouses": "الأزواج",
+      "children": "الأبناء",
+      "siblings": "الإخوة",
+      "half": "غير شقيق",
+      "addParent": "إضافة والد",
+      "addSpouse": "إضافة زوج",
+      "addChild": "إضافة ابن",
+      "addSibling": "إضافة أخ",
+      "add": "إضافة",
+      "addAbove": "إضافة شخص في الأعلى"
+    },
+    "union": {
+      "with": "الارتباط مع {{name}}",
+      "alone": "ارتباط بلا زوج مسجّل",
+      "since": "{{status}}، {{date}}",
+      "span": "{{status}}، {{start}} – {{end}}",
+      "edit": "تعديل الارتباط مع {{name}}",
+      "editAlone": "تعديل الارتباط"
+    },
+    "details": {
+      "title": "التفاصيل",
+      "life": "الحياة",
+      "names": "الأسماء"
+    },
+    "add": {
+      "birthDate": "إضافة تاريخ الميلاد",
+      "birthPlace": "إضافة مكان الميلاد",
+      "death": "إضافة الوفاة",
+      "deathLabel": "الوفاة",
+      "nickname": "إضافة اللقب",
+      "nativeName": "إضافة الاسم بلغته الأصلية",
+      "notes": "إضافة ملاحظات"
+    },
+    "notesShow": "عرض الملاحظات",
+    "notesHide": "إخفاء الملاحظات",
+    "photoChange": "تغيير الصورة",
+    "sheetExpand": "توسيع اللوحة",
+    "sheetCollapse": "طيّ اللوحة"
   },
   "canvas": {
     "region": "شجرة العائلة",
@@ -296,6 +363,21 @@
       "hidden_few": "{{count, number}} أفراد مخفيين من الذرية",
       "hidden_many": "{{count, number}} فردًا مخفيًا من الذرية",
       "hidden_other": "{{count, number}} فرد مخفي من الذرية"
+    },
+    "deceased": "متوفى",
+    "empty": {
+      "title": "كل شجرة تبدأ بشخص واحد",
+      "body": "أضف نفسك أو أحد والديك أو أجدادك. ويُضاف الباقون من بطاقته."
+    },
+    "age_zero": "أقل من سنة",
+    "age_one": "سنة واحدة",
+    "age_two": "سنتان",
+    "age_few": "{{count}} سنوات",
+    "age_many": "{{count}} سنة",
+    "age_other": "{{count}} سنة",
+    "years": {
+      "born": "وُلد {{year}}",
+      "died": "تُوفي {{year}}"
     }
   },
   "dnd": {
@@ -317,7 +399,7 @@
     }
   },
   "handles": {
-    "addParent": "إضافة والد أو والدة لـ{{name}}",
+    "addParent": "إضافة شخص فوق {{name}}",
     "addChild": "إضافة ابن أو ابنة لـ{{name}}",
     "addBesideLeft": "إضافة زوج أو أخ على يسار {{name}}",
     "addBesideRight": "إضافة زوج أو أخ على يمين {{name}}",
@@ -335,12 +417,13 @@
       "child": "ابن أو ابنة جديد لـ{{name}}",
       "spouse": "زوج جديد لـ{{name}}",
       "parent": "والد أو والدة جديد لـ{{name}}",
-      "sibling": "أخ أو أخت جديد لـ{{name}}"
+      "sibling": "أخ أو أخت جديد لـ{{name}}",
+      "between": "والد أو والدة جديدة لـ {{name}}"
     },
     "unionChooser": {
       "title": "ابن أي عائلة؟",
       "label": "اختر عائلة الابن الجديد لـ{{name}}",
-      "noPartner": "بلا زوج",
+      "noPartner": "الوالد الآخر غير معروف",
       "cancel": "إلغاء"
     },
     "error": {
@@ -350,7 +433,10 @@
       "ALREADY_LINKED": "هما مرتبطان بالفعل.",
       "NOT_FOUND": "هذا الشخص لم يعد موجودًا.",
       "INVALID": "لا يمكن إضافة ذلك هنا."
-    }
+    },
+    "addBetween": "إضافة شخص بين {{parents}} و{{name}}",
+    "confirm": "تأكيد",
+    "cancel": "إلغاء"
   },
   "export": {
     "pdf": {
@@ -684,16 +770,19 @@
     },
     "direction": "اتجاه الشجرة",
     "directions": {
-      "auto": "حسب اللغة",
+      "auto": "تلقائي",
       "ltr": "من اليسار إلى اليمين",
       "rtl": "من اليمين إلى اليسار"
     },
+    "directionHint": "الخيار التلقائي يتبع لغة الواجهة.",
     "motion": "تقليل الحركة",
     "motions": {
-      "system": "حسب هذا الجهاز",
+      "system": "الجهاز",
       "reduce": "مفعّل",
       "full": "معطّل"
     },
-    "motionHint": "يوقف التحريك المتحرك للشجرة والبطاقات."
+    "motionHint": "يوقف التحريك المتحرك للشجرة والبطاقات. خيار الجهاز يتبع إعداد نظامك.",
+    "appearance": "المظهر",
+    "layout": "اللغة والتخطيط"
   }
 }

@@ -1,18 +1,22 @@
 /*
  * Family-tree canvas. Colours come from the app's design tokens; the fallbacks are the same
  * light-theme values, so the canvas also renders on its own (dev demo, tests).
- * Logical properties only. Card radius 6 px; nothing else is rounded.
+ * Logical properties only. Cards take --radius-card through the CSS `rx` property, so exports
+ * (which draw the `rx` attribute) keep their own geometry.
  */
 
 .stam-canvas {
-  --_ground: var(--ground, #f4f5f2);
-  --_ink: var(--ink, #111311);
-  --_muted: var(--muted, #5a615b);
-  --_line: var(--line, rgba(17, 19, 17, 0.14));
-  --_accent: var(--accent, #2b47f5);
-  --_card: var(--card, #ffffff);
-  --_deceased: var(--deceased, #eceee9);
-  --_tint: var(--tint, rgba(17, 19, 17, 0.04));
+  --_ground: var(--ground, #f4eeea);
+  --_ink: var(--ink, #2a1e24);
+  --_muted: var(--muted, #6a5960);
+  --_line: var(--line, rgba(42, 30, 36, 0.14));
+  --_accent: var(--accent, #7c2a5c);
+  --_card: var(--card, #fffcfa);
+  --_card-edge: var(--card-edge, rgba(42, 30, 36, 0.18));
+  --_card-shadow: var(--card-shadow, rgba(92, 48, 66, 0.12));
+  --_deceased: var(--deceased, #eee7e2);
+  --_tint: var(--tint, rgba(42, 30, 36, 0.04));
+  --_radius: var(--radius-card, 12px);
   --_ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   position: relative;
@@ -21,7 +25,7 @@
   overflow: hidden;
   background: var(--_ground);
   color: var(--_ink);
-  font-family: "Archivo Variable", system-ui, sans-serif;
+  font-family: var(--font, "Archivo Variable", system-ui, sans-serif);
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -43,16 +47,16 @@
 
 /*
  * Ruling R32: connectors are meaningful graphics, so they need 3:1 against the ground
- * (WCAG 1.4.11). Ink at 55% over #F4F5F2 is about 4.0:1; `--edge-opacity` is set per theme in
+ * (WCAG 1.4.11). Ink at 50% over #F4EEEA is about 3.9:1; `--edge-opacity` is set per theme in
  * tokens.css, and tests/ui/settings/tokenContrast.test.ts checks it in every theme. The faint
  * --line strength is for decoration only (ruler, dividers). Ink inside one faded group, so
  * overlapping runs do not darken.
  */
 .stam-edges {
   stroke: var(--_ink);
-  opacity: var(--edge-opacity, 0.55);
-  stroke-linecap: butt;
-  stroke-linejoin: miter;
+  opacity: var(--edge-opacity, 0.5);
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* A relationship path: ink at full strength; every other edge is dimmed. */
@@ -88,24 +92,40 @@
   pointer-events: none;
 }
 
+/* A photograph on the album page: a soft edge, rounded corners, a contact shadow under it. */
 .stam-card__bg {
+  rx: var(--_radius);
   fill: var(--_card);
-  stroke: var(--_ink);
+  stroke: var(--_card-edge);
   stroke-width: var(--card-stroke, 1px);
   transition:
     fill 250ms var(--_ease),
     stroke 250ms var(--_ease);
 }
 
-/* A soft second edge under the card that appears on hover: the card lifts off the page. */
+/* The contact shadow: a soft second edge under the card that deepens on hover (the card lifts). */
 .stam-card__lift {
-  fill: var(--_line);
-  opacity: 0;
-  transition: opacity 250ms var(--_ease);
+  rx: var(--_radius);
+  fill: var(--_card-shadow);
+  opacity: 0.7;
+  transition:
+    opacity 250ms var(--_ease),
+    translate 250ms var(--_ease);
 }
 
 .stam-card:hover .stam-card__lift {
   opacity: 1;
+  translate: 0 1px;
+}
+
+.stam-card:hover:not(
+    .stam-card--selected,
+    .stam-card--placeholder,
+    .stam-card--drop-target,
+    .stam-card--drop-blocked
+  )
+  .stam-card__bg {
+  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
 }
 
 /* Selection (accent edge) and keyboard focus (ink ring) already mark the card: no third edge. */
@@ -136,7 +156,53 @@
   stroke-dasharray: none;
 }
 
+/*
+ * The spine: a coloured edge down the card's inline start, the album's colour key. By gender it
+ * is sky or rose; by branch or generation it is that hue, deep (tokens.css). The clip follows
+ * the card's corners.
+ */
+.stam-card__clip {
+  rx: var(--_radius);
+}
+
+.stam-card {
+  --_mark: var(--ink-3, #8f7d85);
+}
+
+.stam-card[data-gender="male"] {
+  --_mark: var(--hue-2-deep, #3d6a9e);
+}
+
+.stam-card[data-gender="female"] {
+  --_mark: var(--hue-3-deep, #a3466f);
+}
+
+.stam-card__spine {
+  fill: var(--_mark);
+  transition: fill 250ms var(--_ease);
+}
+
+.stam-card--deceased .stam-card__spine {
+  opacity: 0.7;
+}
+
+/* The gender glyph in the same colour, by gender only (the other modes colour the spine). */
+:root:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card[data-gender="male"]:not(.stam-card--placeholder)
+  + .stam-card__decor
+  .stam-card__gender {
+  fill: var(--hue-2-deep, #3d6a9e);
+}
+
+:root:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card[data-gender="female"]:not(.stam-card--placeholder)
+  + .stam-card__decor
+  .stam-card__gender {
+  fill: var(--hue-3-deep, #a3466f);
+}
+
 .stam-card__focus {
+  rx: calc(var(--_radius) + 3px);
   fill: none;
   stroke: var(--_ink);
   stroke-width: 2;
@@ -147,8 +213,30 @@
   opacity: 1;
 }
 
+/* Initials sit on a warm hue picked from the name (design/avatarHue.ts), like the Avatar. */
 .stam-card__avatar-disc {
   fill: var(--_line);
+  stroke: var(--_card-edge);
+  stroke-width: 1;
+}
+
+.stam-card__avatar-disc[data-hue="0"] {
+  fill: var(--hue-0, #f5d6c0);
+}
+.stam-card__avatar-disc[data-hue="1"] {
+  fill: var(--hue-1, #d6e5c3);
+}
+.stam-card__avatar-disc[data-hue="2"] {
+  fill: var(--hue-2, #cadcf0);
+}
+.stam-card__avatar-disc[data-hue="3"] {
+  fill: var(--hue-3, #efcfdf);
+}
+.stam-card__avatar-disc[data-hue="4"] {
+  fill: var(--hue-4, #f3e0a6);
+}
+.stam-card__avatar-disc[data-hue="5"] {
+  fill: var(--hue-5, #c7e3dc);
 }
 
 .stam-card--placeholder .stam-card__avatar-disc {
@@ -159,11 +247,14 @@
 
 .stam-card__avatar-ring {
   fill: none;
-  stroke: var(--_line);
+  stroke: var(--_card);
+  stroke-width: 2;
 }
 
 .stam-card__initials {
   fill: var(--_ink);
+  font-weight: 700;
+  font-variation-settings: "wdth" 112;
   letter-spacing: 0.02em;
 }
 
@@ -185,17 +276,37 @@
   font-variant-numeric: tabular-nums;
 }
 
-.stam-card__gender {
+/* "Deceased" with no years: a quiet tag on the years line, never a lone †. */
+.stam-card__deceased rect {
+  fill: var(--_tint);
+  stroke: var(--_line);
+}
+
+.stam-card__deceased text {
   fill: var(--_muted);
 }
 
+/* Big enough to read at a glance (16 px over the old 12). */
+.stam-card__gender {
+  fill: var(--_muted);
+  font-size: 16px;
+}
+
+/* "+N" on a collapsed card: a raised pill on its bottom edge, the expand control. */
 .stam-card__badge rect {
-  fill: var(--_ink);
+  rx: 10px;
+  fill: var(--surface-raised, #fffcfa);
+  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
+  transition: stroke 140ms var(--_ease);
 }
 
 .stam-card__badge text {
-  fill: var(--_ground);
+  fill: var(--_ink);
   font-variant-numeric: tabular-nums;
+}
+
+.stam-node:has(.stam-card__chevron:hover) .stam-card__badge rect {
+  stroke: var(--_ink);
 }
 
 /* Dots at the lowest detail: deceased muted, placeholders hollow, selection in the accent. */
@@ -266,11 +377,37 @@
   fill: transparent;
 }
 
+/* The collapse chevron shows on the card the pointer, keyboard or selection is on. Collapsed,
+   the "+N" pill (always shown) is the control. */
+.stam-card__chevron {
+  opacity: 0;
+  transition: opacity 140ms var(--_ease);
+}
+
+.stam-node:hover .stam-card__chevron,
+.stam-node:focus-within .stam-card__chevron,
+.stam-node--selected .stam-card__chevron,
+.stam-card__chevron[aria-expanded="false"] {
+  opacity: 1;
+}
+
+/* A small raised disc on the bottom edge, like the "+N" pill it becomes when collapsed. */
+.stam-card__chevron-disc {
+  fill: var(--surface-raised, #fffcfa);
+  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
+  transition: stroke 140ms var(--_ease);
+}
+
+.stam-card__chevron:hover .stam-card__chevron-disc {
+  stroke: var(--_ink);
+}
+
 .stam-card__chevron path {
   fill: none;
   stroke: var(--_muted);
-  stroke-width: 1.5;
-  stroke-linecap: square;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
   transition: stroke 250ms var(--_ease);
 }
 
@@ -317,7 +454,7 @@
   position: relative;
   flex: none;
   inline-size: 40px;
-  background: var(--_ground);
+  background: color-mix(in srgb, var(--_ground) 88%, transparent);
   border-inline-end: 1px solid var(--_line);
 }
 
@@ -367,13 +504,19 @@
 
 /* ---- Minimap ---------------------------------------------------------------------------- */
 
+/* The minimap: a small print of the page on a raised card, the view framed in the accent. */
 .stam-minimap {
   align-self: flex-end;
   margin: 16px;
   inline-size: 160px;
   block-size: 120px;
-  background: var(--_ground);
+  overflow: hidden;
   border: 1px solid var(--_line);
+  border-radius: var(--radius-lg, 16px);
+  background: var(--surface-sunken, #ebe3de);
+  box-shadow:
+    var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12)),
+    inset 0 0 0 4px var(--surface-raised, #fffcfa);
   cursor: crosshair;
   pointer-events: auto;
 }
@@ -382,15 +525,21 @@
   display: block;
 }
 
-/* While a new person is being named, the editor must not sit under the minimap (on a phone the
- * minimap covers a third of the width and hid the ♂/♀ toggles). */
+/* While a new person is being named, the editor must not sit under the minimap. */
 .stam-canvas:has(.inline-editor) .stam-minimap {
   display: none;
 }
 
+/* A phone shows the whole tree by pinching; the minimap would only cover it. */
+@media (max-width: 767px) {
+  .stam-minimap {
+    display: none;
+  }
+}
+
 .stam-minimap__dots {
-  fill: var(--_muted);
-  opacity: 0.6;
+  fill: color-mix(in srgb, var(--_accent) 30%, var(--ink-3, #8f7d85));
+  opacity: 0.55;
 }
 
 .stam-minimap__selected {
@@ -398,9 +547,10 @@
 }
 
 .stam-minimap__view {
-  fill: var(--_tint);
-  stroke: var(--_ink);
-  stroke-width: 1;
+  rx: 4px;
+  fill: color-mix(in srgb, var(--_accent) 5%, transparent);
+  stroke: var(--_accent);
+  stroke-width: 1.5;
 }
 
 /* ---- Themes and card colour modes (tokens.css) ------------------------------------------ */
@@ -410,7 +560,12 @@
   stroke-width: var(--edge-width, 2px);
 }
 
-:root[data-theme="print"] .stam-card__avatar-disc {
+:root[data-theme="print"] .stam-card__spine {
+  display: none;
+}
+
+:root[data-theme="print"] .stam-card__avatar-disc,
+:root[data-theme="print"] .stam-card__avatar-disc[data-hue] {
   fill: none;
   stroke: var(--_ink);
 }
@@ -528,6 +683,49 @@
   .stam-card[data-generation="5"]:not(.stam-card--placeholder)
   .stam-card__bg {
   fill: var(--hue-5);
+}
+
+/* The spine and a stronger edge in the deep hue of the branch or generation. The root couple
+   (no branch) keeps a neutral spine. */
+:root[data-color-mode="branch"] .stam-card {
+  --_mark: var(--ink-3, #8f7d85);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="0"],
+:root[data-color-mode="generation"] .stam-card[data-generation="0"] {
+  --_mark: var(--hue-0-deep);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="1"],
+:root[data-color-mode="generation"] .stam-card[data-generation="1"] {
+  --_mark: var(--hue-1-deep);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="2"],
+:root[data-color-mode="generation"] .stam-card[data-generation="2"] {
+  --_mark: var(--hue-2-deep);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="3"],
+:root[data-color-mode="generation"] .stam-card[data-generation="3"] {
+  --_mark: var(--hue-3-deep);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="4"],
+:root[data-color-mode="generation"] .stam-card[data-generation="4"] {
+  --_mark: var(--hue-4-deep);
+}
+:root[data-color-mode="branch"] .stam-card[data-branch="5"],
+:root[data-color-mode="generation"] .stam-card[data-generation="5"] {
+  --_mark: var(--hue-5-deep);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch]:not(
+    .stam-card--placeholder,
+    .stam-card--selected,
+    .stam-card--drop-target
+  )
+  .stam-card__bg,
+:root[data-color-mode="generation"]
+  .stam-card:not(.stam-card--placeholder, .stam-card--selected, .stam-card--drop-target)
+  .stam-card__bg {
+  stroke: color-mix(in srgb, var(--_mark) 55%, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {

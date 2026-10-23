@@ -251,8 +251,11 @@ describe("fan and timeline", () => {
     const { user } = await openEditor();
     act(() => altDigit(5));
     await user.click(screen.getByRole("button", { name: "pick c3" }));
-    const name = await screen.findByLabelText("First name");
-    expect(name.closest("[inert]")).not.toBeNull();
+    const panel = await screen.findByRole("complementary", { name: "Person details" });
+    expect(within(panel).getByRole("heading", { name: "Omar Khan" })).toBeTruthy();
+    // Read-only: nothing in the panel edits.
+    expect(within(panel).queryAllByRole("textbox")).toEqual([]);
+    expect(within(panel).queryByRole("button", { name: "Delete…" })).toBeNull();
     expect((screen.getByRole("button", { name: "Undo" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -271,7 +274,8 @@ describe("fan and timeline", () => {
     await user.click(screen.getByRole("button", { name: "Search people" }));
     await user.type(screen.getByRole("searchbox"), "Zainab{Enter}");
     expect(viewCalls).toEqual(["center:c2"]);
-    expect(await screen.findByLabelText("First name")).toBeTruthy();
+    const panel = await screen.findByRole("complementary", { name: "Person details" });
+    expect(within(panel).getByRole("heading", { name: "Zainab Khan" })).toBeTruthy();
   });
 
   test("search in the fan centres a person in it, else makes them the focus first", async () => {
@@ -290,7 +294,8 @@ describe("fan and timeline", () => {
     doc.persons.c2 = { ...doc.persons.c2!, birth: { date: { year: 1983, month: 10, day: 25 } } };
     const { user } = await openEditor({}, doc);
     act(() => altDigit(5));
-    await user.click(screen.getByRole("button", { name: /^Birthdays/ }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Birthdays/ }));
     await user.click(screen.getByRole("button", { name: /^Show Zainab Khan/ }));
     expect(viewCalls).toEqual(["center:c2"]);
   });
@@ -321,12 +326,12 @@ describe("fan and timeline", () => {
     const { user } = await openEditor();
     await user.click(screen.getByRole("button", { name: /^Pedigree/ }));
     fireEvent.pointerOver(card("dad"));
-    expect(screen.getByRole("button", { name: "Add parent of Ahmed Khan" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Add a person above Ahmed Khan" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add child of Ahmed Khan" })).toBeNull();
     await user.click(screen.getByRole("button", { name: /^Descendants/ }));
     fireEvent.pointerOver(card("dad"));
     expect(screen.getByRole("button", { name: "Add child of Ahmed Khan" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Add parent of Ahmed Khan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add a person above Ahmed Khan" })).toBeNull();
   });
 
   test("View family on a card in a focus view moves the focus, not the family view's root", async () => {
@@ -406,7 +411,8 @@ describe("relationship calculator", () => {
   test("the toolbar button opens it with the selection; the pickers choose people", async () => {
     const { user } = await openEditor();
     await user.click(card("c1"));
-    await user.click(screen.getByRole("button", { name: "How are we related?" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitemcheckbox", { name: "How are we related?" }));
     const panel = await screen.findByRole("complementary", { name: "How are we related?" });
     await user.click(within(panel).getByRole("button", { name: /Second person/ }));
     const dialog = await screen.findByRole("dialog");
@@ -499,11 +505,15 @@ function withBirthdays() {
 }
 
 describe("birthdays", () => {
-  test("the badge counts the next 7 days; the panel lists name, date, age and distance", async () => {
+  test("the More item counts the next 7 days; the panel lists name, date, age and distance", async () => {
     const { user } = await openEditor({}, withBirthdays());
-    const button = screen.getByRole("button", { name: "Birthdays: 2 in the next 7 days" });
-    expect(button.textContent).toBe("2");
-    await user.click(button);
+    const more = screen.getByRole("button", { name: "More" });
+    // A dot on the More button says a birthday is near.
+    expect(more.querySelector(".toolbar-more__dot")).toBeTruthy();
+    await user.click(more);
+    const item = screen.getByRole("menuitem", { name: "Birthdays: 2 in the next 7 days" });
+    expect(item.querySelector(".menu-item__count")?.textContent).toBe("2");
+    await user.click(item);
     const rows = within(screen.getByRole("region", { name: "Upcoming birthdays" })).getAllByRole(
       "button",
     );
@@ -517,7 +527,8 @@ describe("birthdays", () => {
 
   test("clicking a row selects the person and closes the panel", async () => {
     const { user } = await openEditor({}, withBirthdays());
-    await user.click(screen.getByRole("button", { name: /^Birthdays/ }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitem", { name: /^Birthdays/ }));
     await user.click(
       screen.getByRole("button", { name: "Show Omar Khan, Nov 20, turns 36, in 28 days" }),
     );
@@ -527,8 +538,11 @@ describe("birthdays", () => {
 
   test("no badge and a plain message when nobody has a birthday soon", async () => {
     const { user } = await openEditor();
-    const button = screen.getByRole("button", { name: "Birthdays" });
-    expect(button.textContent).toBe("");
+    const more = screen.getByRole("button", { name: "More" });
+    expect(more.querySelector(".toolbar-more__dot")).toBeNull();
+    await user.click(more);
+    const button = screen.getByRole("menuitem", { name: "Birthdays" });
+    expect(button.querySelector(".menu-item__count")).toBeNull();
     await user.click(button);
     expect(screen.getByText("No birthdays in the next 30 days.")).toBeTruthy();
     await user.keyboard("{Escape}");

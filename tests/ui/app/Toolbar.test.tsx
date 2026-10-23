@@ -141,25 +141,60 @@ describe("accessibility", () => {
     expect(screen.getByRole("banner")).toBeTruthy();
   });
 
-  test("the menu button says it opens a menu and whether it is open", async () => {
+  test("the More button says it opens a menu and whether it is open", async () => {
     await mountToolbar();
-    const button = screen.getByRole("button", { name: "Menu" });
+    const button = screen.getByRole("button", { name: "More" });
     expect(button.getAttribute("aria-haspopup")).toBe("menu");
     expect(button.getAttribute("aria-expanded")).toBe("false");
     await userEvent.setup().click(button);
     expect(button.getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("menu", { name: "More" })).toBeTruthy();
+  });
+
+  test("a second press on More closes the menu instead of reopening it", async () => {
+    await mountToolbar();
+    const user = await openMenu();
+    await user.click(screen.getByRole("button", { name: "More" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(screen.getByRole("button", { name: "More" }).getAttribute("aria-expanded")).toBe(
+      "false",
+    );
   });
 
   test("Escape closes the menu and puts focus back on its button", async () => {
     await mountToolbar();
     const user = await openMenu();
-    const button = screen.getByRole("button", { name: "Menu" });
-    await user.tab(); // into the panel
-    expect(document.activeElement).not.toBe(button);
+    const button = screen.getByRole("button", { name: "More" });
+    // The first item has the focus.
+    expect(document.activeElement?.getAttribute("role")).toBe("menuitemcheckbox");
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("checkbox")).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
     expect(document.activeElement).toBe(button);
     expect(button.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  test("every More item has an icon and a label", async () => {
+    await mountToolbar();
+    await openMenu();
+    const items = [...screen.getByRole("menu").querySelectorAll('[role^="menuitem"]')];
+    const names = items.map((item) => item.textContent?.replace(/⌘E|Ctrl\+E/, "").trim());
+    expect(names).toEqual([
+      "Focus mode",
+      "Download backup (.json)",
+      "Download backup with photos",
+      "Settings",
+    ]);
+    for (const item of items) expect(item.querySelector("svg.icon")).toBeTruthy();
+  });
+
+  test("the zoom buttons are one labelled group, in the order − fit +", async () => {
+    await mountToolbar();
+    const group = screen.getByRole("group", { name: "Zoom" });
+    expect(
+      within(group)
+        .getAllByRole("button")
+        .map((b) => b.getAttribute("aria-label")),
+    ).toEqual(["Zoom out", "Fit tree to screen", "Zoom in"]);
   });
 });
 
@@ -190,13 +225,18 @@ describe("undo, redo and view buttons", () => {
     expect(calls).toMatchObject({ zoomIn: 1, zoomOut: 1, fit: 1, search: 1 });
   });
 
-  test("the focus mode toggle reflects and sets the store", async () => {
+  test("the focus mode item in More reflects and sets the store", async () => {
     const { store } = await mountToolbar();
-    const toggle = screen.getByRole("button", { name: "Focus mode" });
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    await userEvent.setup().click(toggle);
+    let user = await openMenu();
+    const toggle = screen.getByRole("menuitemcheckbox", { name: "Focus mode" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    await user.click(toggle);
     expect(store.getState().focusMode).toBe(true);
-    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByRole("menu")).toBeNull();
+    user = await openMenu();
+    expect(
+      screen.getByRole("menuitemcheckbox", { name: "Focus mode" }).getAttribute("aria-checked"),
+    ).toBe("true");
   });
 });
 
@@ -312,7 +352,7 @@ describe("save status", () => {
 
 async function openMenu() {
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Menu" }));
+  await user.click(screen.getByRole("button", { name: "More" }));
   return user;
 }
 
@@ -338,7 +378,7 @@ describe("download backup", () => {
   test("downloads a named .stam.json file and records the backup", async () => {
     const { store } = await mountToolbar();
     const user = await openMenu();
-    await user.click(screen.getByRole("button", { name: "Download backup (.json)" }));
+    await user.click(screen.getByRole("menuitem", { name: "Download backup (.json)" }));
     await waitFor(() => expect(anchors).toHaveLength(1));
     expect(anchors[0]!.download).toBe(backupFileName(store.getState().doc!));
     const file = JSON.parse(await blobs[0]!.text());
@@ -351,7 +391,7 @@ describe("download backup", () => {
     });
   });
 
-  test("includes photos only when the box is ticked", async () => {
+  test("includes photos only from the with-photos item", async () => {
     const base = famSimple();
     const doc = {
       ...base,
@@ -362,13 +402,14 @@ describe("download backup", () => {
       new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" }),
     );
     await mountToolbar(doc);
-    const user = await openMenu();
-    const box = screen.getByRole("checkbox", { name: "Include photos" }) as HTMLInputElement;
-    await user.click(box);
-    expect(box.checked).toBe(true);
-    await user.click(screen.getByRole("button", { name: "Download backup (.json)" }));
+    let user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: "Download backup (.json)" }));
     await waitFor(() => expect(blobs).toHaveLength(1));
-    const file = JSON.parse(await blobs[0]!.text());
+    expect(JSON.parse(await blobs[0]!.text()).photos).toBeUndefined();
+    user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: "Download backup with photos" }));
+    await waitFor(() => expect(blobs).toHaveLength(2));
+    const file = JSON.parse(await blobs[1]!.text());
     expect(Object.keys(file.photos)).toEqual(["p1"]);
     expect(file.photos.p1).toStartWith("data:image/png;base64,");
   });
@@ -376,10 +417,9 @@ describe("download backup", () => {
   test("the menu closes on Escape", async () => {
     await mountToolbar();
     const user = await openMenu();
-    const menu = screen.getByRole("button", { name: "Download backup (.json)" });
-    expect(within(menu.closest("[data-menu]")!).getByRole("checkbox")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Download backup (.json)" })).toBeTruthy();
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("button", { name: "Download backup (.json)" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Download backup (.json)" })).toBeNull();
   });
 });
 

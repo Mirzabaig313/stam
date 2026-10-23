@@ -1,7 +1,7 @@
 /*
  * Drag and drop: the ghost card, the drop and card menus, and the refusal notice.
  * Things placed at the pointer use physical offsets (pointer positions are physical); everything
- * else uses logical properties. Card radius 6 px; nothing else is rounded.
+ * else uses logical properties. The menu's surface and items are shared (src/ui/design/design.css).
  */
 
 .dnd-ghost {
@@ -16,11 +16,11 @@
   inline-size: 180px;
   block-size: 72px;
   padding-inline: 16px;
-  border: 1px solid var(--ink, #111311);
-  border-radius: 6px;
-  background: var(--card, #ffffff);
-  box-shadow: 0 6px 18px var(--shadow, rgba(17, 19, 17, 0.14));
-  color: var(--ink, #111311);
+  border: 1px solid var(--card-edge, rgba(42, 30, 36, 0.18));
+  border-radius: var(--radius-card, 12px);
+  background: var(--card, #fffcfa);
+  box-shadow: var(--shadow-3, 0 24px 56px rgba(92, 48, 66, 0.2));
+  color: var(--ink, #2a1e24);
   font-family: "Archivo Variable", system-ui, sans-serif;
   opacity: 0.85;
   pointer-events: none;
@@ -37,18 +37,18 @@
 }
 
 .dnd-ghost__years {
-  color: var(--muted, #5a615b);
+  color: var(--muted, #6a5960);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
 
 .dnd-ghost[data-blocked] {
-  border-color: var(--muted, #5a615b);
+  border-color: var(--muted, #6a5960);
   border-style: dashed;
 }
 
 .dnd-ghost__blocked {
-  color: var(--muted, #5a615b);
+  color: var(--muted, #6a5960);
   font-size: 11px;
   font-weight: 600;
 }
@@ -59,18 +59,18 @@
 .dnd-popover {
   position: fixed;
   z-index: 30;
-  display: grid;
-  min-inline-size: 200px;
-  max-inline-size: 320px;
-  padding-block: 4px;
-  border: 1px solid var(--ink, #111311);
-  background: var(--ground, #f4f5f2);
-  color: var(--ink, #111311);
-  box-shadow: 0 6px 18px var(--shadow, rgba(17, 19, 17, 0.14));
 }
 
 .dnd-popover {
+  display: grid;
+  min-inline-size: 200px;
+  max-inline-size: 320px;
   padding: 12px;
+  border: 1px solid var(--line, rgba(42, 30, 36, 0.14));
+  border-radius: var(--radius-md, 12px);
+  background: var(--surface-overlay, #fffcfa);
+  color: var(--ink, #2a1e24);
+  box-shadow: var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
 }
 
 /* The shared union chooser brings its own frame; inside this popover it uses the popover's. */
@@ -85,43 +85,20 @@
   outline: none;
 }
 
-.dnd-menu__item {
-  display: block;
-  inline-size: 100%;
-  padding: 8px 14px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 14px;
-  text-align: start;
-  cursor: pointer;
-  transition: background-color var(--dur-card, 250ms) var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
-}
-
-.dnd-menu__item:hover,
-.dnd-menu__item:focus-visible {
-  background: var(--line, rgba(17, 19, 17, 0.14));
-}
-
-.dnd-menu__item:focus-visible {
-  outline: 2px solid var(--ink, #111311);
-  outline-offset: -2px;
-}
-
 .dnd-menu__note,
 .dnd-menu__error {
   margin: 0;
-  padding: 8px 14px;
+  padding-block: 8px;
+  padding-inline: 12px;
   font-size: 13px;
 }
 
 .dnd-menu__note {
-  color: var(--muted, #5a615b);
+  color: var(--muted, #6a5960);
 }
 
 .dnd-menu__error {
-  border-block-start: 1px solid var(--line, rgba(17, 19, 17, 0.14));
+  border-block-start: 1px solid var(--line, rgba(42, 30, 36, 0.14));
 }
 
 /* ---- Refusal notice ------------------------------------------------------------------- */
@@ -134,8 +111,11 @@
   inline-size: max-content;
   max-inline-size: calc(100% - 32px);
   margin: 0 auto;
-  padding: 8px 14px;
-  border: 1px solid var(--ink, #111311);
-  background: var(--ground, #f4f5f2);
+  padding-block: 10px;
+  padding-inline: 16px;
+  border: 1px solid var(--line, rgba(42, 30, 36, 0.14));
+  border-radius: var(--radius-pill, 999px);
+  background: var(--surface-overlay, #fffcfa);
+  box-shadow: var(--shadow-2, 0 10px 24px rgba(92, 48, 66, 0.12));
   font-size: 14px;
 }

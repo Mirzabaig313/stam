@@ -435,9 +435,9 @@ function EditorFrame({
           selectedId !== null &&
           selectedExists && (
             <PersonPanel
-              key={selectedId}
               personId={selectedId}
               onRequestDelete={requestDelete}
+              onShowPerson={showPerson}
               readOnly={readOnly}
             />
           )

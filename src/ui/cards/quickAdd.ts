@@ -45,6 +45,8 @@ function addCommand(
       return { type: "addParent", childId: fromId, parent: person };
     case "sibling":
       return { type: "addSibling", personId: fromId, sibling: person };
+    case "between":
+      return { type: "insertParent", childId: fromId, parent: person };
   }
 }
 
@@ -82,6 +84,7 @@ const LABELS: Record<AddRole, string> = {
   spouse: "Add spouse",
   parent: "Add parent",
   sibling: "Add sibling",
+  between: "Add parent between",
 };
 
 /**

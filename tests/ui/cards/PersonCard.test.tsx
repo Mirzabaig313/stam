@@ -13,6 +13,8 @@ import { cardFamily } from "./fixtures";
 
 afterEach(cleanup);
 
+const NOW = new Date(2026, 9, 24);
+
 function nodeOf(doc: TreeDocument, nodeId: string): LayoutNode {
   const node = layoutFamily(doc, { rootId: "ahmed" }).nodes.find((n) => n.nodeId === nodeId);
   if (!node) throw new Error(`no node ${nodeId}`);
@@ -24,7 +26,7 @@ function renderCard(nodeId: string, props: Partial<PersonCardProps> = {}, doc = 
   return render(
     withI18n(
       <svg>
-        <PersonCard doc={doc} node={node} {...props} />
+        <PersonCard doc={doc} node={node} now={NOW} {...props} />
       </svg>,
     ),
   );
@@ -97,11 +99,25 @@ describe("PersonCard", () => {
     expect(screen.getByRole("button", { name: /^Ali Khan/ }).getAttribute("tabindex")).toBe("0");
   });
 
-  test("deceased card shows † before the death year and the deceased treatment", () => {
+  test("deceased card shows its years as a plain range, with no †, and the deceased treatment", () => {
     const { container } = renderCard("zainab");
     const years = container.querySelector(".stam-card__years");
-    expect(years?.textContent).toBe("1953 – †2019");
+    // "1953 – 2019 · 66 yrs" does not fit the test's rough font measure: the age goes first.
+    expect(years?.textContent).toBe("1953 – 2019");
+    expect(container.textContent).not.toContain("†");
     expect(container.querySelector(".stam-card")!.classList).toContain("stam-card--deceased");
+    expect(container.querySelector(".stam-card__deceased")).toBeNull();
+  });
+
+  test("a deceased person with no dates gets a quiet Deceased chip, never a lone †", () => {
+    const doc = cardFamily();
+    const omar = { ...doc.persons.omar!, birth: undefined, death: undefined, isLiving: false };
+    const { container } = renderCard("omar", {}, { ...doc, persons: { ...doc.persons, omar } });
+    expect(container.querySelector(".stam-card__years")).toBeNull();
+    expect(container.querySelector(".stam-card__deceased")?.textContent).toBe("Deceased");
+    expect(container.textContent).not.toContain("†");
+    // The chip is the last line: the name moves up off the middle.
+    expect(yOf(container, ".stam-card__name")).toBe(31);
   });
 
   test("RTL: the years read left to right inside an LRI…PDI isolate, on an RTL text", () => {
@@ -114,19 +130,19 @@ describe("PersonCard", () => {
     expect(years.getAttribute("direction")).toBeNull();
     expect(years.getAttribute("text-anchor")).toBeNull();
     expect(years.getAttribute("x")).toBe(String(CARD_W - 60));
-    expect(years.textContent).toBe("\u20661953 – †2019\u2069");
+    expect(years.textContent).toBe("\u20661953 – 2019\u2069");
   });
 
   test("LTR: the years are plain text, with no isolate characters", () => {
     const { container } = renderCard("zainab");
     const years = container.querySelector(".stam-card__years")!;
     expect(years.querySelector("tspan")).toBeNull();
-    expect(years.textContent).toBe("1953 – †2019");
+    expect(years.textContent).toBe("1953 – 2019");
   });
 
-  test("living card shows the birth year only and no deceased treatment", () => {
+  test("living card shows b. and the age, and no deceased treatment", () => {
     const { container } = renderCard("ali");
-    expect(container.querySelector(".stam-card__years")?.textContent).toBe("1950");
+    expect(container.querySelector(".stam-card__years")?.textContent).toBe("b. 1950 · 76 yrs");
     expect(container.querySelector(".stam-card")!.classList).not.toContain("stam-card--deceased");
   });
 
@@ -172,6 +188,9 @@ describe("PersonCard", () => {
     renderCard("ali", { onToggleCollapse });
     const chevron = screen.getByRole("button", { name: "Collapse the branch of Ali Khan" });
     expect(chevron.getAttribute("aria-expanded")).toBe("true");
+    // A disc on the bottom edge, clear of the years line.
+    expect(chevron.getAttribute("transform")).toMatch(/ 72\)$/);
+    expect(chevron.querySelector("circle.stam-card__chevron-disc")).toBeTruthy();
     fireEvent.click(chevron);
     expect(onToggleCollapse.mock.calls).toEqual([["ali"]]);
   });
@@ -184,6 +203,52 @@ describe("PersonCard", () => {
     const chevron = screen.getByRole("button", { name: "Expand the branch of Ali Khan" });
     expect(chevron.getAttribute("aria-expanded")).toBe("false");
     expect(screen.getByRole("button", { name: /12 hidden descendants$/ })).toBeDefined();
+  });
+
+  test("collapsed, the +N pill on the card's bottom edge is the expand control (no chevron)", () => {
+    const doc = cardFamily();
+    const node: LayoutNode = { ...nodeOf(doc, "ali"), hiddenCount: 3 };
+    const { container } = renderCard("ali", { node, collapsed: true }, doc);
+    const control = screen.getByRole("button", { name: "Expand the branch of Ali Khan" });
+    expect(control.querySelector("path")).toBeNull();
+    expect(control.getAttribute("transform")).toMatch(/ 72\)$/);
+    // The pill is drawn outside the control, so its "+3" stays out of the button's name.
+    expect(control.textContent).toBe("");
+    const pill = container.querySelector(".stam-card__badge rect")!;
+    expect(Number(pill.getAttribute("y")) + Number(pill.getAttribute("height")) / 2).toBe(72);
+  });
+
+  test("the node says when its card is selected, so the chevron can show on it", () => {
+    const { container, unmount } = renderCard("ali", { selected: true });
+    expect(container.querySelector(".stam-node")!.classList).toContain("stam-node--selected");
+    unmount();
+    const other = renderCard("ali");
+    expect(other.container.querySelector(".stam-node")!.classList).not.toContain(
+      "stam-node--selected",
+    );
+  });
+
+  test("a coloured spine runs down the inline-start edge, clipped to the card", () => {
+    const { container, unmount } = renderCard("ali");
+    const spine = container.querySelector(".stam-card .stam-card__spine")!;
+    expect(spine.getAttribute("x")).toBe("0");
+    expect(spine.getAttribute("clip-path")).toMatch(/^url\(#.+-card\)$/);
+    unmount();
+    const rtl = renderCard("ali", { dir: "rtl" });
+    expect(rtl.container.querySelector(".stam-card__spine")!.getAttribute("x")).toBe(
+      String(CARD_W - 5),
+    );
+  });
+
+  test("no spine on a placeholder", () => {
+    const doc = cardFamily();
+    const node: LayoutNode = {
+      ...nodeOf(doc, "ali"),
+      nodeId: "unknownMom",
+      personId: "unknownMom",
+    };
+    const { container } = renderCard("unknownMom", { node }, doc);
+    expect(container.querySelector(".stam-card__spine")).toBeNull();
   });
 
   test("no chevron and no badge on a person without children", () => {
@@ -305,6 +370,21 @@ describe("PersonCard", () => {
         expect(mark?.getAttribute("d")).toMatch(/^M[\d.\s-]+a/);
         unmount();
       }
+    });
+
+    test("keeps the export years line and draws no spine or Deceased chip", () => {
+      const doc = cardFamily();
+      const omar = { ...doc.persons.omar!, isLiving: false };
+      const { container, unmount } = renderCard("zainab", { static: true });
+      expect(container.querySelector(".stam-card__years")?.textContent).toBe("1953 – †2019");
+      expect(container.querySelector(".stam-card__spine")).toBeNull();
+      unmount();
+      const lone = renderCard(
+        "omar",
+        { static: true },
+        { ...doc, persons: { ...doc.persons, omar } },
+      );
+      expect(lone.container.querySelector(".stam-card__deceased")).toBeNull();
     });
 
     test("the editor card has no person id attribute", () => {

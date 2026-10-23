@@ -65,10 +65,8 @@ describe("toolbar hints", () => {
     expect(tipOf("Zoom in")).toContain(hints.zoomIn!);
     expect(tipOf("Fit tree to screen")).toContain(hints.fit!);
     expect(tipOf("Search people")).toContain(hints.search!);
-    expect(tipOf("Focus mode")).toContain(hints.focusMode!);
-    expect(tipOf("How are we related?")).toContain(hints.relate!);
-    expect(tipOf(/Birthdays/)).toContain(hints.birthdays!);
-    expect(tipOf("Menu")).toContain(hints.menu!);
+    expect(tipOf("Add person")).toContain(hints.addPerson!);
+    expect(tipOf("More")).toContain(hints.menu!);
   });
 
   test("shortcuts are shown where they exist", async () => {

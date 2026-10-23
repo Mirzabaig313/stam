@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { produce } from "immer";
+import { applyPatches, produce } from "immer";
 
 import { applyCommand } from "@/core/commands/apply";
 import { insertUnionInOrder } from "@/core/commands/unionOrder";
@@ -393,6 +393,135 @@ describe("addParent", () => {
           NOW,
         ),
       "NOT_FOUND",
+    );
+  });
+});
+
+/** Ismail with his son Haider, and Haider's sister Amna: the owner's case. */
+const ismail = () =>
+  docOf(
+    [
+      person("ismail", "Ismail", "Khan", "male"),
+      person("amna", "Amna", "Khan", "female"),
+      person("haider", "Haider", "Khan", "male"),
+    ],
+    [union("u", ["ismail"], ["amna", "haider"], "partner")],
+    "ismail",
+  );
+
+describe("insertParent", () => {
+  test("the new person takes the child's place; the child moves under them", () => {
+    const result = applyChecked(ismail(), {
+      type: "insertParent",
+      childId: "haider",
+      parent: { gender: "male", firstName: "Ahmed" },
+    });
+    const ahmed = result.createdIds[0]!;
+    expect(result.createdIds).toHaveLength(1);
+    // Same position, same type: Amna stays first.
+    expect(result.doc.unions["u"]!.children).toEqual([
+      { personId: "amna", type: "biological" },
+      { personId: ahmed, type: "biological" },
+    ]);
+    expect(parentUnionOf(result.doc, "haider")).toMatchObject({
+      partners: [ahmed],
+      status: "partner",
+      children: [{ personId: "haider", type: "biological" }],
+    });
+    expect(result.doc.unionOrder[ahmed]).toHaveLength(1);
+    expect(result.doc.rootPersonId).toBe("ismail");
+  });
+
+  test("is one entry: the inverse patches restore the tree", () => {
+    const doc = ismail();
+    const result = applyChecked(doc, {
+      type: "insertParent",
+      childId: "haider",
+      parent: { gender: "male" },
+    });
+    expect(applyPatches(result.doc, result.inversePatches)).toEqual(doc);
+  });
+
+  test("keeps the child type of the link it replaces", () => {
+    const doc = docOf(
+      [person("a", "A", "", "male"), person("k", "K", "", "male")],
+      [union("u", ["a"], [["k", "adopted"]], "partner")],
+      "a",
+    );
+    const result = applyChecked(doc, {
+      type: "insertParent",
+      childId: "k",
+      parent: { gender: "female" },
+      unionId: "u",
+    });
+    const mid = result.createdIds[0]!;
+    expect(result.doc.unions["u"]!.children).toEqual([{ personId: mid, type: "adopted" }]);
+    expect(parentUnionOf(result.doc, "k")?.partners).toEqual([mid]);
+  });
+
+  test("between two parents, the new person becomes the child of both", () => {
+    const result = applyChecked(famSimple(), {
+      type: "insertParent",
+      childId: "c2",
+      parent: { gender: "female" },
+    });
+    const mid = result.createdIds[0]!;
+    expect(childIds(result.doc, "u1")).toEqual(["c1", mid, "c3"]);
+    expect(parentUnionOf(result.doc, "c2")?.partners).toEqual([mid]);
+  });
+
+  test("with no parents (the root) it is addParent, and the root moves up", () => {
+    const doc = docOf([person("k", "K", "", "male")], [], "k");
+    const result = applyChecked(doc, {
+      type: "insertParent",
+      childId: "k",
+      parent: { gender: "male" },
+    });
+    const parentId = result.createdIds[0]!;
+    expect(parentUnionOf(result.doc, "k")?.partners).toEqual([parentId]);
+    expect(result.doc.rootPersonId).toBe(parentId);
+  });
+
+  test("a union that does not hold the child is NOT_FOUND; an unknown child too", () => {
+    const doc = docOf(
+      [person("a", "A", "", "male"), person("b", "B", "", "male"), person("k", "K", "", "male")],
+      [union("u", ["a"], ["k"], "partner"), union("v", ["b"], [], "partner")],
+      "a",
+    );
+    expectCode(
+      () =>
+        applyCommand(
+          doc,
+          { type: "insertParent", childId: "k", parent: { gender: "male" }, unionId: "v" },
+          NOW,
+        ),
+      "NOT_FOUND",
+    );
+    expectCode(
+      () =>
+        applyCommand(
+          doc,
+          { type: "insertParent", childId: "ghost", parent: { gender: "male" } },
+          NOW,
+        ),
+      "NOT_FOUND",
+    );
+  });
+
+  test("going between adoptive parents of a child with biological parents is INVALID", () => {
+    const doc = docOf(
+      [person("a", "A", "", "male"), person("b", "B", "", "male"), person("k", "K", "", "male")],
+      [union("u", ["a"], ["k"], "partner"), union("v", ["b"], [["k", "adopted"]], "partner")],
+      "a",
+    );
+    expectCode(
+      () =>
+        applyCommand(
+          doc,
+          { type: "insertParent", childId: "k", parent: { gender: "male" }, unionId: "v" },
+          NOW,
+        ),
+      "INVALID",
     );
   });
 });

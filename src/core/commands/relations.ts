@@ -151,6 +151,32 @@ export const addParent: Handler<"addParent"> = (doc, cmd, ctx) => {
   linkParent(doc, cmd.childId, parentId);
 };
 
+export const insertParent: Handler<"insertParent"> = (doc, cmd, ctx) => {
+  requirePerson(doc, cmd.childId);
+  const union =
+    cmd.unionId !== undefined
+      ? requireUnion(doc, cmd.unionId)
+      : (parentUnionOf(doc, cmd.childId) as Draft<Union> | undefined);
+  const index = union ? union.children.findIndex((c) => c.personId === cmd.childId) : -1;
+  if (union && index < 0) {
+    throw new CommandError("NOT_FOUND", `${cmd.childId} is not a child of union ${union.id}`);
+  }
+  // No parents yet (the root, for one): there is nothing to go between, so it is addParent.
+  if (!union) {
+    const parentId = addNewPerson(doc, cmd.parent, ctx);
+    linkParent(doc, cmd.childId, parentId);
+    return;
+  }
+  const link = union.children[index]!;
+  // The child's own biological parents become the new person's: it can only move from there.
+  if (link.type !== "biological" && parentUnionOf(doc, cmd.childId)) {
+    throw new CommandError("INVALID", `${cmd.childId} already has biological parents elsewhere`);
+  }
+  const parentId = addNewPerson(doc, cmd.parent, ctx);
+  union.children[index] = { personId: parentId, type: link.type };
+  createUnion(doc, [parentId], "partner", [{ personId: cmd.childId, type: "biological" }]);
+};
+
 export const addSibling: Handler<"addSibling"> = (doc, cmd, ctx) => {
   requirePerson(doc, cmd.personId);
   const siblingId = addNewPerson(doc, cmd.sibling, ctx);

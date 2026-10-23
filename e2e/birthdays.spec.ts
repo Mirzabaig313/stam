@@ -24,7 +24,8 @@ test("the birthdays panel counts the week ahead, lists it, and a row selects the
   await page.locator('input[type="file"]').setInputFiles(file());
   await expect(allCards(page)).toHaveCount(5);
 
-  const button = page.getByRole("button", { name: "Birthdays: 2 in the next 7 days" });
+  await page.getByRole("button", { name: "More" }).click();
+  const button = page.getByRole("menuitem", { name: "Birthdays: 2 in the next 7 days" });
   await expect(button).toBeVisible();
   await button.click();
   const panel = page.getByRole("region", { name: "Upcoming birthdays" });

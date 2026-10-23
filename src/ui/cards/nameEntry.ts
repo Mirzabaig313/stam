@@ -14,7 +14,8 @@ export function parseNameEntry(
   return { firstName: words.slice(0, -1).join(" "), lastName: words[words.length - 1]! };
 }
 
-export type AddRole = "first" | "child" | "spouse" | "parent" | "sibling";
+/** `between`: a new parent that goes between a person and the parents they have now. */
+export type AddRole = "first" | "child" | "spouse" | "parent" | "sibling" | "between";
 
 const opposite = (g: Gender): Gender => (g === "male" ? "female" : "male");
 
@@ -29,6 +30,7 @@ export function defaultGender(
     case "parent":
       return ctx.existingParentGender ? opposite(ctx.existingParentGender) : null;
     case "first":
+    case "between":
     case "child":
     case "sibling":
       return null;

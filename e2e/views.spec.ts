@@ -182,7 +182,7 @@ test.describe("views", () => {
       .getByRole("button", { name: /^Nadir Raza/ })
       .click();
     await hoverCard(page, "Nadir Raza");
-    await page.getByRole("button", { name: "Add parent of Nadir Raza" }).click();
+    await page.getByRole("button", { name: "Add a person above Nadir Raza" }).click();
     await fillInlineEditor(page, "Jalal Raza", "Male");
     await expect(card(page, "Jalal Raza")).toBeVisible();
     await page.getByRole("button", { name: "Fit tree to screen" }).click(); // zoomed in, cards cull
@@ -231,9 +231,13 @@ test.describe("views", () => {
       await expect(target).toHaveAttribute("aria-current", "true");
       const panel = page.getByRole("complementary", { name: "Person details" });
       await expect(panel.getByRole("heading", { name })).toBeVisible();
-      const firstName = panel.getByRole("textbox", { name: "First name" });
-      expect(await firstName.evaluate((el) => el.closest("[inert]") !== null)).toBe(true);
-      await expect(panel.getByRole("button", { name: "Delete…" })).toBeDisabled();
+      // Read-only: the same profile, without a field, an Add or a Delete… to press.
+      await expect(panel.getByRole("region", { name: "Details" })).toContainText(
+        name.split(" ")[0]!,
+      );
+      await expect(panel.getByRole("textbox")).toHaveCount(0);
+      await expect(panel.getByRole("button", { name: /^Add / })).toHaveCount(0);
+      await expect(panel.getByRole("button", { name: "Delete…" })).toHaveCount(0);
       expect(errors).toEqual([]);
     });
   }
@@ -246,6 +250,10 @@ test.describe("relationship calculator", () => {
     const errors = watchErrors(page);
     await importTree(page, razaFamily());
     await card(page, "Bilal Raza").click();
+    // On a desktop the person panel takes its room beside the canvas: fit the tree into what is
+    // left, so Sana's card is clear of the panel and the minimap. (On a phone the bottom sheet
+    // has already moved the selection above it, and a fit would put Sana back under the sheet.)
+    if (!isPhone(info)) await page.getByRole("button", { name: "Fit tree to screen" }).click();
     await card(page, "Sana Raza").click({ modifiers: ["Shift"] });
     const panel = page.getByRole("complementary", { name: "How are we related?" });
     await expect(panel).toContainText("Bilal Raza is Sana Raza's half-brother");
@@ -272,7 +280,8 @@ test.describe("relationship calculator", () => {
   }, info) => {
     const errors = watchErrors(page);
     await importTree(page, razaFamily());
-    await page.getByRole("button", { name: "How are we related?" }).click();
+    await page.getByRole("button", { name: "More" }).click();
+    await page.getByRole("menuitemcheckbox", { name: "How are we related?" }).click();
     const panel = page.getByRole("complementary", { name: "How are we related?" });
     await expect(panel).toContainText("Choose two people");
 
@@ -312,8 +321,9 @@ test.describe("birthdays", () => {
 
     // Noor today, Sana in 2 days, Ali in 6; Zaid in 18 days is listed but not counted, and
     // Karim (24 Oct) has died, so he is not reminded.
-    const button = page.getByRole("button", { name: "Birthdays: 3 in the next 7 days" });
-    await expect(button).toHaveText("3");
+    await page.getByRole("button", { name: "More" }).click();
+    const button = page.getByRole("menuitem", { name: "Birthdays: 3 in the next 7 days" });
+    await expect(button.locator(".menu-item__count")).toHaveText("3");
     await button.click();
     const list = page.getByRole("region", { name: "Upcoming birthdays" });
     const rows = list.getByRole("button", { name: /^Show / });

@@ -7,4 +7,4 @@ export const COUPLE_GAP = 32;
 /** Minimum space between neighbouring subtrees on the same row. */
 export const GAP = 40;
 /** Distance from one generation row's top to the next. */
-export const ROW_H = 168;
+export const ROW_H = 136;

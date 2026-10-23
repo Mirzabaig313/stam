@@ -62,7 +62,7 @@ describe("UnconnectedList", () => {
   test("a click on the badge that opened it is left to the badge", async () => {
     const { onClose } = await open();
     const badge = document.createElement("button");
-    badge.className = "badge";
+    badge.className = "toolbar-unconnected";
     document.body.append(badge);
     fireEvent.pointerDown(badge);
     expect(onClose).not.toHaveBeenCalled();

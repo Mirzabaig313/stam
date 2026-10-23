@@ -34,8 +34,8 @@ const EDGE_GAP = 4;
 const NEIGHBOUR_GAP = 2;
 /** Side handles need this much room between two cards. */
 const SIDE_ROOM = EDGE_GAP + HANDLE_SIZE + NEIGHBOUR_GAP;
-/** The "+N" badge reaches this far below the card, in card px. */
-const BADGE_REACH = 9;
+/** The "+N" pill on a collapsed card reaches this far below the card, in card px. */
+const BADGE_REACH = 10;
 
 /** Below this on-screen card width the cards show only a name or a dot: no handles. */
 export const MIN_HANDLE_CARD_WIDTH = CARD_W * 0.45;
@@ -71,6 +71,7 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
   const rtl = useTreeDir() === "rtl";
   const doc = useEditor((s) => s.doc);
   const [open, setOpen] = useState<Open>(null);
+
   const handleRefs = useRef<Partial<Record<"start" | "end" | "union", HTMLButtonElement | null>>>(
     {},
   );
@@ -87,6 +88,18 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
   const besideRoles = (["spouse", "sibling"] as const).filter((role) => roles.has(role));
   const parents = parentsOf(doc, node.personId);
   const unionCount = unionsOf(doc, node.personId).length;
+  const parentLabels = parents.map((id) => {
+    const parent = doc.persons[id];
+    return parent ? personLabel(parent, t) : "";
+  });
+  const parentNames =
+    parentLabels.length === 2
+      ? t("canvas.describe.twoParents", { first: parentLabels[0], second: parentLabels[1] })
+      : (parentLabels[0] ?? "");
+  const aboveLabel =
+    parents.length > 0
+      ? t("handles.addBetween", { parents: parentNames, name })
+      : t("handles.addParent", { name });
   const k = rect.width / CARD_W;
   const { width: w, height: h } = rect;
 
@@ -176,14 +189,17 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
 
   return (
     <div className="quick-add" data-handles-for={node.nodeId} style={at(rect.x, rect.y)}>
-      {parents.length < 2 && roles.has("parent") && (
+      {roles.has("parent") && (
         <button
           type="button"
           className="quick-add__handle"
           onKeyDown={backToCard}
           style={at(topX - HALF, topY)}
-          aria-label={t("handles.addParent", { name })}
-          onClick={() => onAdd("parent")}
+          aria-label={aboveLabel}
+          title={aboveLabel}
+          // Up is always a new generation: with parents already there, it goes between them and
+          // this person. A mother or second parent is a spouse of the parent there is.
+          onClick={() => onAdd(parents.length > 0 ? "between" : "parent")}
         >
           <span aria-hidden="true">+</span>
         </button>

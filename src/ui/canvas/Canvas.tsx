@@ -26,7 +26,7 @@ import { branchOf } from "@/ui/settings/colorModes";
 import { dimmedEdgeIds, focusSet, mirrorFrame, pathEdgeIds } from "./derive";
 import { Edges } from "./Edges";
 import { GenerationRuler, rowsOf } from "./GenerationRuler";
-import { Minimap } from "./Minimap";
+import { Minimap, MINIMAP_MIN_CARDS } from "./Minimap";
 import { REFLOW_MS } from "./motion";
 import { useLayoutTween } from "./useLayoutTween";
 import { usePanZoom } from "./usePanZoom";
@@ -216,6 +216,13 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
   const tabStop = selectedNodeId ?? layout.nodes[0]?.nodeId;
 
   const visible = visibleRect(viewport, size, CULL_MARGIN);
+  // The minimap helps find what is off screen: with the whole tree in view it would only cover it.
+  const onScreen = visibleRect(viewport, size, 0);
+  const wholeTreeInView =
+    bounds.x >= onScreen.x - 1 &&
+    bounds.y >= onScreen.y - 1 &&
+    bounds.x + bounds.width <= onScreen.x + onScreen.width + 1 &&
+    bounds.y + bounds.height <= onScreen.y + onScreen.height + 1;
   const shownNodes = display.nodes.filter(
     (n) =>
       n.nodeId === tabStop ||
@@ -471,7 +478,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
           height={size.height}
           activeGeneration={selectedNodeId ? nodeById.get(selectedNodeId)?.generation : null}
         />
-        {layout.nodes.length > 0 && (
+        {layout.nodes.length >= MINIMAP_MIN_CARDS && !wholeTreeInView && (
           <Minimap
             nodes={display.nodes}
             bounds={bounds}

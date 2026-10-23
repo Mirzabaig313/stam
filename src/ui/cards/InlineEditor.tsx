@@ -10,7 +10,9 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
+import { CARD_W } from "@/core/layout/constants";
 import type { Gender } from "@/core/model/types";
+import { Icon } from "@/ui/app/Icon";
 import type { Rect } from "@/ui/canvas/viewport";
 import { focusCard } from "@/ui/keyboard/focusCard";
 import type { EditorStore } from "@/ui/store/editorStore";
@@ -20,9 +22,8 @@ import { personLabel } from "./describe";
 import { type AddRole, parseNameEntry } from "./nameEntry";
 import { suggestedGender } from "./quickAdd";
 
-/** The editor covers the card, but stays usable when zoomed far out or in (screen px). */
-const MIN_WIDTH = 200;
-const MAX_WIDTH = 320;
+/** The editor grows with the zoom up to this, and never shrinks below the card's own size. */
+const MAX_SCALE = 1.5;
 
 export type InlineEditorProps = {
   /** The person the add created, still unnamed. */
@@ -59,6 +60,7 @@ export function InlineEditor({ personId, role, fromId, rect }: InlineEditorProps
     return doc ? suggestedGender(doc, role, fromId, personId) : null;
   });
   const [needGender, setNeedGender] = useState(false);
+
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   /** Set once the editor has confirmed or cancelled, so the blur that follows does nothing. */
@@ -80,7 +82,7 @@ export function InlineEditor({ personId, role, fromId, rect }: InlineEditorProps
   function confirm(): boolean {
     const parsed = parseNameEntry(
       name,
-      role === "child" || role === "sibling" ? (from?.lastName ?? "") : "",
+      role === "child" || role === "sibling" || role === "between" ? (from?.lastName ?? "") : "",
     );
     if (!parsed) {
       cancel();
@@ -126,21 +128,25 @@ export function InlineEditor({ personId, role, fromId, rect }: InlineEditorProps
   };
 
   const fromName = from ? personLabel(from, t) : "";
-  const required = gender === null;
   const messageId = `inline-editor-msg-${personId}`;
+  // The editor takes the card's place: the card's own size and spot, scaled with the zoom but
+  // never below 100 %, so the name stays easy to type when zoomed out.
+  const scale = Math.min(Math.max(rect.width / CARD_W, 1), MAX_SCALE);
 
   return (
     <form
       className="inline-editor"
       aria-label={t(`handles.editor.${role}`, { name: fromName })}
       style={{
-        transform: `translate(${rect.x}px, ${rect.y + rect.height / 2}px) translateY(-50%)`,
-        inlineSize: Math.min(Math.max(rect.width, MIN_WIDTH), MAX_WIDTH),
+        transform: `translate(${rect.x + rect.width / 2}px, ${rect.y + rect.height / 2}px) translate(-50%, -50%) scale(${scale})`,
       }}
       ref={formRef}
       onSubmit={onSubmit}
       data-editing-for={personId}
     >
+      <span className="inline-editor__avatar" aria-hidden="true">
+        <Icon name="person" size={18} />
+      </span>
       <input
         ref={inputRef}
         className="inline-editor__name"
@@ -158,30 +164,55 @@ export function InlineEditor({ personId, role, fromId, rect }: InlineEditorProps
           setName(e.target.value);
         }}
       />
-      <div
-        className={
-          required
-            ? "inline-editor__gender inline-editor__gender--required"
-            : "inline-editor__gender"
-        }
-      >
-        {(["male", "female"] as const).map((g) => (
+      <div className="inline-editor__row">
+        {/* ♂ | ♀ in the design system's segmented pill; toggle buttons, so a missing choice
+            stays visibly unpressed rather than a radio group with nothing checked. */}
+        <div
+          className={
+            needGender
+              ? "segmented inline-editor__gender inline-editor__gender--missing"
+              : "segmented inline-editor__gender"
+          }
+        >
+          {(["male", "female"] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              className="segmented__option inline-editor__toggle"
+              aria-label={t(`handles.${g}`)}
+              aria-pressed={gender === g}
+              onClick={() => choose(g)}
+              onKeyDown={onKeyDown}
+              onBlur={onBlur}
+            >
+              <span aria-hidden="true">{g === "male" ? "♂" : "♀"}</span>
+            </button>
+          ))}
+        </div>
+        <span className="inline-editor__actions">
           <button
-            key={g}
-            type="button"
-            className="inline-editor__toggle"
-            aria-label={t(`handles.${g}`)}
-            aria-pressed={gender === g}
-            onClick={() => choose(g)}
+            type="submit"
+            className="icon-button icon-button--sm inline-editor__ok"
+            aria-label={t("handles.confirm")}
             onKeyDown={onKeyDown}
             onBlur={onBlur}
           >
-            <span aria-hidden="true">{g === "male" ? "♂" : "♀"}</span>
+            <Icon name="check" />
           </button>
-        ))}
+          <button
+            type="button"
+            className="icon-button icon-button--sm inline-editor__cancel"
+            aria-label={t("handles.cancel")}
+            onKeyDown={onKeyDown}
+            onBlur={onBlur}
+            onClick={cancel}
+          >
+            <Icon name="close" />
+          </button>
+        </span>
       </div>
       {needGender && (
-        <p id={messageId} className="inline-editor__message" role="alert">
+        <p id={messageId} className="chip inline-editor__hint" role="alert">
           {t("handles.chooseGender")}
         </p>
       )}

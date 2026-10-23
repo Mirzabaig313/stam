@@ -16,7 +16,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { lifespanLabel } from "@/core/dates/fuzzy";
 import { displayName } from "@/core/model/tree";
 import type { Person, TreeDocument } from "@/core/model/types";
 import type { FanLayout } from "@/core/views/types";
@@ -24,6 +23,7 @@ import type { Rect } from "@/ui/canvas/viewport";
 import { fitBounds } from "@/ui/canvas/viewport";
 import { describePerson, personLabel } from "@/ui/cards/describe";
 import { fitText, type Font, initialsOf, useFontEpoch } from "@/ui/cards/PersonCard";
+import { yearRange } from "@/ui/cards/years";
 
 import {
   centreRadius,
@@ -319,7 +319,7 @@ function nameOf(person: Person, t: Translate): string {
 }
 
 function yearsOf(person: Person): string {
-  return lifespanLabel(person.birth?.date, person.death?.date, person.isLiving);
+  return yearRange(person);
 }
 
 /** The focus person's name and years, centred in the half disc. */

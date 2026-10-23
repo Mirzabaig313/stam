@@ -21,10 +21,10 @@ function setup(unionIds?: string[]) {
 }
 
 describe("UnionChooser", () => {
-  test("lists the partners in union order, and 'No partner' for a solo union", async () => {
+  test("lists the partners in union order, and 'Other parent unknown' for a solo union", async () => {
     await setup().view;
     const options = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(options).toEqual(["Sara Malik", "Hina Raza", "No partner", "Cancel"]);
+    expect(options).toEqual(["Sara Malik", "Hina Raza", "Other parent unknown", "Cancel"]);
     // Names are isolated for mixed-direction text.
     expect(screen.getByText("Sara Malik").tagName).toBe("BDI");
   });
@@ -44,7 +44,7 @@ describe("UnionChooser", () => {
   test("unionIds limits the list", async () => {
     await setup(["u3", "u1"]).view;
     const options = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(options).toEqual(["No partner", "Sara Malik", "Cancel"]);
+    expect(options).toEqual(["Other parent unknown", "Sara Malik", "Cancel"]);
   });
 
   test("Esc and Cancel cancel", async () => {

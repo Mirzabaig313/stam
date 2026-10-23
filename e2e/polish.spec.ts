@@ -1,11 +1,14 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 
-import { allCards, card, chooseTheme, famSimpleFile } from "./helpers";
+import { famSimple } from "../tests/fixtures/families";
+import { allCards, card, chooseTheme, famSimpleFile, fillInlineEditor, hoverCard } from "./helpers";
 
 type Box = { x: number; y: number; width: number; height: number };
 
-const ACCENT = "rgb(43, 71, 245)";
-const INK = "rgb(17, 19, 17)";
+// M6 tokens (tokens.css): the mulberry accent, the aubergine ink, the soft card edge.
+const ACCENT = "rgb(124, 42, 92)";
+const INK = "rgb(42, 30, 36)";
+const CARD_EDGE = "rgba(42, 30, 36, 0.18)";
 
 async function openSimpleFamily(page: Page): Promise<void> {
   await page.goto("/app");
@@ -105,11 +108,11 @@ test.describe("selection and focus", () => {
     expect(selected.focus).toMatchObject({ stroke: BLACK, width: 1, opacity: 1 });
   });
 
-  test("an unselected card keeps its 1 px ink border", async ({ page }) => {
+  test("an unselected card keeps its soft 1 px edge", async ({ page }) => {
     await openSimpleFamily(page);
     await page.mouse.move(2, 400);
     const r = await rings(card(page, "Omar Khan"));
-    expect(r.border).toMatchObject({ stroke: INK, width: 1 });
+    expect(r.border).toMatchObject({ stroke: CARD_EDGE, width: 1 });
     expect(r.focus?.opacity).toBe(0);
   });
 });
@@ -193,14 +196,14 @@ test.describe("toolbar tooltips", () => {
   }) => {
     test.skip(test.info().project.name === "mobile", "touch screens show no hover tips");
     await openSimpleFamily(page);
-    const button = page.getByRole("button", { name: "Menu", exact: true });
+    const button = page.getByRole("button", { name: "More", exact: true });
     const tip = page.locator(".tip-anchor", { has: button }).locator(".tip");
     await button.hover();
     await expect(tip).toHaveCSS("opacity", "1");
 
     await button.click();
     await expect(button).toHaveAttribute("aria-expanded", "true");
-    await expect(page.locator(".menu-panel")).toBeVisible();
+    await expect(page.getByRole("menu", { name: "More" })).toBeVisible();
     await expect(tip).toBeHidden();
     // Hovering it again, or keyboard focus on it, does not bring the tip over the menu.
     await button.hover();
@@ -213,3 +216,168 @@ test.describe("toolbar tooltips", () => {
     await expect(tip).toHaveCSS("opacity", "1");
   });
 });
+
+test.describe("toolbar layout", () => {
+  test("one row at 1280 px, never wrapping, with the views near the middle", async ({ page }) => {
+    test.skip(test.info().project.name === "mobile", "the desktop bar");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openSimpleFamily(page);
+    const bar = await boxOf(page.getByRole("banner"));
+    expect(bar.height).toBeLessThanOrEqual(64);
+    // Every control sits on the bar's one row.
+    for (const name of ["My trees", "Add person", "Search people", "Zoom in", "Undo", "More"]) {
+      const role = name === "My trees" ? "link" : "button";
+      const box = await boxOf(page.getByRole(role, { name, exact: true }));
+      expect(box.y, name).toBeGreaterThanOrEqual(bar.y);
+      expect(box.y + box.height, name).toBeLessThanOrEqual(bar.y + bar.height);
+    }
+    const views = await boxOf(page.getByRole("group", { name: "View" }));
+    expect(Math.abs(views.x + views.width / 2 - 640)).toBeLessThan(160);
+
+    // Every view keeps the one row: the fan's generations float on the canvas, not in the bar.
+    for (const mode of ["Pedigree", "Descendants", "Hourglass", "Fan", "Timeline", "Family"]) {
+      await page
+        .getByRole("group", { name: "View" })
+        .getByRole("button", { name: mode, exact: true })
+        .click();
+      await expect(
+        page.getByRole("group", { name: "View" }).getByRole("button", { name: mode, exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      expect((await boxOf(page.getByRole("banner"))).height, mode).toBeLessThanOrEqual(64);
+      if (mode === "Fan") {
+        const generations = await boxOf(page.getByRole("group", { name: "Generations" }));
+        expect(generations.y, "the stepper is on the canvas").toBeGreaterThan(bar.y + bar.height);
+      }
+    }
+  });
+
+  test("a phone gets a top bar and a bottom dock with Add, Search and the views", async ({
+    page,
+  }) => {
+    test.skip(test.info().project.name !== "mobile", "the phone bars");
+    await openSimpleFamily(page);
+    const height = page.viewportSize()!.height;
+    for (const name of ["Add person", "Search people"]) {
+      const box = await boxOf(page.getByRole("button", { name, exact: true }));
+      expect(box.y + box.height, name).toBeGreaterThan(height - 70);
+    }
+    const views = await boxOf(page.getByRole("group", { name: "View" }));
+    expect(views.y + views.height).toBeGreaterThan(height - 70);
+    const more = await boxOf(page.getByRole("button", { name: "More", exact: true }));
+    expect(more.y).toBeLessThan(60);
+    // The canvas ends above the dock.
+    const canvas = await boxOf(page.locator(".stam-canvas"));
+    expect(canvas.y + canvas.height).toBeLessThanOrEqual(height - 55);
+    await expect(page.locator(".stam-minimap")).toHaveCount(0);
+  });
+});
+
+test.describe("a person above", () => {
+  test("Ismail → Haider: the + above Haider puts Ahmed between them; one undo restores it", async ({
+    page,
+  }) => {
+    const tree = {
+      ...famSimple(),
+      id: "e2e-ismail",
+      name: "Ismail",
+      rootPersonId: "ismail",
+      persons: {
+        ismail: {
+          id: "ismail",
+          firstName: "Ismail",
+          lastName: "Khan",
+          gender: "male",
+          isLiving: true,
+        },
+        haider: {
+          id: "haider",
+          firstName: "Haider",
+          lastName: "Khan",
+          gender: "male",
+          isLiving: true,
+        },
+      },
+      unions: {
+        u: {
+          id: "u",
+          partners: ["ismail"],
+          status: "partner",
+          children: [{ personId: "haider", type: "biological" }],
+        },
+      },
+      unionOrder: { ismail: ["u"] },
+    };
+    await page.goto("/app");
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "ismail.stam.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(
+        JSON.stringify({
+          format: "stam",
+          schemaVersion: 1,
+          exportedAt: new Date().toISOString(),
+          tree,
+        }),
+      ),
+    });
+    await expect(allCards(page)).toHaveCount(2);
+    await card(page, "Haider Khan").click();
+    await hoverCard(page, "Haider Khan");
+    await page
+      .getByRole("button", { name: "Add a person between Ismail Khan and Haider Khan" })
+      .click();
+    await fillInlineEditor(page, "Ahmed", "Male");
+    await expect(allCards(page)).toHaveCount(3);
+    const [ismail, ahmed, haider] = await Promise.all(
+      ["Ismail Khan", "Ahmed Khan", "Haider Khan"].map((name) => boxOf(card(page, name))),
+    );
+    expect(ismail!.y).toBeLessThan(ahmed!.y);
+    expect(ahmed!.y).toBeLessThan(haider!.y);
+    await expect(card(page, "Haider Khan")).toHaveAttribute("aria-label", /son of Ahmed Khan/);
+
+    await page.getByRole("button", { name: "Undo" }).click();
+    await expect(allCards(page)).toHaveCount(2);
+    await expect(card(page, "Haider Khan")).toHaveAttribute("aria-label", /son of Ismail Khan/);
+  });
+});
+
+test.describe("+ Add person", () => {
+  test("adds a child to the selected person through the chooser and the inline editor", async ({
+    page,
+  }) => {
+    await openSimpleFamily(page);
+    await card(page, "Zainab Khan").click();
+    await page.getByRole("button", { name: "Add person" }).click();
+    const chooser = page.getByRole("menu", { name: "Add to Zainab Khan" });
+    await expect(chooser).toBeVisible();
+    await expectInWindow(page, chooser);
+    await chooser.getByRole("menuitem", { name: "Child", exact: true }).click();
+    const editor = page.locator(".inline-editor");
+    await expect(editor).toBeVisible();
+    await editor.getByRole("textbox", { name: "Name" }).fill("Sana Khan");
+    await editor.getByRole("button", { name: "Female", exact: true }).click();
+    await page.keyboard.press("Enter");
+    await expect(allCards(page)).toHaveCount(6);
+    await expect(card(page, "Sana Khan")).toBeVisible();
+  });
+
+  test("with nobody selected it asks for a selection first", async ({ page }) => {
+    await openSimpleFamily(page);
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Add person" }).click();
+    const chooser = page.getByRole("menu", { name: "Select someone first" });
+    await expect(chooser).toBeVisible();
+    await expectInWindow(page, chooser);
+    await page.keyboard.press("Escape");
+    await expect(chooser).toBeHidden();
+  });
+});
+
+async function expectInWindow(page: Page, locator: Locator): Promise<void> {
+  const box = await boxOf(locator);
+  const size = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(size.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(size.height);
+}

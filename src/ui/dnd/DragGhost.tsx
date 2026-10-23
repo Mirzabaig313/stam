@@ -2,8 +2,8 @@ import "./dnd.css";
 
 import { useTranslation } from "react-i18next";
 
-import { lifespanLabel } from "@/core/dates/fuzzy";
 import { personLabel } from "@/ui/cards/describe";
+import { lifeLine } from "@/ui/cards/years";
 import { useEditor } from "@/ui/store/useEditor";
 
 import type { DragSession } from "./useDrag";
@@ -18,7 +18,7 @@ export function DragGhost({ session, scale }: { session: DragSession; scale: num
   if (!person) return null;
   const { target, pointer, grab } = session;
   const blocked = target.kind === "person" && target.actions.length === 0;
-  const years = lifespanLabel(person.birth?.date, person.death?.date, person.isLiving);
+  const years = lifeLine(person, t);
   const x = pointer[0] - grab[0];
   const y = pointer[1] - grab[1];
   return (
