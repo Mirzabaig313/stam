@@ -1,0 +1,131 @@
+/* /dev/design only: the showcase's own layout. */
+.ds {
+  padding-block-end: 64px;
+}
+
+.ds-header {
+  display: grid;
+  gap: 10px;
+  max-inline-size: 1240px;
+  margin-inline: auto;
+  padding-block: 40px 24px;
+  padding-inline: 24px;
+}
+
+.ds-header > p {
+  max-inline-size: 70ch;
+}
+
+.ds-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.ds-theme {
+  padding-block: 32px 40px;
+  padding-inline: 24px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.ds-theme__name {
+  max-inline-size: 1240px;
+  margin-block-end: 20px;
+  margin-inline: auto;
+}
+
+.ds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 16px;
+  max-inline-size: 1240px;
+  margin-inline: auto;
+}
+
+.ds-block {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-inline-size: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-raised) 55%, var(--ground));
+}
+
+.ds-block--wide {
+  grid-column: 1 / -1;
+}
+
+.ds-block__title {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.ds-block__body {
+  display: grid;
+  gap: 14px;
+  min-inline-size: 0;
+}
+
+.ds-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ds-row--center {
+  align-items: center;
+}
+
+.ds-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.ds-canvas {
+  block-size: auto;
+  border-radius: var(--radius-md);
+  cursor: default;
+}
+
+.ds .ds-static {
+  position: static;
+  inset: auto;
+  inline-size: auto;
+  max-inline-size: 100%;
+  margin: 0;
+  animation: none;
+}
+
+.ds .dialog.ds-static {
+  display: flex;
+  flex-direction: column;
+}
+
+.ds-sheet-frame {
+  display: flex;
+  block-size: 380px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--ground);
+}
+
+.ds-sheet-frame > .sheet {
+  position: static;
+  flex: 1;
+  inline-size: auto;
+  max-block-size: none;
+  border-radius: 0;
+  animation: none;
+}
+
+.ds-sheet-frame .sheet__grabber {
+  display: none;
+}

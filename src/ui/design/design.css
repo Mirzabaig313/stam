@@ -1,0 +1,1026 @@
+/*
+ * Stam's shared components (src/ui/design, specs in DESIGN-APP.md). The class names are the ones
+ * the app already used (.button, .icon-button, .field, .dialog, .dnd-menu …), so restyling them
+ * here restyles every screen. Tokens only; logical properties only.
+ */
+
+/* ---------------------------------------------------------------- type voices */
+
+/* Display: Archivo wide and heavy, for the moments that name something (a tree, a person, an
+   empty page). Arabic-script text never gets negative tracking: it would break the joins. */
+.display {
+  font-family: var(--font);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  font-variation-settings: "wdth" 125;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.display--lg {
+  font-size: var(--text-display);
+  letter-spacing: -0.03em;
+}
+
+.display--md {
+  font-size: var(--text-lg);
+  font-weight: 750;
+  font-variation-settings: "wdth" 115;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+[lang="ur"] .display,
+[lang="ar"] .display,
+.display:is([lang="ur"], [lang="ar"]) {
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+.years {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------------------------------------------------------------- buttons */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-block-size: 40px;
+  padding-inline: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-pill);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-micro) var(--ease),
+    border-color var(--dur-micro) var(--ease),
+    box-shadow var(--dur-micro) var(--ease),
+    color var(--dur-micro) var(--ease),
+    translate var(--dur-micro) var(--ease);
+}
+
+/* Hover says more than a change of shade (WCAG 1.4.1): the edge firms up and the button lifts. */
+.button:hover:not(:disabled) {
+  border-color: var(--ink-3);
+  background: var(--card-hover);
+  box-shadow: var(--shadow-1);
+}
+
+.button:active:not(:disabled) {
+  translate: 0 1px;
+  box-shadow: none;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button > .icon {
+  flex: none;
+  margin-inline-start: -4px;
+}
+
+.button-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.button-primary:hover:not(:disabled) {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  box-shadow:
+    var(--shadow-1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+}
+
+.button-danger {
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  color: var(--danger);
+}
+
+.button-danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* The last word in a confirmation: filled. */
+.button-danger.button-solid,
+.dialog-actions .button-danger {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: var(--on-danger);
+}
+
+.button-danger.button-solid:hover:not(:disabled),
+.dialog-actions .button-danger:hover:not(:disabled) {
+  border-color: var(--danger-hover);
+  background: var(--danger-hover);
+}
+
+.button-quiet {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-2);
+  padding-inline: 12px;
+}
+
+.button-quiet:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--hover);
+  box-shadow: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.button-sm {
+  min-block-size: 32px;
+  padding-inline: 12px;
+  font-size: 13px;
+}
+
+.button-block {
+  inline-size: 100%;
+}
+
+.file-button:focus-within {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- icon buttons */
+
+.icon {
+  flex: none;
+}
+
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-micro) var(--ease),
+    color var(--dur-micro) var(--ease),
+    box-shadow var(--dur-micro) var(--ease);
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--hover);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.icon-button:disabled {
+  color: var(--ink-3);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.icon-button[aria-pressed="true"],
+.icon-button[aria-expanded="true"] {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* With its label shown: an icon and a word, for actions people must find. */
+.icon-button--labelled {
+  display: inline-flex;
+  gap: var(--space-2);
+  inline-size: auto;
+  padding-inline: 12px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.icon-button--sm {
+  inline-size: 32px;
+  block-size: 32px;
+}
+
+.icon-button--labelled.icon-button--sm {
+  inline-size: auto;
+  padding-inline: 10px 12px;
+}
+
+/* ---------------------------------------------------------------- fields */
+
+.field {
+  inline-size: 100%;
+  min-block-size: 40px;
+  padding-inline: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+  transition:
+    border-color var(--dur-micro) var(--ease),
+    box-shadow var(--dur-micro) var(--ease);
+}
+
+.field:hover:not(:disabled) {
+  border-color: var(--ink-3);
+}
+
+.field:focus-visible,
+.field:focus {
+  border-color: var(--accent);
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field::placeholder {
+  color: var(--ink-2);
+  opacity: 1;
+}
+
+textarea.field {
+  padding-block: 10px;
+  resize: vertical;
+}
+
+.field[aria-invalid="true"] {
+  border-color: var(--danger);
+  border-width: 1px;
+  box-shadow: inset 0 0 0 1px var(--danger);
+}
+
+.field-label {
+  display: block;
+  margin-block-end: 6px;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.field-note {
+  margin-block-start: 6px;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.field-error {
+  margin-block-start: 6px;
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.text-field {
+  display: grid;
+  min-inline-size: 0;
+}
+
+/* Select: the native control, so phones get their own picker, with a drawn chevron. */
+.select {
+  position: relative;
+  display: block;
+  min-inline-size: 0;
+}
+
+.select > .field {
+  appearance: none;
+  padding-inline-end: 36px;
+  cursor: pointer;
+}
+
+.select::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 14px;
+  inline-size: 7px;
+  block-size: 7px;
+  /* Physical sides: a down chevron, the same in both directions. */
+  border-bottom: 1.5px solid var(--ink-2);
+  border-right: 1.5px solid var(--ink-2);
+  translate: 0 -70%;
+  rotate: 45deg;
+  pointer-events: none;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* ---------------------------------------------------------------- segmented control */
+
+.segmented {
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 2px;
+  max-inline-size: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Segments are equal while they fit; a long label widens its own column, never wraps. On a
+   narrow screen the track scrolls sideways rather than clipping text. */
+.segmented--block {
+  display: grid;
+}
+
+.segmented__option {
+  flex: none;
+}
+
+.segmented__option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-block-size: 34px;
+  padding-block: 0;
+  padding-inline: 14px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-micro) var(--ease),
+    color var(--dur-micro) var(--ease),
+    box-shadow var(--dur-micro) var(--ease);
+}
+
+.segmented__option:hover {
+  color: var(--ink);
+  background: var(--hover);
+}
+
+.segmented__option[aria-checked="true"] {
+  background: var(--surface-raised);
+  color: var(--ink);
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 1px var(--line);
+}
+
+/* Print has no shadows or fills: the chosen segment is ink, like a pressed key. */
+:root[data-theme="print"] .segmented__option[aria-checked="true"],
+[data-theme="print"] .segmented__option[aria-checked="true"],
+:root[data-theme="print"] .toggle .button[aria-pressed="true"],
+:root[data-theme="print"] .view-switcher__button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--ground);
+}
+
+/* ---------------------------------------------------------------- chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-block-size: 28px;
+  max-inline-size: 100%;
+  padding-inline: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.chip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+button.chip {
+  cursor: pointer;
+  transition:
+    background-color var(--dur-micro) var(--ease),
+    border-color var(--dur-micro) var(--ease);
+}
+
+button.chip:hover {
+  border-color: var(--ink-3);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* A hue key: the deep hue as a dot on the soft hue. */
+.chip__dot {
+  flex: none;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--_chip-deep, var(--ink-3));
+}
+
+.chip__remove {
+  display: inline-grid;
+  place-items: center;
+  inline-size: 20px;
+  block-size: 20px;
+  margin-inline-end: -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.chip__remove:hover {
+  background: var(--pressed);
+  color: var(--ink);
+}
+
+.chip[data-hue="0"] {
+  --_chip-deep: var(--hue-0-deep);
+  background: var(--hue-0);
+}
+.chip[data-hue="1"] {
+  --_chip-deep: var(--hue-1-deep);
+  background: var(--hue-1);
+}
+.chip[data-hue="2"] {
+  --_chip-deep: var(--hue-2-deep);
+  background: var(--hue-2);
+}
+.chip[data-hue="3"] {
+  --_chip-deep: var(--hue-3-deep);
+  background: var(--hue-3);
+}
+.chip[data-hue="4"] {
+  --_chip-deep: var(--hue-4-deep);
+  background: var(--hue-4);
+}
+.chip[data-hue="5"] {
+  --_chip-deep: var(--hue-5-deep);
+  background: var(--hue-5);
+}
+
+/* ---------------------------------------------------------------- avatar */
+
+.avatar {
+  --_size: 40px;
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  inline-size: var(--_size);
+  block-size: var(--_size);
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--_avatar-bg, var(--surface-sunken));
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: calc(var(--_size) * 0.38);
+  font-weight: 700;
+  font-variation-settings: "wdth" 112;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  user-select: none;
+}
+
+.avatar--sm {
+  --_size: 28px;
+}
+
+.avatar--lg {
+  --_size: 64px;
+}
+
+.avatar--xl {
+  --_size: 96px;
+}
+
+.avatar__image {
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.avatar[data-hue="0"] {
+  --_avatar-bg: var(--hue-0);
+}
+.avatar[data-hue="1"] {
+  --_avatar-bg: var(--hue-1);
+}
+.avatar[data-hue="2"] {
+  --_avatar-bg: var(--hue-2);
+}
+.avatar[data-hue="3"] {
+  --_avatar-bg: var(--hue-3);
+}
+.avatar[data-hue="4"] {
+  --_avatar-bg: var(--hue-4);
+}
+.avatar[data-hue="5"] {
+  --_avatar-bg: var(--hue-5);
+}
+
+:root[data-theme="print"] .avatar,
+[data-theme="print"] .avatar {
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+/* ---------------------------------------------------------------- dialog */
+
+.dialog {
+  display: none;
+  inline-size: min(440px, calc(100% - 2 * var(--gutter)));
+  max-inline-size: none;
+  max-block-size: min(calc(100dvh - 2 * var(--gutter)), 760px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--ink);
+  box-shadow: var(--shadow-3);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+  animation: dialog-in var(--dur-panel) var(--ease-out);
+}
+
+.dialog::backdrop {
+  background: var(--backdrop);
+  animation: backdrop-in var(--dur-panel) var(--ease-out);
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+/* Movement only, no fade: text is at full contrast from the first frame (checkers and eyes
+   alike read it while it arrives); the backdrop fades. */
+@keyframes dialog-in {
+  from {
+    scale: 0.97;
+    translate: 0 8px;
+  }
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.dialog-header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: 18px 4px;
+  padding-inline: 24px 14px;
+}
+
+.dialog-title {
+  min-inline-size: 0;
+  padding-block-start: 6px;
+  font-size: var(--text-lg);
+  font-weight: 750;
+  font-variation-settings: "wdth" 115;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+[lang="ur"] .dialog-title {
+  letter-spacing: 0;
+  line-height: 1.7;
+}
+
+.dialog-close {
+  flex: none;
+}
+
+/* The content scrolls; the header (and its close button) stays put. */
+.dialog-content {
+  flex: 1;
+  min-block-size: 0;
+  padding: 12px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* With actions, they close the dialog off themselves (no padding under them to scroll past). */
+.dialog-content:has(.dialog-actions) {
+  padding-block-end: 0;
+}
+
+.dialog-body {
+  margin-block-end: 4px;
+  color: var(--ink-2);
+}
+
+/* Actions stick to the bottom of a long dialog, so Done is always in reach. */
+.dialog-actions {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-block: 20px 0;
+  margin-inline: -24px;
+  padding: 14px 24px 20px;
+  border-block-start: 1px solid var(--line);
+  background: var(--surface-overlay);
+}
+
+.dialog-actions-stacked {
+  flex-direction: column-reverse;
+  align-items: stretch;
+}
+
+/* ---------------------------------------------------------------- sheet */
+
+.sheet {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  inline-size: 380px;
+  min-block-size: 0;
+  border-inline-start: 1px solid var(--line);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-2);
+  animation: sheet-in var(--dur-panel) var(--ease-out);
+}
+
+@keyframes sheet-in {
+  from {
+    translate: 24px 0;
+  }
+}
+
+.sheet:dir(rtl) {
+  animation-name: sheet-in-rtl;
+}
+
+@keyframes sheet-in-rtl {
+  from {
+    translate: -24px 0;
+  }
+}
+
+.sheet__header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding-block: 18px 12px;
+  padding-inline: 20px 12px;
+}
+
+.sheet__title {
+  flex: 1;
+  min-inline-size: 0;
+  padding-block-start: 6px;
+  overflow-wrap: anywhere;
+}
+
+/* The title with lines under it (a lifespan, chips): one column beside the leading slot. */
+.sheet__heading {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: var(--space-1);
+  min-inline-size: 0;
+}
+
+.sheet__heading .sheet__title {
+  flex: none;
+}
+
+.sheet__header-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.sheet__body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: var(--space-4);
+  padding: 4px 20px 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.sheet__footer {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: 12px 20px;
+  border-block-start: 1px solid var(--line);
+}
+
+.sheet__grabber {
+  display: none;
+}
+
+/* Under 768px a sheet rises from the bottom, over the canvas, at most half the screen. */
+@media (max-width: 767px) {
+  .sheet {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: 20;
+    inline-size: auto;
+    max-block-size: 50vh;
+    border-inline-start: 0;
+    border-start-start-radius: var(--radius-xl);
+    border-start-end-radius: var(--radius-xl);
+    box-shadow: var(--shadow-3);
+    animation-name: sheet-up;
+  }
+
+  .sheet:dir(rtl) {
+    animation-name: sheet-up;
+  }
+
+  .sheet__grabber {
+    display: block;
+    flex: none;
+    inline-size: 36px;
+    block-size: 4px;
+    margin: 8px auto 0;
+    border-radius: var(--radius-pill);
+    background: var(--line-strong);
+  }
+
+  /* A handle: a 44 px tall touch target around the same 4 px bar. */
+  .sheet__grabber--handle {
+    position: relative;
+    inline-size: 100%;
+    block-size: 20px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .sheet__grabber--handle::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 8px;
+    inset-inline-start: calc(50% - 18px);
+    inline-size: 36px;
+    block-size: 4px;
+    border-radius: var(--radius-pill);
+    background: var(--line-strong);
+  }
+
+  .sheet__grabber--handle::after {
+    content: "";
+    position: absolute;
+    inset-block: -12px;
+    inset-inline: 0;
+  }
+
+  .sheet__grabber--handle:hover::before {
+    background: var(--ink-3);
+  }
+
+  .sheet.sheet--expanded {
+    max-block-size: calc(100dvh - 56px);
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    translate: 0 32px;
+  }
+}
+
+/* ---------------------------------------------------------------- menus and popovers */
+
+.dnd-menu,
+.menu-surface {
+  display: grid;
+  gap: 1px;
+  min-inline-size: 200px;
+  max-inline-size: 320px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  color: var(--ink);
+  box-shadow: var(--shadow-2);
+  animation: menu-in var(--dur-micro) var(--ease-out);
+}
+
+@keyframes menu-in {
+  from {
+    translate: 0 -4px;
+  }
+}
+
+.dnd-menu__item,
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  inline-size: 100%;
+  min-block-size: 36px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) var(--ease);
+}
+
+.dnd-menu__item:hover,
+.dnd-menu__item:focus-visible,
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--hover);
+}
+
+.dnd-menu__item:focus-visible,
+.menu-item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.menu-item--danger {
+  color: var(--danger);
+}
+
+.menu-item--danger:hover,
+.menu-item--danger:focus-visible {
+  background: var(--danger-soft);
+}
+
+.menu-item > .icon {
+  color: var(--ink-2);
+}
+
+.menu-item--danger > .icon {
+  color: inherit;
+}
+
+.menu-separator {
+  block-size: 1px;
+  margin-block: 4px;
+  margin-inline: 8px;
+  border: 0;
+  background: var(--line);
+}
+
+/* ---------------------------------------------------------------- toast */
+
+.toast {
+  position: fixed;
+  inset-block-end: 16px;
+  inset-inline: 16px auto;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  max-inline-size: min(480px, calc(100% - 32px));
+  padding-block: 10px;
+  padding-inline: 16px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-3);
+  animation: toast-in var(--dur-panel) var(--ease-out);
+}
+
+@keyframes toast-in {
+  from {
+    translate: 0 12px;
+  }
+}
+
+.toast p {
+  margin-inline-end: auto;
+}
+
+/* ---------------------------------------------------------------- empty state */
+
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6);
+  text-align: center;
+}
+
+.empty-state__art {
+  inline-size: 132px;
+  block-size: auto;
+  margin-block-end: var(--space-2);
+}
+
+.empty-state__title {
+  max-inline-size: 18ch;
+  text-wrap: balance;
+}
+
+.empty-state__body {
+  max-inline-size: 46ch;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+
+.empty-state__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+}
+
+.empty-state--start {
+  justify-items: start;
+  text-align: start;
+}
+
+.empty-state--start .empty-state__actions {
+  justify-content: flex-start;
+}
+
+/* The art: three photographs in an album, held by corners. */
+.album-art__photo {
+  stroke: var(--card-edge);
+  stroke-width: 1;
+}
+
+.album-art__photo--0 {
+  fill: var(--hue-0);
+}
+.album-art__photo--1 {
+  fill: var(--hue-2);
+}
+.album-art__photo--2 {
+  fill: var(--hue-1);
+}
+
+.album-art__corner {
+  fill: var(--accent);
+}
+
+.album-art__figure {
+  fill: var(--surface-raised);
+  opacity: 0.9;
+}
+
+:root[data-theme="print"] .album-art__photo,
+[data-theme="print"] .album-art__photo {
+  stroke: var(--ink);
+}

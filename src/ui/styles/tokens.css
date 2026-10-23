@@ -1,115 +1,184 @@
 /*
- * Design tokens, one set per theme on <html data-theme> (settings.ts applies it before the first
- * paint). `light` is also the default with no attribute. Every text/background pair is checked
- * for WCAG AA in every theme by tests/ui/settings/tokenContrast.test.ts, which reads this file:
- * keep the colours as hex, one `--name: value;` per line.
+ * Design tokens for /app: "a warm family album, with a premium edge" (DESIGN-APP.md).
+ *
+ * Colour comes in one set per theme on <html data-theme> (settings.ts applies it before the first
+ * paint); `light` is also the default with no attribute. The same sets apply to any element with
+ * `data-theme`, so the /dev/design showcase can show the four themes side by side.
+ * Every text/background pair is checked for WCAG AA in every theme by
+ * tests/ui/settings/tokenContrast.test.ts, which reads this file: keep the colours as hex or
+ * rgba(), one `--name: value;` per line.
+ *
+ * Shape, type, space and motion are theme-independent and live in the plain `:root` block below.
  */
 :root,
-:root[data-theme="light"] {
-  /* Colour */
-  --ground: #f4f5f2;
-  --ink: #111311;
-  --muted: #5a615b;
-  --line: rgba(17, 19, 17, 0.14);
-  /* Selection and "you" only. Never decoration. */
-  --accent: #2b47f5;
+:root[data-theme="light"],
+[data-theme="light"] {
+  /* Surfaces: the linen page, what sits on it, what is pressed into it, what floats over it. */
+  --ground: #f4eeea;
+  --surface-raised: #fffcfa;
+  --surface-sunken: #ebe3de;
+  --surface-overlay: #fffcfa;
 
-  /* Surfaces: cards, form fields, banners. */
-  --card: #ffffff;
-  --card-hover: #f9faf7;
-  --deceased: #eceee9;
-  --deceased-hover: #e4e6e0;
-  --field: #ffffff;
-  --surface: #ffffff;
+  /* Ink: body text, secondary text, and a third level for icons and strokes only (3:1). */
+  --ink: #2a1e24;
+  --muted: #6a5960;
+  --ink-2: #6a5960;
+  --ink-3: #8f7d85;
+  --line: rgba(42, 30, 36, 0.14);
+  --line-strong: rgba(42, 30, 36, 0.3);
+
+  /* Mulberry, the album's cloth: primary actions and the selection. */
+  --accent: #7c2a5c;
+  --accent-hover: #63204a;
+  --accent-soft: #f3e1ea;
+  --accent-ink: #7c2a5c;
+  --on-accent: #ffffff;
+
+  /* Destructive: brick, used for the word and the edge, filled only to confirm. */
+  --danger: #a3302a;
+  --danger-hover: #87241f;
+  --danger-soft: #f8e0dc;
+  --on-danger: #ffffff;
+
+  /* Cards, fields, banners (older names, kept: they are the raised surface). */
+  --card: #fffcfa;
+  --card-hover: #fff6f1;
+  --card-edge: rgba(42, 30, 36, 0.18);
+  --card-shadow: rgba(92, 48, 66, 0.12);
+  --deceased: #eee7e2;
+  --deceased-hover: #e8dfd9;
+  --field: #fffcfa;
+  --surface: #fffcfa;
 
   /* Washes over the ground: hover, the current row, the minimap's view box. */
-  --hover: rgba(17, 19, 17, 0.06);
-  --pressed: rgba(17, 19, 17, 0.08);
-  --tint: rgba(17, 19, 17, 0.04);
-  --primary-hover: #2a2d2a;
-  --backdrop: rgba(17, 19, 17, 0.4);
-  --shadow: rgba(17, 19, 17, 0.14);
+  --hover: rgba(42, 30, 36, 0.06);
+  --pressed: rgba(42, 30, 36, 0.1);
+  --tint: rgba(42, 30, 36, 0.04);
+  --primary-hover: #44323b;
+  --backdrop: rgba(42, 30, 36, 0.42);
+  --shadow: rgba(92, 48, 66, 0.16);
   /* A hairline on an ink surface (the tooltip's key). */
-  --on-ink-line: rgba(244, 245, 242, 0.35);
+  --on-ink-line: rgba(244, 238, 234, 0.35);
+
+  /* Elevation: warm, soft, low. 1 rests (cards, toolbar), 2 floats (menus), 3 is modal. */
+  --shadow-1: 0 1px 2px rgba(92, 48, 66, 0.08), 0 2px 6px rgba(92, 48, 66, 0.06);
+  --shadow-2: 0 2px 4px rgba(92, 48, 66, 0.06), 0 10px 24px rgba(92, 48, 66, 0.12);
+  --shadow-3: 0 4px 8px rgba(92, 48, 66, 0.08), 0 24px 56px rgba(92, 48, 66, 0.2);
 
   /* Lines: the card edge, and connector strength (R32: 3:1 against the ground). */
   --card-stroke: 1px;
-  --edge-opacity: 0.55;
+  --edge-opacity: 0.5;
   --edge-width: 1.5px;
 
-  /* Card colour modes (data-color-mode="branch" | "generation"): six hues, AA under ink and muted. */
-  --hue-0: #dbe5fb;
-  --hue-1: #d8eedd;
-  --hue-2: #f5e6c3;
-  --hue-3: #f7dce5;
-  --hue-4: #d2ecec;
-  --hue-5: #e6dff7;
-
-  /* Shape: cards are the only rounded thing. */
-  --radius-card: 6px;
-
-  /* Type */
-  --font: "Archivo Variable", system-ui, sans-serif;
-
-  /* Motion: one easing; layout re-flow is slow, card return and hover are quick. */
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-layout: 450ms;
-  --dur-card: 250ms;
-
-  /* Layout */
-  --gutter: 16px;
-  --toolbar-block-size: 52px;
+  /* Six album hues for branch and generation colour and initials: AA under ink and muted. */
+  --hue-0: #f5d6c0;
+  --hue-1: #d6e5c3;
+  --hue-2: #cadcf0;
+  --hue-3: #efcfdf;
+  --hue-4: #f3e0a6;
+  --hue-5: #c7e3dc;
+  /* The same hues, deep: dots, keys and bands (3:1 against a card). */
+  --hue-0-deep: #b0552a;
+  --hue-1-deep: #557a35;
+  --hue-2-deep: #3d6a9e;
+  --hue-3-deep: #a3466f;
+  --hue-4-deep: #8a6810;
+  --hue-5-deep: #2f7a6b;
 
   color-scheme: light;
 }
 
-/* Dark: the PRD's dark set, cards lifted a step off the ground. */
-:root[data-theme="dark"] {
-  --ground: #0f110f;
-  --ink: #e8eae6;
-  --muted: #9aa29b;
-  --line: rgba(232, 234, 230, 0.16);
-  --accent: #6f84ff;
-  --card: #1c201c;
-  --card-hover: #232823;
-  --deceased: #141714;
-  --deceased-hover: #1a1d1a;
-  --field: #161916;
-  --surface: #161916;
-  --hover: rgba(232, 234, 230, 0.08);
-  --pressed: rgba(232, 234, 230, 0.12);
-  --tint: rgba(232, 234, 230, 0.05);
-  --primary-hover: #c9ccc6;
+/* Dark: the album at night. Aubergine ground, cards lifted a step, a light mulberry accent. */
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --ground: #1a1418;
+  --surface-raised: #272026;
+  --surface-sunken: #130e11;
+  --surface-overlay: #2c242a;
+  --ink: #f3eaee;
+  --muted: #b9a8b0;
+  --ink-2: #b9a8b0;
+  --ink-3: #8a7880;
+  --line: rgba(243, 234, 238, 0.14);
+  --line-strong: rgba(243, 234, 238, 0.3);
+  --accent: #e7a0c9;
+  --accent-hover: #f2bddb;
+  --accent-soft: #3d2435;
+  --accent-ink: #eeb3d4;
+  --on-accent: #1a1418;
+  --danger: #f0998f;
+  --danger-hover: #f6b5ad;
+  --danger-soft: #3d1d1b;
+  --on-danger: #1a1418;
+  --card: #272026;
+  --card-hover: #2e262c;
+  --card-edge: rgba(243, 234, 238, 0.16);
+  --card-shadow: rgba(0, 0, 0, 0.35);
+  --deceased: #201a1e;
+  --deceased-hover: #251e23;
+  --field: #201a1e;
+  --surface: #211b1f;
+  --hover: rgba(243, 234, 238, 0.07);
+  --pressed: rgba(243, 234, 238, 0.11);
+  --tint: rgba(243, 234, 238, 0.05);
+  --primary-hover: #d9ccd2;
   --backdrop: rgba(0, 0, 0, 0.6);
   --shadow: rgba(0, 0, 0, 0.5);
-  --on-ink-line: rgba(15, 17, 15, 0.35);
-  --hue-0: #1d2b4d;
-  --hue-1: #193526;
-  --hue-2: #3b2f12;
-  --hue-3: #40202d;
-  --hue-4: #133638;
-  --hue-5: #2e2247;
+  --on-ink-line: rgba(26, 20, 24, 0.35);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.2);
+  --shadow-2: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 24px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 4px 8px rgba(0, 0, 0, 0.35), 0 24px 56px rgba(0, 0, 0, 0.5);
+  --hue-0: #4a2f22;
+  --hue-1: #2c3a24;
+  --hue-2: #21334a;
+  --hue-3: #45253a;
+  --hue-4: #433817;
+  --hue-5: #1f3b36;
+  --hue-0-deep: #e79a73;
+  --hue-1-deep: #9cc77a;
+  --hue-2-deep: #8db6e6;
+  --hue-3-deep: #e392b9;
+  --hue-4-deep: #dcb64d;
+  --hue-5-deep: #6fc2b0;
 
   color-scheme: dark;
 }
 
-/* Classic: the light ground with the familiar blue and pink cards by gender. */
-:root[data-theme="classic"] {
-  --male: #dce8f8;
-  --female: #fadde8;
-  --male-deceased: #e6ebf1;
-  --female-deceased: #f1e6ea;
+/* Classic: the light album with the familiar blue and pink cards by gender. */
+:root[data-theme="classic"],
+[data-theme="classic"] {
+  --male: #d9e5f6;
+  --female: #f7d8e5;
+  --male-deceased: #e3e7ee;
+  --female-deceased: #eee2e7;
 }
 
-/* Print: pure black on white, no fills, heavier lines. */
-:root[data-theme="print"] {
+/* Print: pure black on white, no fills, no shadows, heavier lines. */
+:root[data-theme="print"],
+[data-theme="print"] {
   --ground: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ffffff;
+  --surface-overlay: #ffffff;
   --ink: #000000;
   --muted: #000000;
+  --ink-2: #000000;
+  --ink-3: #000000;
   --line: rgba(0, 0, 0, 0.45);
+  --line-strong: rgba(0, 0, 0, 0.7);
   --accent: #000000;
+  --accent-hover: #333333;
+  --accent-soft: #ffffff;
+  --accent-ink: #000000;
+  --on-accent: #ffffff;
+  --danger: #000000;
+  --danger-hover: #333333;
+  --danger-soft: #ffffff;
+  --on-danger: #ffffff;
   --card: #ffffff;
   --card-hover: #f2f2f2;
+  --card-edge: rgba(0, 0, 0, 1);
+  --card-shadow: rgba(0, 0, 0, 0);
   --deceased: #ffffff;
   --deceased-hover: #f2f2f2;
   --field: #ffffff;
@@ -121,6 +190,9 @@
   --backdrop: rgba(0, 0, 0, 0.5);
   --shadow: rgba(0, 0, 0, 0.2);
   --on-ink-line: rgba(255, 255, 255, 0.5);
+  --shadow-1: none;
+  --shadow-2: 0 0 0 1px #000000;
+  --shadow-3: 0 0 0 1px #000000;
   --card-stroke: 1.5px;
   --edge-opacity: 1;
   --edge-width: 2px;
@@ -130,13 +202,71 @@
   --hue-3: #ffffff;
   --hue-4: #ffffff;
   --hue-5: #ffffff;
+  --hue-0-deep: #000000;
+  --hue-1-deep: #000000;
+  --hue-2-deep: #000000;
+  --hue-3-deep: #000000;
+  --hue-4-deep: #000000;
+  --hue-5-deep: #000000;
+
+  color-scheme: light;
+}
+
+/* Theme-independent: type, shape, space, motion, layout. */
+:root {
+  /* Type: one family, two voices. Archivo wide and heavy for display moments, normal for UI.
+     Urdu swaps --font for Nastaliq (src/i18n/fonts.css). */
+  --font: "Archivo Variable", system-ui, sans-serif;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: clamp(1.1875rem, 1.1rem + 0.35vw, 1.375rem);
+  --text-xl: clamp(1.5rem, 1.25rem + 0.9vw, 2rem);
+  --text-display: clamp(1.875rem, 1.35rem + 2vw, 2.875rem);
+
+  /* Shape: friendly, by size. Inputs 8, cards and menus 12, dialogs and sheets 16, actions pill. */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+  --radius-card: 12px;
+
+  /* Space: a 4 px base. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+
+  /* Motion: one family (expo). Out for things arriving, in for things leaving. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --dur-micro: 140ms;
+  --dur-card: 250ms;
+  --dur-panel: 320ms;
+  --dur-layout: 450ms;
+
+  /* Layout */
+  --gutter: 16px;
+  --toolbar-block-size: 56px;
+  --focus: var(--ink);
 }
 
 /* Reduce motion: the OS setting, unless Settings chose (<html data-motion="reduce|full">). */
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-motion="full"]) {
-    --dur-layout: 0ms;
+    --dur-micro: 0ms;
     --dur-card: 0ms;
+    --dur-panel: 0ms;
+    --dur-layout: 0ms;
   }
 
   :root:not([data-motion="full"]) *,
@@ -149,8 +279,10 @@
 }
 
 :root[data-motion="reduce"] {
-  --dur-layout: 0ms;
+  --dur-micro: 0ms;
   --dur-card: 0ms;
+  --dur-panel: 0ms;
+  --dur-layout: 0ms;
 }
 
 :root[data-motion="reduce"] *,

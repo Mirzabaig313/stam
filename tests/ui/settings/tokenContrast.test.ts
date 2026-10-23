@@ -133,6 +133,69 @@ describe.each(THEMES.map((name) => [name]))("theme %s", (name) => {
     }
   });
 
+  // ---- M6 design foundation: surfaces, ink levels, accent and danger families, deep hues ----
+
+  for (const surface of ["--surface-raised", "--surface-sunken", "--surface-overlay"]) {
+    for (const text of ["--ink", "--ink-2"]) {
+      test(`${text} on ${surface} passes AA`, () => {
+        expect(contrast(color(tokens, text), color(tokens, surface))).toBeGreaterThanOrEqual(AA);
+      });
+    }
+  }
+
+  test("--ink-2 is the same as --muted (one secondary ink, two names)", () => {
+    expect(color(tokens, "--ink-2")).toEqual(color(tokens, "--muted"));
+  });
+
+  test("--ink-3 (icons and strokes only) is 3:1 on the ground, the raised and the sunken surface", () => {
+    for (const surface of ["--ground", "--surface-raised", "--surface-sunken"]) {
+      expect(contrast(color(tokens, "--ink-3"), color(tokens, surface))).toBeGreaterThanOrEqual(
+        NON_TEXT,
+      );
+    }
+  });
+
+  test("text on the accent and on danger (filled buttons) passes AA, hovered too", () => {
+    for (const [text, fill] of [
+      ["--on-accent", "--accent"],
+      ["--on-accent", "--accent-hover"],
+      ["--on-danger", "--danger"],
+      ["--on-danger", "--danger-hover"],
+    ] as const) {
+      expect(contrast(color(tokens, text), color(tokens, fill))).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
+  test("accent and danger text read AA on the ground, the raised surface and their soft fills", () => {
+    for (const [text, bgs] of [
+      ["--accent-ink", ["--ground", "--surface-raised", "--accent-soft", "--surface-overlay"]],
+      ["--danger", ["--ground", "--surface-raised", "--danger-soft", "--surface-overlay"]],
+      ["--ink", ["--accent-soft", "--danger-soft"]],
+    ] as const) {
+      for (const bg of bgs) {
+        expect(contrast(color(tokens, text), color(tokens, bg))).toBeGreaterThanOrEqual(AA);
+      }
+    }
+  });
+
+  test("the deep hues (dots, keys, bands) are 3:1 against a card and the ground", () => {
+    for (let i = 0; i < 6; i++) {
+      for (const surface of ["--card", "--ground"]) {
+        expect(
+          contrast(color(tokens, `--hue-${i}-deep`), color(tokens, surface)),
+        ).toBeGreaterThanOrEqual(NON_TEXT);
+      }
+    }
+  });
+
+  test("ink on --hover and --pressed over the raised surface passes AA (menus, list rows)", () => {
+    const raised = color(tokens, "--surface-raised");
+    for (const wash of WASHES) {
+      const bg = over(color(tokens, wash), raised);
+      expect(contrast(color(tokens, "--ink"), bg)).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
   test("connectors at the edge opacity are 3:1 against the ground (R32)", () => {
     const opacity = Number(tokens["--edge-opacity"]);
     expect(opacity).toBeGreaterThan(0);
@@ -153,6 +216,20 @@ test("the hues differ from each other and from the plain card", () => {
   for (const name of ["light", "dark"] as const) {
     const values = [...HUES, "--card"].map((h) => themes[name][h]);
     expect(new Set(values).size).toBe(values.length);
+  }
+});
+
+test("every theme declares every colour token the light theme has (no silent fallthrough)", () => {
+  for (const name of ["dark", "print"] as const) {
+    const own = block(appCss, `:root[data-theme="${name}"]`);
+    const colours = Object.keys(light).filter((k) => /^(#|rgba?\()/.test(light[k]!));
+    expect(colours.filter((k) => !(k in own))).toEqual([]);
+  }
+});
+
+test("each theme block also applies to any element with data-theme (the design showcase)", () => {
+  for (const name of THEMES) {
+    expect(appCss).toMatch(new RegExp(`\\n\\[data-theme="${name}"\\]\\s*\\{`));
   }
 });
 

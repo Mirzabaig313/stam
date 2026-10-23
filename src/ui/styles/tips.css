@@ -15,8 +15,9 @@
   inline-size: max-content;
   max-inline-size: 240px;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--ink);
+  box-shadow: var(--shadow-2);
   color: var(--ground);
   font-size: 13px;
   font-weight: 400;
