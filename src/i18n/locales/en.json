@@ -86,7 +86,8 @@
     "menu": "Menu",
     "downloadBackup": "Download backup (.json)",
     "includePhotos": "Include photos",
-    "backupFailed": "Couldn't create the backup."
+    "backupFailed": "Couldn't create the backup.",
+    "export": "Export…"
   },
   "saveStatus": {
     "saving": "Saving…",
@@ -237,6 +238,114 @@
       "ALREADY_LINKED": "They are already linked.",
       "NOT_FOUND": "This person no longer exists.",
       "INVALID": "That can't be added here."
+    }
+  },
+  "export": {
+    "pdf": {
+      "guideTitle": "Assembly guide",
+      "guideInstruction": "Trim at the marks, align by the labels",
+      "guideSummary_one": "{{count}} page: {{cols}} across, {{rows}} down",
+      "guideSummary_other": "{{count}} pages: {{cols}} across, {{rows}} down",
+      "tileLabel": "Row {{row}}, column {{col}}",
+      "pageOf": "Page {{page}} of {{total}}"
+    },
+    "html": {
+      "searchLabel": "Search by name",
+      "searchPlaceholder": "Search by name",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "fit": "Fit to screen",
+      "tools": "View",
+      "treeLabel": "Family tree. Drag or use the arrow keys to move, + and − to zoom, 0 to fit. Each person opens with Enter.",
+      "results": "Matching people",
+      "details": "Details",
+      "close": "Close",
+      "matches_one": "{{n}} match",
+      "matches_other": "{{n}} matches",
+      "noMatches": "No matches",
+      "generated": "Exported on {{date}} with Stam. Works offline."
+    },
+    "title": "Export",
+    "format": "Format",
+    "formats": {
+      "svg": "SVG image",
+      "png": "PNG image",
+      "jpeg": "JPEG image",
+      "pdf-poster": "PDF poster",
+      "pdf-tiled": "PDF, tiled for printing",
+      "html": "Web page (HTML)",
+      "json": "Backup (.json)"
+    },
+    "formatHints": {
+      "svg": "Sharp at any size.",
+      "png": "For slides and documents.",
+      "jpeg": "Smaller files, no transparency.",
+      "pdf-poster": "One page, scaled to fit.",
+      "pdf-tiled": "Print on A4 or Letter and join the pages.",
+      "html": "One file you can open and explore anywhere.",
+      "json": "Everything, to restore or move the tree."
+    },
+    "scope": "What to include",
+    "scopes": {
+      "whole": "The whole tree",
+      "view": "The current family view",
+      "branch": "The selected person and descendants",
+      "visible": "What is on screen now"
+    },
+    "options": "Options",
+    "titleField": "Title",
+    "subtitleField": "Subtitle",
+    "dates": "Show dates",
+    "photos": "Include photos",
+    "ruler": "Show generation ruler",
+    "theme": "Style",
+    "themes": {
+      "light": "Screen",
+      "print": "Print (black on white)"
+    },
+    "background": "Background",
+    "backgrounds": {
+      "solid": "Solid",
+      "transparent": "Transparent"
+    },
+    "privacy": "Privacy mode",
+    "privacyHint": "Living people show their name only: no dates, places, photos or notes.",
+    "scale": "Scale",
+    "scaleOption": "{{count}}×",
+    "quality": "JPEG quality: {{percent}}%",
+    "page": "Page size",
+    "pageCustom": "Custom",
+    "customWidth": "Width (mm)",
+    "customHeight": "Height (mm)",
+    "orientation": "Orientation",
+    "orientations": {
+      "auto": "Automatic",
+      "portrait": "Portrait",
+      "landscape": "Landscape"
+    },
+    "margin": "Margin (mm)",
+    "tiledPage": "Paper",
+    "tiledScale": "Print size",
+    "tiledScaleOption": "{{percent}}%",
+    "estimatePx": "About {{width}} × {{height}} px",
+    "estimatePages_one": "About {{count}} page",
+    "estimatePages_other": "About {{count}} pages",
+    "export": "Export",
+    "exporting": "Exporting…",
+    "close": "Close",
+    "warning": {
+      "scale": "Scale reduced to {{scale}}× to fit the browser limit.",
+      "sideLimit": "Scale reduced to {{scale}}×: wider or taller is beyond what this browser can draw.",
+      "areaLimit": "Scale reduced to {{scale}}×: more pixels is beyond what this browser can draw."
+    },
+    "confirmPages": "This will make {{count}} pages. Continue?",
+    "tooManyPages": "This would make {{count}} pages, more than the 400 we can build. Choose a smaller print size or use the poster PDF.",
+    "error": "Couldn't create the export. Try a smaller scope or scale.",
+    "done": "Saved as {{name}}.",
+    "detail": {
+      "born": "Born",
+      "died": "Died",
+      "notes": "Notes"
     }
   }
 }

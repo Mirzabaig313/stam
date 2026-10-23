@@ -18,6 +18,7 @@ export type ToolbarProps = {
   onFit: () => void;
   onOpenSearch: () => void;
   onOpenUnconnected: () => void;
+  onOpenExport?: () => void;
 };
 
 function IconButton({
@@ -128,7 +129,7 @@ function TreeName() {
 }
 
 /** The backup menu (FR-X7): an "Include photos" box and the download itself. */
-function BackupMenu() {
+function BackupMenu({ onOpenExport }: { onOpenExport?: () => void }) {
   const { t } = useTranslation();
   const repo = useRepo();
   const store = useEditorStore();
@@ -188,6 +189,18 @@ function BackupMenu() {
       />
       {open && (
         <div className="menu-panel">
+          {onOpenExport && (
+            <button
+              type="button"
+              className="button"
+              onClick={() => {
+                setOpen(false);
+                onOpenExport();
+              }}
+            >
+              {t("toolbar.export")}
+            </button>
+          )}
           <label className="check">
             <input
               type="checkbox"
@@ -217,6 +230,7 @@ export function Toolbar({
   onFit,
   onOpenSearch,
   onOpenUnconnected,
+  onOpenExport,
 }: ToolbarProps) {
   const { t } = useTranslation();
   const store = useEditorStore();
@@ -289,7 +303,7 @@ export function Toolbar({
           pressed={focusMode}
           onClick={() => store.getState().setFocusMode(!focusMode)}
         />
-        <BackupMenu />
+        <BackupMenu onOpenExport={onOpenExport} />
       </div>
     </header>
   );

@@ -58,6 +58,16 @@ for (const name of await readdir(publicDir)) {
 
 console.log(`Built ${result.outputs.length} files into dist/`);
 
+// /app's first load stays within its gzip budget, with the export libraries left to import().
+const budget = Bun.spawnSync(["bun", "run", join(root, "scripts/bundle-budget.ts")], {
+  stdout: "inherit",
+  stderr: "inherit",
+});
+if (budget.exitCode !== 0) {
+  console.error("Build failed: the /app bundle budget is exceeded.");
+  process.exit(1);
+}
+
 // The public pages (/, /privacy, 404) become static HTML; the client bundle hydrates them.
 const prerender = Bun.spawnSync(["bun", "run", join(root, "scripts/prerender.ts")], {
   stdout: "inherit",

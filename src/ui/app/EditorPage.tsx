@@ -8,6 +8,10 @@ import { createTabSync } from "@/storage/multitab";
 import { createSaveGuard } from "@/storage/saveGuard";
 import { StaleWriteError } from "@/storage/treeRepo";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
+import { ExportDialog } from "@/ui/export/ExportDialog";
+import { visibleWorldRect } from "@/ui/export/gatherInput";
+import { usePrintFit } from "@/ui/export/usePrintFit";
+import "@/ui/export/export.css";
 import { StartCard } from "@/ui/cards/StartCard";
 import { UnionChooser } from "@/ui/cards/UnionChooser";
 import { useQuickAdd } from "@/ui/cards/useQuickAdd";
@@ -164,6 +168,8 @@ function EditorFrame({
   useSelectedAboveSheet(canvasRef, selectedExists ? selectedId : null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unconnectedOpen, setUnconnectedOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  usePrintFit(canvasRef);
   const locked = useEditor((s) => s.locked);
   const deleteDialog = useDeleteDialog();
   const { dialog } = deleteDialog;
@@ -197,6 +203,7 @@ function EditorFrame({
 
   useEditorKeys({
     onOpenSearch: () => setSearchOpen(true),
+    onOpenExport: () => setExportOpen(true),
     onRequestDelete: requestDelete,
     onReveal: centerVisible,
     dir,
@@ -229,6 +236,7 @@ function EditorFrame({
         onFit={() => canvasRef.current?.fit()}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenUnconnected={() => setUnconnectedOpen((open) => !open)}
+        onOpenExport={() => setExportOpen(true)}
       />
       <StorageBanner />
       {recovered && (
@@ -293,6 +301,19 @@ function EditorFrame({
       </div>
       {searchOpen && <SearchBox onPick={showPerson} onClose={() => setSearchOpen(false)} />}
       {unconnectedOpen && <UnconnectedList onClose={() => setUnconnectedOpen(false)} />}
+      {exportOpen && (
+        <ExportDialog
+          onClose={() => setExportOpen(false)}
+          getVisibleRect={() => {
+            const slot = document.querySelector('[data-slot="canvas"]');
+            const box = slot?.getBoundingClientRect();
+            return visibleWorldRect(
+              canvasRef.current,
+              box ? { width: box.width, height: box.height } : null,
+            );
+          }}
+        />
+      )}
       {dialog}
       {dnd.layer}
     </div>

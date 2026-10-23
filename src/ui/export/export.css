@@ -1,0 +1,73 @@
+/* Export dialog */
+.dialog:has(.export-form) {
+  inline-size: min(560px, calc(100% - 2 * var(--gutter)));
+  max-block-size: calc(100% - 2 * var(--gutter));
+  overflow-y: auto;
+}
+
+.export-form {
+  display: grid;
+  gap: 16px;
+}
+
+.export-group {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.export-radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.export-radio input {
+  margin-block-start: 3px;
+}
+
+.export-hint {
+  display: block;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.export-estimate {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* FR-X11: Print gives the canvas on one page, without the editor's chrome. */
+@page {
+  size: landscape;
+  margin: 10mm;
+}
+
+@media print {
+  .toolbar,
+  .banner,
+  .dialog,
+  .editor-body > :not(.canvas-slot),
+  .stam-minimap,
+  .quick-add {
+    display: none !important;
+  }
+
+  html,
+  body,
+  .editor,
+  .editor-body {
+    block-size: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  .canvas-slot {
+    block-size: 180mm;
+    inline-size: 100%;
+    break-inside: avoid;
+  }
+}

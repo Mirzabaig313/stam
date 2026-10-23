@@ -8,8 +8,10 @@ import { layoutFamily } from "@/core/layout/family";
 import type { LayoutNode, LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
 import { bigFamily } from "@/dev/bigFamily";
+import { cropLayout } from "@/export/render/scope";
 import { Canvas, type CanvasHandle, type CanvasProps } from "@/ui/canvas/Canvas";
 import { fitBounds, intersects, type Rect, type Viewport, visibleRect } from "@/ui/canvas/viewport";
+import { visibleWorldRect } from "@/ui/export/gatherInput";
 
 import { cardFamily } from "../cards/fixtures";
 import { reduceMotion, withI18n } from "../i18n";
@@ -147,6 +149,25 @@ describe("Canvas", () => {
       const back = handle.screenToWorld(p);
       expect(back[0]).toBeCloseTo(123, 8);
       expect(back[1]).toBeCloseTo(456, 8);
+      cleanup();
+    }
+  });
+
+  test("the export's visible rect is in unmirrored layout coordinates, with no culling margin", () => {
+    for (const dir of ["ltr", "rtl"] as const) {
+      const { ref, layout } = setup({ dir });
+      const handle = ref.current!;
+      const rect = visibleWorldRect(handle, SCREEN)!;
+      const { k } = viewportOf(handle);
+      expect(rect.width).toBeCloseTo(SCREEN.width / k, 6);
+      expect(rect.height).toBeCloseTo(SCREEN.height / k, 6);
+      // Fitted: every card, read in layout coordinates, is inside the rect.
+      for (const n of layout.nodes) {
+        expect(n.x).toBeGreaterThanOrEqual(rect.x - 1e-6);
+        expect(n.x + CARD_W).toBeLessThanOrEqual(rect.x + rect.width + 1e-6);
+      }
+      const scoped = cropLayout(layout, rect);
+      expect(scoped.nodes).toHaveLength(layout.nodes.length);
       cleanup();
     }
   });

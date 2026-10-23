@@ -23,6 +23,8 @@ const REVEAL_WAIT_MS = 300;
 
 type EditorKeyActions = {
   onOpenSearch: () => void;
+  /** Ctrl/Cmd+E. */
+  onOpenExport?: () => void;
   onRequestDelete: (personId: string) => void;
   /** Brings a person's card on screen when the keyboard moves to a card that is not drawn. */
   onReveal?: (personId: string) => void;
@@ -54,7 +56,7 @@ function reorder(store: EditorStore, personId: string, key: string, dir: "ltr" |
 
 /**
  * The editor's one document-level keyboard handler.
- * - Ctrl/Cmd+F opens search.
+ * - Ctrl/Cmd+F opens search; Ctrl/Cmd+E opens the export dialog.
  * - Ctrl/Cmd+Z undoes; Shift+Ctrl/Cmd+Z and Ctrl+Y redo.
  * - Arrows move the focus between cards (`nextFocus`); Alt+←/→ reorders siblings.
  * - Enter on a focused card selects it, which opens the panel; Esc clears the selection.
@@ -105,6 +107,11 @@ export function useEditorKeys(actions: EditorKeyActions): void {
       if (mod && !event.altKey && key === "f") {
         event.preventDefault();
         latest.current.onOpenSearch();
+        return;
+      }
+      if (mod && !event.altKey && !event.shiftKey && key === "e" && latest.current.onOpenExport) {
+        event.preventDefault();
+        latest.current.onOpenExport();
         return;
       }
       if (isTyping(event.target)) return;

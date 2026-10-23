@@ -241,4 +241,54 @@ describe("PersonCard", () => {
     expect(root.getAttribute("transform")).toBe("translate(120 336)");
     expect(root.classList).toContain("stam-node--dimmed");
   });
+
+  describe("static (exports)", () => {
+    test("draws the card without interaction, controls or hover and focus shapes", () => {
+      const { container } = renderCard("ali", { static: true });
+      expect(container.querySelector("[role]")).toBeNull();
+      expect(container.querySelector("[tabindex]")).toBeNull();
+      expect(container.querySelector("[aria-label]")).toBeNull();
+      expect(container.querySelector(".stam-card__control")).toBeNull();
+      expect(container.querySelector(".stam-card__focus")).toBeNull();
+      expect(container.querySelector(".stam-card__lift")).toBeNull();
+      expect(container.querySelector(".stam-card__bg")).not.toBeNull();
+      expect(container.querySelector(".stam-card__name")?.textContent).toBe("Ali Khan");
+    });
+
+    test("marks the card with its person id and leaves the drawn text readable", () => {
+      const { container } = renderCard("hina", { static: true });
+      const root = container.querySelector("[data-node-id]")!;
+      expect(root.getAttribute("data-person-id")).toBe("hina");
+      expect(container.querySelector(".stam-card__decor")?.getAttribute("aria-hidden")).toBeNull();
+      expect(container.querySelector(".stam-card__family")).toBeNull();
+    });
+
+    test("a linked copy has no 'see original' line, so a lone name sits on the middle", () => {
+      const doc = cardFamily();
+      const node: LayoutNode = { ...nodeOf(doc, "sara"), nodeId: "sara~1", kind: "linked" };
+      const { container } = renderCard("sara", { node, static: true }, doc);
+      expect(container.querySelector(".stam-card__link")).toBeNull();
+      expect(yOf(container, ".stam-card__name")).toBe(36);
+    });
+
+    test("draws the gender mark as a path, so exports need no font with ♂ or ♀", () => {
+      for (const [id, gender] of [
+        ["ali", "male"],
+        ["hina", "female"],
+      ] as const) {
+        const { container, unmount } = renderCard(id, { static: true });
+        expect(container.querySelector("text.stam-card__gender")).toBeNull();
+        expect(container.textContent).not.toMatch(/[♂♀]/);
+        const mark = container.querySelector("path.stam-card__gender-mark");
+        expect(mark?.getAttribute("data-gender")).toBe(gender);
+        expect(mark?.getAttribute("d")).toMatch(/^M[\d.\s-]+a/);
+        unmount();
+      }
+    });
+
+    test("the editor card has no person id attribute", () => {
+      const { container } = renderCard("ali");
+      expect(container.querySelector("[data-person-id]")).toBeNull();
+    });
+  });
 });
