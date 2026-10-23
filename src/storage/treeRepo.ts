@@ -73,11 +73,18 @@ export type TreeRepo = {
    * the stored `savedAt` still equals it, i.e. nobody saved or deleted the tree in between.
    */
   saveTree(doc: TreeDocument, opts?: SaveOptions): Promise<number>;
-  /** Removes the tree, its meta row and its snapshots. Photos are shared and stay. */
+  /**
+   * Removes the tree, its meta row and its snapshots. Its photos stay until `deleteUnusedPhotos`.
+   */
   deleteTree(id: string): Promise<void>;
   duplicateTree(id: string, name: string): Promise<TreeDocument>;
   putPhoto(id: string, blob: Blob): Promise<void>;
   getPhoto(id: string): Promise<Blob | undefined>;
+  /**
+   * Deletes every stored photo that no tree and no snapshot points at, except those in `keep`
+   * (photos an unsaved edit already uses). Returns how many were deleted.
+   */
+  deleteUnusedPhotos(keep?: Iterable<string>): Promise<number>;
   /**
    * Keeps the newest `SNAPSHOT_LIMIT` snapshots of the document's tree. With `ifChanged`, nothing
    * is stored when the newest snapshot already has the document's `updatedAt`.
@@ -129,6 +136,21 @@ function metaOf(doc: TreeDocument, savedAt: number, recoveredFrom?: string): Tre
     savedAt,
     ...(recoveredFrom === undefined ? {} : { recoveredFrom }),
   };
+}
+
+/**
+ * The photo ids a stored tree record points at. Read straight from the record, without the import
+ * checks, so a damaged tree (which a snapshot may still restore) keeps its photos.
+ */
+export function photoIdsOf(record: unknown): string[] {
+  const persons = (record as { persons?: unknown } | null | undefined)?.persons;
+  if (typeof persons !== "object" || persons === null) return [];
+  const ids: string[] = [];
+  for (const person of Object.values(persons)) {
+    const photoId = (person as { photoId?: unknown } | null)?.photoId;
+    if (typeof photoId === "string") ids.push(photoId);
+  }
+  return ids;
 }
 
 const savedAtOf = (meta: TreeMeta | undefined): number | null =>
@@ -220,6 +242,25 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
 
     async getPhoto(id) {
       return (await db.get("photos", id)) as Blob | undefined;
+    },
+
+    async deleteUnusedPhotos(keep = []) {
+      let deleted = 0;
+      // One transaction: a tree saved meanwhile cannot slip in between the read and the deletes.
+      await inTransaction(db, ["trees", "snapshots", "photos"], async (tx) => {
+        const [trees, snapshots, photoKeys] = await Promise.all([
+          tx.objectStore("trees").getAll(),
+          tx.objectStore("snapshots").getAll() as Promise<Snapshot[]>,
+          tx.objectStore("photos").getAllKeys(),
+        ]);
+        const used = new Set<string>(keep);
+        for (const tree of trees) for (const id of photoIdsOf(tree)) used.add(id);
+        for (const snapshot of snapshots) for (const id of photoIdsOf(snapshot.doc)) used.add(id);
+        const unused = photoKeys.filter((key) => typeof key !== "string" || !used.has(key));
+        deleted = unused.length;
+        await Promise.all(unused.map((key) => tx.objectStore("photos").delete(key)));
+      });
+      return deleted;
     },
 
     async takeSnapshot(doc, opts = {}) {

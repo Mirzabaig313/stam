@@ -151,6 +151,12 @@ function pendingIds(storage: JournalStorage): string[] {
   return ids;
 }
 
+/** Every valid pending document: edits not yet saved to IndexedDB, in any tab. */
+export function pendingDocs(storage = browserStorage()): TreeDocument[] {
+  if (!storage) return [];
+  return pendingIds(storage).flatMap((id) => readPending(id, storage)?.doc ?? []);
+}
+
 /** Recovers every pending entry (the tree list does this, so counts and dates are current). */
 export async function recoverAllPending(repo: TreeRepo, storage = browserStorage()): Promise<void> {
   if (!storage) return;

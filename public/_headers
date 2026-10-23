@@ -3,3 +3,7 @@
   Referrer-Policy: no-referrer
   X-Content-Type-Options: nosniff
   Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# The service worker must be checked for a new version on every visit.
+/sw.js
+  Cache-Control: no-cache

@@ -1,6 +1,7 @@
 // Static server for dist/ that emulates Cloudflare Pages `_redirects` (status 200 rewrites),
 // `_headers`, extensionless `.html` pages (/privacy serves privacy.html) and the 404 page
-// (404.html with status 404), so Playwright tests see the same routing as production.
+// (404.html with status 404), so Playwright tests see the same routing as production. Text files
+// are gzipped for clients that accept it, as Cloudflare does, so load timings are realistic.
 import { stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";
 
@@ -76,6 +77,31 @@ async function findFile(path: string): Promise<ReturnType<typeof Bun.file> | und
   return undefined;
 }
 
+/** Types Cloudflare compresses; fonts and images are compressed already. */
+const COMPRESSIBLE = /\.(?:html|js|css|svg|json|map|txt|xml)$/;
+const gzipped = new Map<string, Uint8Array<ArrayBuffer>>();
+
+/** The file's response, gzipped when the client accepts it and the type is text. */
+async function fileResponse(
+  request: Request,
+  file: ReturnType<typeof Bun.file>,
+  status = 200,
+): Promise<Response> {
+  const name = file.name ?? "";
+  const accepts = /\bgzip\b/.test(request.headers.get("accept-encoding") ?? "");
+  if (!accepts || !COMPRESSIBLE.test(name)) return new Response(file, { status });
+  let body = gzipped.get(name);
+  if (!body) gzipped.set(name, (body = Bun.gzipSync(await file.bytes())));
+  return new Response(body, {
+    status,
+    headers: {
+      "Content-Type": file.type,
+      "Content-Encoding": "gzip",
+      Vary: "Accept-Encoding",
+    },
+  });
+}
+
 const server = Bun.serve({
   port,
   async fetch(request) {
@@ -84,10 +110,12 @@ const server = Bun.serve({
     const file = await findFile(rewrite ? rewrite.to : path);
     if (!file) {
       const notFound = Bun.file(join(dist, "404.html"));
-      const body = (await notFound.exists()) ? notFound : "Not found";
-      return withHeaders(path, new Response(body, { status: 404 }));
+      if (await notFound.exists()) {
+        return withHeaders(path, await fileResponse(request, notFound, 404));
+      }
+      return withHeaders(path, new Response("Not found", { status: 404 }));
     }
-    return withHeaders(path, new Response(file));
+    return withHeaders(path, await fileResponse(request, file));
   },
 });
 
