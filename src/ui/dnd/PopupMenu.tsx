@@ -11,7 +11,8 @@ const ITEM = '[role="menuitem"]:not([disabled])';
 
 /**
  * Keeps a box opened at `at` (client px) inside the window. Pointer positions are physical, so
- * the box is placed with physical offsets; its content still follows the page direction.
+ * the box is placed with physical offsets; it opens toward the inline end (leftward in RTL) and
+ * its content follows the page direction.
  */
 export function useAnchoredBox(at: Point) {
   const ref = useRef<HTMLDivElement>(null);
@@ -19,7 +20,10 @@ export function useAnchoredBox(at: Point) {
     const box = ref.current;
     if (!box) return;
     const { width, height } = box.getBoundingClientRect();
-    const x = Math.max(EDGE, Math.min(at[0], window.innerWidth - width - EDGE));
+    // It opens toward the inline end: right of the point in LTR, left of it in RTL.
+    const rtl = box.closest("[dir]:not([dir=auto])")?.getAttribute("dir") === "rtl";
+    const start = rtl ? at[0] - width : at[0];
+    const x = Math.max(EDGE, Math.min(start, window.innerWidth - width - EDGE));
     const y = Math.max(EDGE, Math.min(at[1], window.innerHeight - height - EDGE));
     box.style.left = `${x}px`;
     box.style.top = `${y}px`;

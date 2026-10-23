@@ -8,7 +8,7 @@ import { Timeline, type TimelineProps } from "@/ui/views/Timeline";
 import type { ViewHandle } from "@/ui/views/useViewCamera";
 
 import { reduceMotion, t, withI18n } from "../i18n";
-import { fanFamily, timelineLayout } from "./fixtures";
+import { fanFamily, longFamily, longTimelineLayout, timelineLayout } from "./fixtures";
 
 const SCREEN = { width: 1200, height: 600 };
 const originalRect = HTMLElement.prototype.getBoundingClientRect;
@@ -214,5 +214,52 @@ describe("Timeline rendering cost", () => {
     act(() => ref.current!.zoomOut());
     expect(scans).toBe(first);
     expect(screen.getAllByRole("button")).toHaveLength(5);
+  });
+});
+
+const big = () => ({ doc: longFamily(1000), layout: longTimelineLayout(1000) });
+const barOf = (container: HTMLElement, id: string) =>
+  container.querySelector(`[role=button][data-person-id="${id}"]`);
+
+describe("Timeline culling", () => {
+  test("at 1,000 people only the bars near the screen are drawn", () => {
+    const { container } = setup(big());
+    const drawn = container.querySelectorAll("[role=button][data-person-id]").length;
+    expect(drawn).toBeGreaterThan(10);
+    expect(drawn).toBeLessThan(150);
+    expect(barOf(container, "p0")).not.toBeNull();
+    expect(barOf(container, "p999")).toBeNull();
+  });
+
+  test("the selected bar is drawn even off screen: it is the tab stop", () => {
+    const { container } = setup({ ...big(), selectedId: "p700" });
+    expect(barOf(container, "p700")?.getAttribute("tabindex")).toBe("0");
+  });
+
+  test("End and ArrowDown move the focus to bars that were not drawn yet", () => {
+    const { container } = setup(big());
+    const first = barOf(container, "p0") as SVGElement;
+    act(() => first.focus());
+    act(() => {
+      fireEvent.keyDown(first, { key: "End" });
+    });
+    expect(document.activeElement?.getAttribute("data-person-id")).toBe("p999");
+    act(() => {
+      fireEvent.keyDown(document.activeElement!, { key: "Home" });
+    });
+    expect(document.activeElement?.getAttribute("data-person-id")).toBe("p0");
+    for (let i = 0; i < 60; i++) {
+      act(() => {
+        fireEvent.keyDown(document.activeElement!, { key: "ArrowDown" });
+      });
+    }
+    expect(document.activeElement?.getAttribute("data-person-id")).toBe("p60");
+  });
+
+  test("zooming out far enough draws them all", () => {
+    const { container, ref } = setup(big());
+    for (let i = 0; i < 30; i++) act(() => ref.current!.zoomOut());
+    const drawn = container.querySelectorAll("[role=button][data-person-id]").length;
+    expect(drawn).toBeGreaterThan(150);
   });
 });

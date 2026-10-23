@@ -35,6 +35,7 @@ import {
   TIMELINE_GUTTER,
   timelineFit,
   timelineGeometry,
+  visibleBarRange,
   yearTicks,
 } from "./geometry";
 import { focusItem, useViewCamera, type ViewHandle } from "./useViewCamera";
@@ -216,6 +217,9 @@ export const Timeline = forwardRef<ViewHandle, TimelineProps>(function Timeline(
     );
   }, [boxes, doc, t]);
 
+  /** A bar the arrow keys moved to, waiting to be drawn before it takes the focus. */
+  const pendingFocus = useRef<string | null>(null);
+
   const onKeyDown = (index: number) => (e: KeyboardEvent<SVGGElement>) => {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     const personId = boxes[index]!.bar.personId;
@@ -245,8 +249,24 @@ export const Timeline = forwardRef<ViewHandle, TimelineProps>(function Timeline(
     const to = boxes[target];
     if (!to) return;
     setActive({ key: keyOf(to), selectedId });
-    focusItem(svgRef.current, keyOf(to));
+    // The bar may not be drawn yet (see culling below): focus it once it is.
+    pendingFocus.current = keyOf(to);
   };
+
+  // Culling: only the bars near the screen are drawn, in whole chunks so that a pan within a
+  // chunk reuses the same elements. The tab stop is always drawn, so the keyboard can reach it.
+  const [rangeStart, rangeEnd] = visibleBarRange(boxes, viewport, size.height);
+  const tabStopIndex = useMemo(() => {
+    const index = tabStop === null ? -1 : boxes.findIndex((b) => keyOf(b) === tabStop);
+    return index >= rangeStart && index < rangeEnd ? -1 : index;
+  }, [boxes, tabStop, rangeStart, rangeEnd]);
+
+  useLayoutEffect(() => {
+    const key = pendingFocus.current;
+    if (key === null) return;
+    pendingFocus.current = null;
+    focusItem(svgRef.current, key);
+  });
 
   const onFocusIn = (e: FocusEvent<SVGSVGElement>) => {
     const key = (e.target as Element).closest("[data-key]")?.getAttribute("data-key");
@@ -263,68 +283,84 @@ export const Timeline = forwardRef<ViewHandle, TimelineProps>(function Timeline(
     keyDownRef.current = onKeyDown;
   });
   const fadeId = useCallback((f: Fade) => `${uid}-fade-${f}`, [uid]);
-  const bars = useMemo(
-    () =>
-      boxes.map((box, index) => {
-        const { bar } = box;
-        const person = doc.persons[bar.personId]!;
-        const placeholder = person.isPlaceholder === true && displayName(person) === "";
-        const ends = endKind(bar);
-        const fade = fadeOf(bar, rtl);
-        const open = ends === "open" ? (rtl ? "left" : "right") : null;
-        const key = keyOf(box);
-        const classes = [
-          "stam-timeline__bar",
-          !bar.living && "stam-timeline__bar--deceased",
-          placeholder && "stam-timeline__bar--placeholder",
-          bar.personId === selectedId && "stam-timeline__bar--selected",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        return (
-          <g key={`${bar.personId}:${bar.row}`}>
-            <g
-              className={classes}
-              role="button"
-              data-person-id={bar.personId}
-              data-key={key}
-              data-end={ends}
-              tabIndex={key === tabStop ? 0 : -1}
-              aria-label={labels.get(bar.personId)}
-              aria-current={bar.personId === selectedId ? "true" : undefined}
-              onClick={() => onSelect(bar.personId)}
-              onDoubleClick={() => onFocus(bar.personId)}
-              onKeyDown={(e) => keyDownRef.current(index)(e)}
-            >
-              <path
-                className="stam-timeline__focus"
-                d={barPath(box.x - 3, box.y - 3, box.width + 6, BAR_H + 6, RADIUS + 3)}
-              />
-              <g mask={fade ? `url(#${fadeId(fade)})` : undefined}>
-                <path
-                  className="stam-timeline__fill"
-                  d={barPath(box.x, box.y, box.width, BAR_H, RADIUS, open)}
-                />
-                <path
-                  className="stam-timeline__edge"
-                  d={barPath(box.x, box.y, box.width, BAR_H, RADIUS, open)}
-                />
-              </g>
-            </g>
-            <BarText
-              box={box}
-              name={personLabel(person, t)}
-              years={lifespanLabel(person.birth?.date, person.death?.date, person.isLiving)}
-              placeholder={placeholder}
-              rtl={rtl}
+  const bars = useMemo(() => {
+    const drawn = boxes.slice(rangeStart, rangeEnd).map((box, i) => [box, rangeStart + i] as const);
+    if (tabStopIndex >= 0) drawn.push([boxes[tabStopIndex]!, tabStopIndex]);
+    return drawn.map(([box, index]) => {
+      const { bar } = box;
+      const person = doc.persons[bar.personId]!;
+      const placeholder = person.isPlaceholder === true && displayName(person) === "";
+      const ends = endKind(bar);
+      const fade = fadeOf(bar, rtl);
+      const open = ends === "open" ? (rtl ? "left" : "right") : null;
+      const key = keyOf(box);
+      const classes = [
+        "stam-timeline__bar",
+        !bar.living && "stam-timeline__bar--deceased",
+        placeholder && "stam-timeline__bar--placeholder",
+        bar.personId === selectedId && "stam-timeline__bar--selected",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      return (
+        <g key={`${bar.personId}:${bar.row}`}>
+          <g
+            className={classes}
+            role="button"
+            data-person-id={bar.personId}
+            data-gender={person.gender}
+            data-key={key}
+            data-end={ends}
+            tabIndex={key === tabStop ? 0 : -1}
+            aria-label={labels.get(bar.personId)}
+            aria-current={bar.personId === selectedId ? "true" : undefined}
+            onClick={() => onSelect(bar.personId)}
+            onDoubleClick={() => onFocus(bar.personId)}
+            onKeyDown={(e) => keyDownRef.current(index)(e)}
+          >
+            <path
+              className="stam-timeline__focus"
+              d={barPath(box.x - 3, box.y - 3, box.width + 6, BAR_H + 6, RADIUS + 3)}
             />
+            <g mask={fade ? `url(#${fadeId(fade)})` : undefined}>
+              <path
+                className="stam-timeline__fill"
+                d={barPath(box.x, box.y, box.width, BAR_H, RADIUS, open)}
+              />
+              <path
+                className="stam-timeline__edge"
+                d={barPath(box.x, box.y, box.width, BAR_H, RADIUS, open)}
+              />
+            </g>
           </g>
-        );
-      }),
+          <BarText
+            box={box}
+            name={personLabel(person, t)}
+            years={lifespanLabel(person.birth?.date, person.death?.date, person.isLiving)}
+            placeholder={placeholder}
+            rtl={rtl}
+          />
+        </g>
+      );
+    });
     // `fontEpoch` is not read inside: it stands for the text widths `BarText` measures.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-    [boxes, doc, labels, selectedId, tabStop, rtl, fadeId, t, onSelect, onFocus, fontEpoch],
-  );
+  }, [
+    boxes,
+    rangeStart,
+    rangeEnd,
+    tabStopIndex,
+    doc,
+    labels,
+    selectedId,
+    tabStop,
+    rtl,
+    fadeId,
+    t,
+    onSelect,
+    onFocus,
+    fontEpoch,
+  ]);
 
   // ---- Axis, grid and rulers ---------------------------------------------------------------
   const { ticks } = yearTicks(layout.minYear, layout.maxYear, geometry.pxPerYear * viewport.k);

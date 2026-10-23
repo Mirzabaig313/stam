@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { CARD_W, COUPLE_GAP } from "@/core/layout/constants";
 import type { LayoutNode } from "@/core/layout/types";
 import { parentsOf, unionsOf } from "@/core/model/tree";
+import { useTreeDir } from "@/ui/canvas/treeDirection";
 import type { Rect } from "@/ui/canvas/viewport";
 import { focusCard } from "@/ui/keyboard/focusCard";
 import { useEditor } from "@/ui/store/useEditor";
@@ -65,7 +66,9 @@ const at = (x: number, y: number, shift = 0): CSSProperties => ({
  * open a "Spouse" / "Sibling" chooser. Positions are physical screen px, like `rect`.
  */
 export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  // The drawing's direction, which the tree-direction setting can set apart from the language's.
+  const rtl = useTreeDir() === "rtl";
   const doc = useEditor((s) => s.doc);
   const [open, setOpen] = useState<Open>(null);
   const handleRefs = useRef<Partial<Record<"start" | "end" | "union", HTMLButtonElement | null>>>(
@@ -89,7 +92,6 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
 
   // "↑ View family" sits above a spouse card's inline-end corner: move the top handle clear of it.
   const familyButton = node.kind === "spouse" && parents.length > 0;
-  const rtl = i18n.dir() === "rtl";
   const topX = familyButton ? (rtl ? w * 0.75 : w * 0.25) : w / 2;
   // Every handle sits outside its card edge: above, or below (past the "+N" badge of a collapsed
   // card). Nothing is ever drawn over a name, avatar or date.

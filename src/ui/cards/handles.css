@@ -15,7 +15,8 @@
   --_ink: var(--ink, #111311);
   --_muted: var(--muted, #5a615b);
   --_line: var(--line, rgba(17, 19, 17, 0.14));
-  --_card: #ffffff;
+  --_card: var(--card, #ffffff);
+  --_hover: var(--hover, rgba(17, 19, 17, 0.06));
   --_ease: var(--ease, cubic-bezier(0.16, 1, 0.3, 1));
 
   position: absolute;
@@ -113,7 +114,7 @@
 
 .quick-add__menu button:hover,
 .union-chooser button:hover {
-  background: rgba(17, 19, 17, 0.06);
+  background: var(--_hover);
 }
 
 .union-chooser {
@@ -259,7 +260,7 @@
   padding-inline: 16px;
   border: 1px dashed var(--ink, #111311);
   border-radius: var(--radius-card, 6px);
-  background: #ffffff;
+  background: var(--card, #ffffff);
   color: var(--ink, #111311);
   font: inherit;
   font-size: 14px;

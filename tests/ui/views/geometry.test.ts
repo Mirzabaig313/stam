@@ -13,10 +13,11 @@ import {
   sectorPath,
   timelineFit,
   timelineGeometry,
+  visibleBarRange,
   yearTicks,
 } from "@/ui/views/geometry";
 
-import { fanLayout, timelineLayout } from "./fixtures";
+import { fanLayout, longTimelineLayout, timelineLayout } from "./fixtures";
 
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 6);
 
@@ -204,5 +205,51 @@ describe("timelineFit", () => {
   test("RTL keeps the start of time at the right edge", () => {
     const v = timelineFit(long, { width: 390, height: 700 }, true);
     expect(v.x + (long.x + long.width) * v.k).toBeCloseTo(390 - 56, 6);
+  });
+});
+
+describe("visibleBarRange", () => {
+  const boxes = timelineGeometry(longTimelineLayout(1000), "ltr").boxes;
+  const screen = 600;
+
+  test("at the top only the first screens of bars are drawn, in whole chunks", () => {
+    const [start, end] = visibleBarRange(boxes, { x: 0, y: 0, k: 1 }, screen, 50);
+    expect(start).toBe(0);
+    expect(end % 50).toBe(0);
+    // 600 px of 32 px rows is under 20 rows; with the overscan still well under 100.
+    expect(end).toBeGreaterThanOrEqual(20);
+    expect(end).toBeLessThanOrEqual(100);
+  });
+
+  test("scrolled down, the bars on screen are in range and the far ones are not", () => {
+    const v = { x: 0, y: -20_000, k: 1 };
+    const [start, end] = visibleBarRange(boxes, v, screen, 50);
+    const onScreen = boxes
+      .map((b, i) => ({ i, top: b.y * v.k + v.y }))
+      .filter(({ top }) => top + BAR_H >= 0 && top <= screen)
+      .map(({ i }) => i);
+    expect(onScreen.length).toBeGreaterThan(10);
+    for (const i of onScreen) {
+      expect(i).toBeGreaterThanOrEqual(start);
+      expect(i).toBeLessThan(end);
+    }
+    expect(start).toBeGreaterThan(0);
+    expect(end).toBeLessThan(boxes.length);
+    expect(start % 50).toBe(0);
+  });
+
+  test("zoomed out far enough, everything is drawn", () => {
+    expect(visibleBarRange(boxes, { x: 0, y: 0, k: 0.01 }, screen, 50)).toEqual([0, 1000]);
+  });
+
+  test("small pans inside a chunk give the same range, so the bars are not rebuilt", () => {
+    const a = visibleBarRange(boxes, { x: 0, y: -20_000, k: 1 }, screen, 50);
+    const b = visibleBarRange(boxes, { x: 0, y: -20_010, k: 1 }, screen, 50);
+    expect(b).toEqual(a);
+  });
+
+  test("before the view has a size, only the first chunk is drawn", () => {
+    expect(visibleBarRange(boxes, { x: 0, y: 0, k: 1 }, 0, 50)).toEqual([0, 50]);
+    expect(visibleBarRange([], { x: 0, y: 0, k: 1 }, 600, 50)).toEqual([0, 0]);
   });
 });

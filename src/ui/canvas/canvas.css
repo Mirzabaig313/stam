@@ -10,8 +10,9 @@
   --_muted: var(--muted, #5a615b);
   --_line: var(--line, rgba(17, 19, 17, 0.14));
   --_accent: var(--accent, #2b47f5);
-  --_card: #ffffff;
-  --_deceased: #eceee9;
+  --_card: var(--card, #ffffff);
+  --_deceased: var(--deceased, #eceee9);
+  --_tint: var(--tint, rgba(17, 19, 17, 0.04));
   --_ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   position: relative;
@@ -42,13 +43,14 @@
 
 /*
  * Ruling R32: connectors are meaningful graphics, so they need 3:1 against the ground
- * (WCAG 1.4.11). Ink at 55% over #F4F5F2 is about 4.0:1 (tests/ui/canvas/edgeContrast.test.ts
- * reads this value and checks it). The faint --line strength is for decoration only (ruler,
- * dividers). Ink inside one faded group, so overlapping runs do not darken.
+ * (WCAG 1.4.11). Ink at 55% over #F4F5F2 is about 4.0:1; `--edge-opacity` is set per theme in
+ * tokens.css, and tests/ui/settings/tokenContrast.test.ts checks it in every theme. The faint
+ * --line strength is for decoration only (ruler, dividers). Ink inside one faded group, so
+ * overlapping runs do not darken.
  */
 .stam-edges {
   stroke: var(--_ink);
-  opacity: 0.55;
+  opacity: var(--edge-opacity, 0.55);
   stroke-linecap: butt;
   stroke-linejoin: miter;
 }
@@ -89,7 +91,7 @@
 .stam-card__bg {
   fill: var(--_card);
   stroke: var(--_ink);
-  stroke-width: 1;
+  stroke-width: var(--card-stroke, 1px);
   transition:
     fill 250ms var(--_ease),
     stroke 250ms var(--_ease);
@@ -301,8 +303,7 @@
 }
 
 /* ---- Ruler and minimap ------------------------------------------------------------------
- * Placed by flex layout, which follows the container's `dir`. Inline insets are avoided on
- * purpose: the bundler lowers them to left/right keyed on `:lang()`, which ignores `dir`. */
+ * Placed by flex layout, which follows the canvas's `dir` (the tree's direction). */
 
 .stam-canvas__chrome {
   position: absolute;
@@ -397,15 +398,142 @@
 }
 
 .stam-minimap__view {
-  fill: rgba(17, 19, 17, 0.04);
+  fill: var(--_tint);
   stroke: var(--_ink);
   stroke-width: 1;
 }
 
+/* ---- Themes and card colour modes (tokens.css) ------------------------------------------ */
+
+/* Print: heavier connectors, and no fills (the avatar disc is drawn as a ring). */
+:root[data-theme="print"] .stam-edges path {
+  stroke-width: var(--edge-width, 2px);
+}
+
+:root[data-theme="print"] .stam-card__avatar-disc {
+  fill: none;
+  stroke: var(--_ink);
+}
+
+/* Print has no accent colour: the selected card gets a double outline instead, a 3 px edge and a
+   thin ring 3 px outside it (the focus ring's rectangle), where every card has a 1.5 px edge. */
+:root[data-theme="print"] .stam-card--selected .stam-card__bg {
+  stroke-width: 3;
+}
+
+:root[data-theme="print"] .stam-card--selected .stam-card__focus {
+  stroke-width: 1;
+  opacity: 1;
+}
+
+/* Keyboard focus on it as well: the ring thickens, so both still show. */
+:root[data-theme="print"] .stam-card--selected:focus-visible .stam-card__focus {
+  stroke-width: 2;
+}
+
+/* Classic: blue and pink cards by gender (the gender colour mode; the others colour by hue). */
+:root[data-theme="classic"]:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card[data-gender="male"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--male);
+}
+
+:root[data-theme="classic"]:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card[data-gender="female"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--female);
+}
+
+:root[data-theme="classic"]:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card--deceased[data-gender="male"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--male-deceased);
+}
+
+:root[data-theme="classic"]:not([data-color-mode="branch"]):not([data-color-mode="generation"])
+  .stam-card--deceased[data-gender="female"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--female-deceased);
+}
+
+/* Branch: each child of the root starts a hue that their descendants and partners share;
+   generation: one hue per row. A hued card keeps its hue when deceased (the † says so). */
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="0"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-0);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="1"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-1);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="2"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-2);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="3"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-3);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="4"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-4);
+}
+
+:root[data-color-mode="branch"]
+  .stam-card[data-branch="5"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-5);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="0"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-0);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="1"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-1);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="2"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-2);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="3"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-3);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="4"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-4);
+}
+
+:root[data-color-mode="generation"]
+  .stam-card[data-generation="5"]:not(.stam-card--placeholder)
+  .stam-card__bg {
+  fill: var(--hue-5);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .stam-canvas *,
-  .stam-canvas *::before,
-  .stam-canvas *::after {
+  :root:not([data-motion="full"]) .stam-canvas *,
+  :root:not([data-motion="full"]) .stam-canvas *::before,
+  :root:not([data-motion="full"]) .stam-canvas *::after {
     transition: none !important;
   }
 }

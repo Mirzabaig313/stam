@@ -2,6 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
+import { CARD_W } from "@/core/layout/constants";
 import { layoutFamily } from "@/core/layout/family";
 import type { LayoutNode } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
@@ -103,15 +104,24 @@ describe("PersonCard", () => {
     expect(container.querySelector(".stam-card")!.classList).toContain("stam-card--deceased");
   });
 
-  test("RTL: the years are an LTR isolate, still anchored at the card's inline start", () => {
+  test("RTL: the years read left to right inside an LRI…PDI isolate, on an RTL text", () => {
     const { container } = renderCard("zainab", { dir: "rtl" });
     const years = container.querySelector(".stam-card__years")!;
-    // The text keeps the page direction (so it anchors on the right); only the run is LTR.
+    // No LTR run element: browsers resolve text-anchor="start" from an only child's LTR
+    // direction and grow the line right, into the avatar. The isolate characters keep the
+    // text's own (inherited RTL) direction, so the line still ends at x on the right.
+    expect(years.querySelector("tspan")).toBeNull();
     expect(years.getAttribute("direction")).toBeNull();
-    const run = years.querySelector("tspan");
-    expect(run?.getAttribute("direction")).toBe("ltr");
-    expect(run?.getAttribute("unicode-bidi")).toBe("isolate");
-    expect(run?.textContent).toBe("1953 – †2019");
+    expect(years.getAttribute("text-anchor")).toBeNull();
+    expect(years.getAttribute("x")).toBe(String(CARD_W - 60));
+    expect(years.textContent).toBe("\u20661953 – †2019\u2069");
+  });
+
+  test("LTR: the years are plain text, with no isolate characters", () => {
+    const { container } = renderCard("zainab");
+    const years = container.querySelector(".stam-card__years")!;
+    expect(years.querySelector("tspan")).toBeNull();
+    expect(years.textContent).toBe("1953 – †2019");
   });
 
   test("living card shows the birth year only and no deceased treatment", () => {

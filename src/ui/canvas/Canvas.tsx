@@ -21,6 +21,7 @@ import type { LayoutNode, LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
 import { type CardNode, type DragRole, PersonCard } from "@/ui/cards/PersonCard";
 import type { DropTarget } from "@/ui/dnd/resolveDrop";
+import { branchOf } from "@/ui/settings/colorModes";
 
 import { dimmedEdgeIds, focusSet, mirrorFrame, pathEdgeIds } from "./derive";
 import { Edges } from "./Edges";
@@ -170,6 +171,8 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     return rtl ? { ...b, x: -(b.x + b.width) } : b;
   }, [layout, rtl]);
   const rows = useMemo(() => rowsOf(display.nodes), [display]);
+  // For the branch colour mode; cheap, so always known and CSS decides whether it shows.
+  const branches = useMemo(() => branchOf(doc, layout), [doc, layout]);
 
   const focus = useMemo(
     () => (focusMode && selectedId && doc.persons[selectedId] ? focusSet(doc, selectedId) : null),
@@ -426,6 +429,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
                 collapsed={collapsed ? collapsed.has(node.personId) : undefined}
                 photoUrl={photoOf(node.personId)}
                 dragRole={dragRoleOf(dragFeedback, node.personId)}
+                branch={branches[node.personId]}
                 onSeeOriginal={onSeeOriginal}
                 {...cardHandlers}
               />
@@ -459,7 +463,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
       )}
 
       {/* Ruler at inline-start, minimap at bottom inline-end: placed by flex layout, which
-          follows `dir` (the bundler lowers inline insets to left/right keyed on `lang`). */}
+          follows the canvas's `dir`, the tree's direction. */}
       <div className="stam-canvas__chrome">
         <GenerationRuler
           rows={rows}

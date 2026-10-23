@@ -18,6 +18,7 @@ import type { LayoutNode } from "@/core/layout/types";
 import { childrenOf, displayName, parentsOf, topmostAncestor } from "@/core/model/tree";
 import type { Person, TreeDocument } from "@/core/model/types";
 import type { Lod } from "@/ui/canvas/viewport";
+import { generationHue } from "@/ui/settings/colorModes";
 
 import { describePerson, personLabel } from "./describe";
 
@@ -112,6 +113,15 @@ const TEXT_END = CARD_W - 12;
 const GLYPH_SPACE = 16;
 const HIT = 24;
 
+/**
+ * Text that must read left to right, wrapped for an RTL drawing in LEFT-TO-RIGHT ISOLATE …
+ * POP DIRECTIONAL ISOLATE. The characters are invisible and leave the element's direction (and
+ * so its text-anchor) alone, which an LTR child element would not. LTR text is left as it is.
+ */
+export function isolateLtr(text: string, dir: "ltr" | "rtl"): string {
+  return dir === "rtl" ? `\u2066${text}\u2069` : text;
+}
+
 /** A circle of radius `r` centred on (cx, cy), as a path. */
 const ring = (cx: number, cy: number, r: number) =>
   `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
@@ -177,6 +187,11 @@ export type PersonCardProps = {
   photoUrl?: string;
   dragRole?: DragRole;
   /**
+   * The card's branch hue (0–5) for the branch colour mode; none for the root couple. The card
+   * also carries its gender and generation hue: `data-color-mode` on <html> picks what is shown.
+   */
+  branch?: number;
+  /**
    * Exports: the drawing only. No roles, focus, handlers or controls, no hover or focus shapes,
    * the drawn text left readable, and `data-person-id` on the card's root group.
    */
@@ -205,6 +220,7 @@ function PersonCardImpl({
   collapsed,
   photoUrl,
   dragRole,
+  branch,
   static: isStatic = false,
   onSelect,
   onToggleCollapse,
@@ -279,6 +295,11 @@ function PersonCardImpl({
   const decorClass = placeholder ? "stam-card__decor stam-card--placeholder" : "stam-card__decor";
   const opacity = node.opacity !== undefined && node.opacity < 1 ? node.opacity : undefined;
   const sub = tabbable ? 0 : -1;
+  const colorData = {
+    "data-gender": person.gender,
+    "data-generation": generationHue(node.generation),
+    "data-branch": branch,
+  };
 
   // Text lines: name, then the native name, then the years (or "see original" on a linked copy).
   // Without a last line the block is centred: a lone name sits on the card's middle.
@@ -408,11 +429,14 @@ function PersonCardImpl({
             y={lastLineY}
             fontSize={SMALL_FONT.size}
           >
-            {/* Years read left to right in RTL too ("1913 – †1964", never "1964† – 1913"). The
-                isolate is on the run, not the text, so the line still anchors at the inline start. */}
-            <tspan direction="ltr" unicodeBidi="isolate">
-              {fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT)}
-            </tspan>
+            {/* Years read left to right in RTL too ("1913 – †1964", never "1964† – 1913"). Not
+                with an LTR <tspan>: Chromium and WebKit resolve text-anchor from an only child's
+                direction, so the line would start at x and grow right, over the avatar. The
+                LRI…PDI isolate keeps the text's own RTL direction, so it ends at x on the right. */}
+            {isolateLtr(
+              fitText(years, TEXT_END - TEXT_X - (hasChildren ? HIT : 0), SMALL_FONT),
+              dir,
+            )}
           </text>
         )}
         {isStatic ? (
@@ -476,7 +500,9 @@ function PersonCardImpl({
         transform={`translate(${node.x} ${node.y})`}
         opacity={opacity}
       >
-        <g className={cardClass}>{shape}</g>
+        <g className={cardClass} {...colorData}>
+          {shape}
+        </g>
         <g className={decorClass}>{texts}</g>
       </g>
     );
@@ -491,6 +517,7 @@ function PersonCardImpl({
     >
       <g
         className={cardClass}
+        {...colorData}
         role="button"
         tabIndex={sub}
         aria-label={label}

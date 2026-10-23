@@ -22,7 +22,14 @@ const INK: [number, number, number] = [0x11, 0x13, 0x11]; // #111311
 describe("connector contrast (ruling R32, WCAG 1.4.11)", () => {
   const css = readFileSync("src/ui/canvas/canvas.css", "utf8");
   const rule = /\.stam-edges\s*\{[^}]*\}/.exec(css)?.[0] ?? "";
-  const opacity = Number(/opacity:\s*([\d.]+)/.exec(rule)?.[1]);
+  // The opacity is the theme's --edge-opacity token; the fallback is the light value.
+  const opacity = Number(/opacity:\s*(?:var\(--edge-opacity,\s*)?([\d.]+)/.exec(rule)?.[1]);
+  const tokens = readFileSync("src/ui/styles/tokens.css", "utf8");
+  const lightToken = Number(/--edge-opacity:\s*([\d.]+)/.exec(tokens)?.[1]);
+
+  test("the fallback is the light theme's token (every theme: tokenContrast.test.ts)", () => {
+    expect(opacity).toBe(lightToken);
+  });
 
   test("the connector group has an opacity", () => {
     expect(opacity).toBeGreaterThan(0);

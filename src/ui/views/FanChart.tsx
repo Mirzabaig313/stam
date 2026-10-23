@@ -279,6 +279,7 @@ export const FanChart = forwardRef<ViewHandle, FanChartProps>(function FanChart(
                   className={classes}
                   role="button"
                   data-person-id={item.personId}
+                  data-gender={person.gender}
                   data-key={item.key}
                   tabIndex={item.key === tabStop ? 0 : -1}
                   aria-label={describePerson(doc, item.personId, t)}

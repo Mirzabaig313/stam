@@ -117,3 +117,40 @@ function bar(
     living,
   };
 }
+
+/** `people` people, `perGeneration` to a generation, one bar each, born a year apart. */
+export function longTimelineLayout(people: number, perGeneration = 100): TimelineLayout {
+  const bars = Array.from({ length: people }, (_, row) => ({
+    personId: `p${row}`,
+    row,
+    generation: Math.floor(row / perGeneration),
+    start: 1800 + (row % 200),
+    end: 1860 + (row % 200),
+    startKnown: true,
+    endKnown: true,
+    living: false,
+  }));
+  const generations = Math.ceil(people / perGeneration);
+  return {
+    minYear: 1800,
+    maxYear: 2060,
+    rows: people,
+    generationRows: Array.from({ length: generations }, (_, g) => ({
+      generation: g,
+      firstRow: g * perGeneration,
+      lastRow: Math.min(people, (g + 1) * perGeneration) - 1,
+    })),
+    bars,
+  };
+}
+
+/** The people of `longTimelineLayout(people)`: p0, p1, ..., no unions. */
+export function longFamily(people: number): TreeDocument {
+  return docOf(
+    Array.from({ length: people }, (_, i) =>
+      person(`p${i}`, `Person${i}`, "Khan", i % 2 ? "female" : "male", { isLiving: false }),
+    ),
+    [],
+    "p0",
+  );
+}

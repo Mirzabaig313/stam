@@ -11,10 +11,10 @@
   --_muted: var(--muted, #5a615b);
   --_line: var(--line, rgba(17, 19, 17, 0.14));
   --_accent: var(--accent, #2b47f5);
-  --_card: #ffffff;
-  --_card-hover: #f9faf7;
-  --_deceased: #eceee9;
-  --_deceased-hover: #e4e6e0;
+  --_card: var(--card, #ffffff);
+  --_card-hover: var(--card-hover, #f9faf7);
+  --_deceased: var(--deceased, #eceee9);
+  --_deceased-hover: var(--deceased-hover, #e4e6e0);
   --_ease: cubic-bezier(0.16, 1, 0.3, 1);
 
   position: relative;
@@ -58,7 +58,7 @@
 .stam-fan__bg,
 .stam-timeline__edge {
   stroke: var(--_ink);
-  stroke-width: 1;
+  stroke-width: var(--card-stroke, 1px);
   transition:
     stroke 250ms var(--_ease),
     stroke-width 250ms var(--_ease);
@@ -249,10 +249,30 @@
   pointer-events: none;
 }
 
+/* ---- Classic theme: blue and pink by gender, as on the canvas ---------------------------- */
+
+:root[data-theme="classic"] .stam-fan__cell[data-gender="male"]:not(.stam-fan__cell--placeholder),
+:root[data-theme="classic"]
+  .stam-timeline__bar[data-gender="male"]:not(.stam-timeline__bar--placeholder) {
+  --_card: var(--male);
+  --_card-hover: var(--male);
+  --_deceased: var(--male-deceased);
+  --_deceased-hover: var(--male-deceased);
+}
+
+:root[data-theme="classic"] .stam-fan__cell[data-gender="female"]:not(.stam-fan__cell--placeholder),
+:root[data-theme="classic"]
+  .stam-timeline__bar[data-gender="female"]:not(.stam-timeline__bar--placeholder) {
+  --_card: var(--female);
+  --_card-hover: var(--female);
+  --_deceased: var(--female-deceased);
+  --_deceased-hover: var(--female-deceased);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .stam-view *,
-  .stam-view *::before,
-  .stam-view *::after {
+  :root:not([data-motion="full"]) .stam-view *,
+  :root:not([data-motion="full"]) .stam-view *::before,
+  :root:not([data-motion="full"]) .stam-view *::after {
     transition: none !important;
   }
 }

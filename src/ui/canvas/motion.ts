@@ -43,7 +43,12 @@ export function cubicBezier(x1: number, y1: number, x2: number, y2: number): (t:
 /** `cubic-bezier(0.16, 1, 0.3, 1)`, the global easing. */
 export const ease = cubicBezier(0.16, 1, 0.3, 1);
 
+/** The OS setting, unless the user chose in Settings (`<html data-motion="reduce|full">`). */
 export function prefersReducedMotion(): boolean {
+  const choice =
+    typeof document === "undefined" ? null : document.documentElement.getAttribute("data-motion");
+  if (choice === "reduce") return true;
+  if (choice === "full") return false;
   return typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 

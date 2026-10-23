@@ -254,6 +254,43 @@ export function timelineGeometry(layout: TimelineLayout, dir: "ltr" | "rtl"): Ti
   };
 }
 
+/** The timeline draws its bars in runs of this many, so a small pan does not rebuild them. */
+export const CULL_CHUNK = 40;
+
+/**
+ * Which bars the timeline draws: indices `[start, end)` into `boxes` (sorted by row, so by y)
+ * that cover a screen `height` px tall, with half a screen to spare above and below, widened to
+ * whole chunks of `chunk`. Before the view has a size, the first chunk.
+ */
+export function visibleBarRange(
+  boxes: BarBox[],
+  viewport: Viewport,
+  height: number,
+  chunk = CULL_CHUNK,
+): [number, number] {
+  if (boxes.length === 0) return [0, 0];
+  if (height <= 0) return [0, Math.min(boxes.length, chunk)];
+  const spare = height / 2;
+  const top = (-spare - viewport.y) / viewport.k;
+  const bottom = (height + spare - viewport.y) / viewport.k;
+  /** The first index whose box satisfies `past` (boxes are in y order). */
+  const firstWhere = (past: (b: BarBox) => boolean) => {
+    let lo = 0;
+    let hi = boxes.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (past(boxes[mid]!)) hi = mid;
+      else lo = mid + 1;
+    }
+    return lo;
+  };
+  const first = firstWhere((b) => b.y + BAR_H >= top);
+  const last = firstWhere((b) => b.y > bottom);
+  const start = Math.floor(first / chunk) * chunk;
+  const end = Math.min(boxes.length, Math.ceil(last / chunk) * chunk);
+  return [Math.min(start, end), end];
+}
+
 /** Height of the timeline's year axis along the top edge (matches views.css). */
 export const AXIS_H = 32;
 /** Room for the generation ruler (40 px) plus a gutter. */

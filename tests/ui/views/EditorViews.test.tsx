@@ -508,9 +508,9 @@ describe("birthdays", () => {
       "button",
     );
     expect(rows.map((r) => r.textContent)).toEqual([
-      "Ali KhanOct 23, turns 46, today",
-      "Zainab KhanOct 25, turns 43, in 2 days",
-      "Omar KhanNov 20, turns 36, in 28 days",
+      "Ali Khan Oct 23, turns 46, today",
+      "Zainab Khan Oct 25, turns 43, in 2 days",
+      "Omar Khan Nov 20, turns 36, in 28 days",
       "Ali Khan was born in 1980",
     ]);
   });
