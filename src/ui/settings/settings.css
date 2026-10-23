@@ -1,128 +1,341 @@
-/* Settings dialog. Logical properties only. */
+/* Settings dialog: two columns on desktop that fit one screen, one scrolling column on a phone.
+   Logical properties only. */
 .dialog:has(.settings-form) {
-  inline-size: min(520px, calc(100% - 2 * var(--gutter)));
-  max-block-size: calc(100% - 2 * var(--gutter));
-  overflow-y: auto;
+  inline-size: min(880px, calc(100% - 2 * var(--gutter)));
 }
 
 .settings-form {
   display: grid;
-  gap: 20px;
+}
+
+.settings-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+}
+
+.settings-column {
+  display: grid;
+  gap: 18px;
+  min-inline-size: 0;
+}
+
+.settings-column + .settings-column {
+  padding-inline-start: 28px;
+  border-inline-start: 1px solid var(--line);
+}
+
+.settings-heading {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 750;
+  font-variation-settings: "wdth" 112;
+  line-height: 1.3;
+}
+
+[lang="ur"] .settings-heading {
+  line-height: 1.8;
 }
 
 .settings-group {
   display: grid;
-  gap: 2px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   border: 0;
   min-inline-size: 0;
 }
 
-.settings-choice {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 6px 8px;
-  margin-inline: -8px;
-  cursor: pointer;
-  transition: background-color var(--dur-card) var(--ease);
+.settings-label {
+  padding: 0;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.settings-choice:hover {
-  background: var(--hover);
-}
-
-.settings-choice input {
-  flex: none;
+.settings-note {
   margin: 0;
-  margin-block-start: 3px;
-  accent-color: var(--ink);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
-.settings-choice__text {
+/* ------------------------------------------------------------ theme cards */
+
+.theme-grid {
   display: grid;
-  gap: 2px;
-  min-inline-size: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.settings-choice__label {
+.theme-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur-micro) var(--ease),
+    border-color var(--dur-micro) var(--ease);
+}
+
+.theme-card:hover {
+  border-color: var(--line-strong);
+}
+
+/* The real radio covers the card (invisible), so a click anywhere chooses and focus lands on it. */
+.theme-card input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.theme-card:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    var(--shadow-1);
+}
+
+.theme-card:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.theme-card__text {
+  display: grid;
+  gap: 1px;
+  padding-inline: 4px;
+}
+
+.theme-card__name {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 650;
 }
 
-.settings-choice__hint {
-  color: var(--muted);
-  font-size: 13px;
+.theme-card:has(input:checked) .theme-card__name::after {
+  content: "";
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--accent);
 }
 
-.settings-choice [lang="ur"],
-.settings-choice [lang="ar"] {
-  font-size: 1.1em;
+.theme-card__hint {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
-/* Each theme in miniature: its ground with two small cards in its own fills and ink. */
-.settings-swatch {
-  position: relative;
-  flex: none;
-  inline-size: 34px;
-  block-size: 22px;
-  border: 1px solid var(--line);
+/* Each theme in miniature, in its own colours whatever theme is on: a toolbar and two people. */
+.theme-preview {
+  display: grid;
+  gap: 6px;
+  padding: 7px;
+  border: 1px solid var(--_sw-line);
+  border-radius: var(--radius-sm);
   background: var(--_sw-ground);
 }
 
-.settings-swatch::before,
-.settings-swatch::after {
-  content: "";
-  position: absolute;
-  inset-block-start: 6px;
-  inline-size: 11px;
-  block-size: 8px;
-  border: 1px solid var(--_sw-ink);
-  border-radius: 2px;
+.theme-preview i {
+  display: block;
+  border-radius: 99px;
 }
 
-.settings-swatch::before {
-  inset-inline-start: 4px;
+.theme-preview__bar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 6px;
+  border: 1px solid var(--_sw-line);
+  border-radius: 99px;
+  background: var(--_sw-bar);
+}
+
+.theme-preview__dot {
+  inline-size: 7px;
+  block-size: 7px;
+  background: var(--_sw-ink);
+}
+
+.theme-preview__bar .theme-preview__line {
+  flex: 1;
+  max-inline-size: 36px;
+}
+
+.theme-preview__pill {
+  margin-inline-start: auto;
+  inline-size: 22px;
+  block-size: 8px;
+  background: var(--_sw-accent);
+}
+
+.theme-preview__people {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.theme-preview__person {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid var(--_sw-edge);
+  border-radius: 6px;
   background: var(--_sw-card);
 }
 
-.settings-swatch::after {
-  inset-inline-end: 4px;
+.theme-preview__person--alt {
   background: var(--_sw-alt);
 }
 
-.settings-swatch[data-swatch="light"] {
-  --_sw-ground: #f4f5f2;
-  --_sw-card: #ffffff;
-  --_sw-alt: #ffffff;
-  --_sw-ink: #111311;
+.theme-preview .theme-preview__face {
+  flex: none;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--_sw-face);
 }
 
-.settings-swatch[data-swatch="dark"] {
-  --_sw-ground: #0f110f;
-  --_sw-card: #1c201c;
-  --_sw-alt: #1c201c;
-  --_sw-ink: #e8eae6;
+.theme-preview__line {
+  flex: 1;
+  block-size: 4px;
+  background: var(--_sw-ink);
+  opacity: 0.55;
 }
 
-.settings-swatch[data-swatch="classic"] {
-  --_sw-ground: #f4f5f2;
-  --_sw-card: #dce8f8;
-  --_sw-alt: #fadde8;
-  --_sw-ink: #111311;
+.theme-preview[data-swatch="light"] {
+  --_sw-ground: #f4eeea;
+  --_sw-bar: #fffcfa;
+  --_sw-card: #fffcfa;
+  --_sw-alt: #fffcfa;
+  --_sw-ink: #2a1e24;
+  --_sw-edge: #cdc3c7;
+  --_sw-line: #dcd3d3;
+  --_sw-accent: #7c2a5c;
+  --_sw-face: #efcfdf;
 }
 
-.settings-swatch[data-swatch="print"] {
+.theme-preview[data-swatch="dark"] {
+  --_sw-ground: #1a1418;
+  --_sw-bar: #272026;
+  --_sw-card: #272026;
+  --_sw-alt: #272026;
+  --_sw-ink: #f3eaee;
+  --_sw-edge: #4a3f46;
+  --_sw-line: #3a3036;
+  --_sw-accent: #e7a0c9;
+  --_sw-face: #45253a;
+}
+
+.theme-preview[data-swatch="classic"] {
+  --_sw-ground: #f4eeea;
+  --_sw-bar: #fffcfa;
+  --_sw-card: #d9e5f6;
+  --_sw-alt: #f7d8e5;
+  --_sw-ink: #2a1e24;
+  --_sw-edge: #a9a3b3;
+  --_sw-line: #dcd3d3;
+  --_sw-accent: #7c2a5c;
+  --_sw-face: #ffffff;
+}
+
+.theme-preview[data-swatch="print"] {
   --_sw-ground: #ffffff;
+  --_sw-bar: #ffffff;
   --_sw-card: #ffffff;
   --_sw-alt: #ffffff;
   --_sw-ink: #000000;
+  --_sw-edge: #000000;
+  --_sw-line: #000000;
+  --_sw-accent: #000000;
+  --_sw-face: #ffffff;
 }
 
-/* The language picker (LanguageField) and its "Translation in review" note. */
+.theme-preview[data-swatch="print"] .theme-preview__face {
+  border: 1px solid #000;
+}
+
+/* ------------------------------------------------------------ card colour strip */
+
+.settings-preview-row {
+  display: grid;
+  gap: 8px;
+}
+
+.color-strip {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.color-strip__card {
+  display: grid;
+  place-items: center;
+  block-size: 22px;
+  border: 1px solid var(--card-edge);
+  border-radius: 5px;
+  background: var(--card);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.color-strip__card[data-gender="m"] {
+  background: var(--male, var(--card));
+}
+
+.color-strip__card[data-gender="f"] {
+  background: var(--female, var(--card));
+}
+
+/* ------------------------------------------------------------ language */
+
 .language-review {
   margin-block: 6px 0;
   font-size: 13px;
+}
+
+/* ------------------------------------------------------------ phone: a full-height sheet */
+
+@media (max-width: 760px) {
+  .dialog:has(.settings-form) {
+    inline-size: 100%;
+    block-size: 100dvh;
+    max-block-size: none;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .settings-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .settings-column + .settings-column {
+    padding-block-start: 20px;
+    padding-inline-start: 0;
+    border-block-start: 1px solid var(--line);
+    border-inline-start: 0;
+  }
 }

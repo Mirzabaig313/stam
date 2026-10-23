@@ -39,9 +39,9 @@ export const SETTINGS_CACHE_KEY = "stam:settings";
 
 /** Each theme's ground, for `<meta name="theme-color">` (the browser's own chrome). */
 export const THEME_GROUND: Record<Theme, string> = {
-  light: "#f4f5f2",
-  dark: "#0f110f",
-  classic: "#f4f5f2",
+  light: "#f4eeea",
+  dark: "#1a1418",
+  classic: "#f4eeea",
   print: "#ffffff",
 };
 

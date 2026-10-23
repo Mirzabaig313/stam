@@ -206,7 +206,7 @@ describe("applySettings", () => {
     meta.content = "#F4F5F2";
     document.head.append(meta);
     applySettings({ ...DEFAULT_SETTINGS, theme: "dark" });
-    expect(meta.content.toLowerCase()).toBe("#0f110f");
+    expect(meta.content.toLowerCase()).toBe("#1a1418");
     applySettings({ ...DEFAULT_SETTINGS, theme: "print" });
     expect(meta.content.toLowerCase()).toBe("#ffffff");
     meta.remove();

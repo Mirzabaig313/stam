@@ -47,12 +47,33 @@ describe("SettingsDialog", () => {
     open();
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
     expect((screen.getByRole("radio", { name: /Classic/ }) as HTMLInputElement).checked).toBe(true);
-    expect((screen.getByRole("radio", { name: /By branch/ }) as HTMLInputElement).checked).toBe(
-      true,
+    expect(screen.getByRole("radio", { name: /By branch/ }).getAttribute("aria-checked")).toBe(
+      "true",
     );
+    expect(screen.getByRole("radio", { name: "Auto" }).getAttribute("aria-checked")).toBe("true");
+  });
+
+  test("two columns: appearance, and language and layout", () => {
+    open();
+    const appearance = screen.getByRole("region", { name: "Appearance" });
+    const layout = screen.getByRole("region", { name: "Language and layout" });
     expect(
-      (screen.getByRole("radio", { name: /Follow the language/ }) as HTMLInputElement).checked,
-    ).toBe(true);
+      within(appearance).getAllByRole("radio", { name: /Light|Dark|Classic|Print/ }),
+    ).toHaveLength(4);
+    expect(within(appearance).getByRole("radiogroup", { name: "Card colours" })).toBeTruthy();
+    expect(within(layout).getByRole("combobox", { name: "Language" })).toBeTruthy();
+    expect(within(layout).getByRole("radiogroup", { name: "Tree direction" })).toBeTruthy();
+    expect(within(layout).getByRole("radiogroup", { name: "Reduce motion" })).toBeTruthy();
+    // A visible close button, and each theme drawn in miniature.
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+    expect(document.querySelectorAll(".theme-preview")).toHaveLength(4);
+  });
+
+  test("arrow keys move through the card colours", async () => {
+    const { user } = open();
+    screen.getByRole("radio", { name: /By gender/ }).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(html().getAttribute("data-color-mode")).toBe("branch");
   });
 
   test("each theme and colour mode is described", () => {
@@ -132,14 +153,13 @@ describe("SettingsDialog", () => {
   test("reduce motion follows the device until chosen", async () => {
     const { user } = open();
     const group = screen.getByRole("radiogroup", { name: "Reduce motion" });
-    expect(
-      (within(group).getByRole("radio", { name: /Follow this device/ }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+    expect(within(group).getByRole("radio", { name: "Device" }).getAttribute("aria-checked")).toBe(
+      "true",
+    );
     await user.click(within(group).getByRole("radio", { name: /^On/ }));
     expect(html().getAttribute("data-motion")).toBe("reduce");
     await waitFor(async () => expect(await env.repo.getSetting("motion")).toBe("reduce"));
-    await user.click(within(group).getByRole("radio", { name: /Follow this device/ }));
+    await user.click(within(group).getByRole("radio", { name: "Device" }));
     expect(html().hasAttribute("data-motion")).toBe(false);
   });
 
@@ -173,11 +193,11 @@ describe("where it opens", () => {
       { repo: env.repo },
     );
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Menu" }));
-    await user.click(screen.getByRole("button", { name: "Settings" }));
+    await user.click(screen.getByRole("button", { name: "More" }));
+    await user.click(screen.getByRole("menuitem", { name: "Settings" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
     // The menu closed behind it.
-    expect(screen.queryByRole("button", { name: /Download backup/ })).toBeNull();
+    expect(screen.queryByRole("menu")).toBeNull();
   });
 
   test("from the tree list", async () => {
