@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stam: your family trees</title>
+    <meta
+      name="description"
+      content="The Stam editor: build your family tree in the browser, one generation per row. No account, and your tree is saved on this device only."
+    />
+    <link rel="canonical" href="https://stam.mirzalabs.in/app" />
+    <!-- The editor shell has no content of its own to index; the landing page describes it. -->
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#F4F5F2" />
+    <link rel="icon" href="../public/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Stam" />
+    <meta property="og:title" content="Stam: a free family tree builder, one generation per row" />
+    <meta
+      property="og:description"
+      content="Build your family tree in the browser. Free, no account, and your data stays on your device."
+    />
+    <meta property="og:url" content="https://stam.mirzalabs.in/app" />
+    <meta property="og:image" content="https://stam.mirzalabs.in/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>
+      <main>
+        <h1>Stam needs JavaScript</h1>
+        <p>
+          The family tree editor runs entirely in your browser. Turn on JavaScript to build your
+          tree. Nothing is uploaded.
+        </p>
+      </main>
+    </noscript>
+    <script type="module" src="./app/main.tsx"></script>
+  </body>
+</html>

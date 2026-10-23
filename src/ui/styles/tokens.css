@@ -1,0 +1,42 @@
+/* Design tokens. Light only for M1; a dark set slots in later by overriding these on :root. */
+:root {
+  /* Colour */
+  --ground: #f4f5f2;
+  --ink: #111311;
+  --muted: #5a615b;
+  --line: rgba(17, 19, 17, 0.14);
+  /* Selection and "you" only. Never decoration. */
+  --accent: #2b47f5;
+
+  /* Shape: cards are the only rounded thing. */
+  --radius-card: 6px;
+
+  /* Type */
+  --font: "Archivo Variable", system-ui, sans-serif;
+
+  /* Motion: one easing; layout re-flow is slow, card return and hover are quick. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-layout: 450ms;
+  --dur-card: 250ms;
+
+  /* Layout */
+  --gutter: 16px;
+  --toolbar-block-size: 52px;
+
+  color-scheme: light;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-layout: 0ms;
+    --dur-card: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

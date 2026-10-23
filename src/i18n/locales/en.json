@@ -1,0 +1,242 @@
+{
+  "app": {
+    "loading": "Loading…",
+    "notFound": {
+      "title": "Page not found",
+      "link": "Back to your trees"
+    },
+    "unknownPerson": "Unknown",
+    "storageUnavailable": "Your browser is blocking local storage, so trees can't be opened here. Allow site data for this site and reload.",
+    "import": {
+      "error": {
+        "NOT_JSON": "This file isn't valid JSON, so it can't be a family tree.",
+        "NOT_STAM": "This file isn't a family tree made with this app.",
+        "FUTURE_VERSION": "This file was made by a newer version of the app. Update the app and try again.",
+        "INVALID_TREE": "This file's family tree is damaged and can't be opened.",
+        "TOO_LARGE": "This file is too large. The limit is 50 MB.",
+        "UNKNOWN": "Couldn't import this file."
+      },
+      "photosSkipped_one": "{{count}} photo was skipped because it couldn't be read.",
+      "photosSkipped_other": "{{count}} photos were skipped because they couldn't be read."
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "create": "Create",
+    "save": "Save",
+    "delete": "Delete",
+    "dismiss": "Dismiss",
+    "treeName": "Tree name"
+  },
+  "treeList": {
+    "title": "Your trees",
+    "empty": "Create your first tree",
+    "emptyHint": "Everything stays on this device. Nothing is uploaded.",
+    "newTree": "New tree",
+    "import": "Import",
+    "defaultName": "My family",
+    "copyName": "{{name}} (copy)",
+    "people_one": "{{count}} person",
+    "people_other": "{{count}} people",
+    "edited": "edited {{when}}",
+    "loadFailed": "Couldn't read your trees from this browser.",
+    "actionFailed": "That didn't work. Try again.",
+    "rename": "Rename",
+    "renameAria": "Rename {{name}}",
+    "duplicate": "Duplicate",
+    "duplicateAria": "Duplicate {{name}}",
+    "backup": "Backup",
+    "backupAria": "Download backup of {{name}}",
+    "deleteAria": "Delete {{name}}",
+    "newDialogTitle": "New tree",
+    "renameDialogTitle": "Rename tree",
+    "deleteDialogTitle": "Delete this tree?",
+    "deleteDialogBody": "“<name/>” and all the people in it will be removed from this device. This can't be undone."
+  },
+  "banner": {
+    "backupDue": "It's been a while since your last backup. Open a tree and choose Download backup to save a copy.",
+    "storageFull": "Storage is almost full. Download a backup.",
+    "otherTab": "This tree changed in another tab. Reload to keep editing.",
+    "deletedElsewhere": "This tree was deleted in another tab.",
+    "backToTrees": "Back to My trees",
+    "reload": "Reload",
+    "recovered": "Recovered from a backup snapshot. Check that everything is here, then download a backup.",
+    "dbBlocking": "{{app}} was updated in another tab. Reload.",
+    "dbBlocked": "Close other {{app}} tabs to finish updating.",
+    "dbTerminated": "{{app}} lost access to this browser's storage. Reload."
+  },
+  "editor": {
+    "failedTitle": "This tree couldn't be opened",
+    "failedLink": "Back to your trees"
+  },
+  "toolbar": {
+    "myTrees": "My trees",
+    "rename": "Rename tree",
+    "renameNamed": "Rename tree {{name}}",
+    "undo": "Undo",
+    "redo": "Redo",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "fit": "Fit tree to screen",
+    "search": "Search people",
+    "focusMode": "Focus mode",
+    "unconnected": "{{count}} not connected",
+    "unconnectedAria": "{{count}} not connected. Show them.",
+    "backTo": "← Back to <name/>",
+    "menu": "Menu",
+    "downloadBackup": "Download backup (.json)",
+    "includePhotos": "Include photos",
+    "backupFailed": "Couldn't create the backup."
+  },
+  "saveStatus": {
+    "saving": "Saving…",
+    "saved": "Saved",
+    "error": "Couldn't save"
+  },
+  "panel": {
+    "label": "Person details",
+    "close": "Close panel",
+    "unnamed": "Unnamed person",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "nickname": "Nickname",
+    "nativeName": "Native name",
+    "gender": {
+      "label": "Gender",
+      "male": "Male",
+      "female": "Female"
+    },
+    "living": "Living",
+    "birthDate": "Birth date",
+    "birthPlace": "Birth place",
+    "deathDate": "Death date",
+    "deathPlace": "Death place",
+    "dateError": "Use a year like 1950, 1950-03-14, abt 1950 or 1948–1952",
+    "notes": "Notes",
+    "photo": {
+      "upload": "Upload photo",
+      "replace": "Replace photo",
+      "remove": "Remove photo",
+      "failed": "Couldn't use that photo. Try another image."
+    },
+    "partner": "Partner",
+    "noPartner": "No partner recorded",
+    "status": {
+      "label": "Status",
+      "married": "Married",
+      "partner": "Partner",
+      "engaged": "Engaged",
+      "divorced": "Divorced",
+      "separated": "Separated",
+      "widowed": "Widowed"
+    },
+    "startDate": "Start date",
+    "endDate": "End date",
+    "children": "Children",
+    "childTypeAria": "{{name}}: child type",
+    "childType": {
+      "biological": "Biological",
+      "adopted": "Adopted",
+      "step": "Step",
+      "foster": "Foster"
+    },
+    "setRoot": "Set as root",
+    "viewFamily": "View family",
+    "deleteButton": "Delete…",
+    "deleteDialog": {
+      "title": "Delete <name/>?",
+      "body": "You can undo this right after.",
+      "only": "Delete <name/> only",
+      "withDescendants_one": "Delete <name/> and {{count}} descendant",
+      "withDescendants_other": "Delete <name/> and {{count}} descendants"
+    },
+    "search": {
+      "title": "Search people",
+      "pickerTitle": "Choose a person",
+      "placeholder": "Type a name",
+      "results": "Matching people",
+      "none": "No one matches “{{query}}”."
+    },
+    "unconnected": {
+      "title": "Not connected",
+      "none": "Everyone is connected."
+    }
+  },
+  "canvas": {
+    "region": "Family tree",
+    "unknownFather": "Unknown father",
+    "unknownMother": "Unknown mother",
+    "seeOriginal": "see original →",
+    "seeOriginalLabel": "Go to the original card of {{name}}",
+    "viewFamily": "↑ View family",
+    "viewFamilyLabel": "View the family of {{name}}",
+    "collapse": "Collapse the branch of {{name}}",
+    "expand": "Expand the branch of {{name}}",
+    "hiddenBadge": "+{{count}}",
+    "describe": {
+      "unnamed": "Unnamed person",
+      "born": "born {{date}}",
+      "died": "died {{date}}",
+      "sonOf": "son of {{parents}}",
+      "daughterOf": "daughter of {{parents}}",
+      "twoParents": "{{first}} and {{second}}",
+      "linked": "linked copy",
+      "hidden_one": "{{count}} hidden descendant",
+      "hidden_other": "{{count}} hidden descendants"
+    }
+  },
+  "dnd": {
+    "menuLabel": "Move {{name}}",
+    "makeChild": "Make child of <name/>",
+    "makeSpouse": "Make spouse of <name/>",
+    "makeParent": "Make parent of <name/>",
+    "noActions": "<name/> can't be linked to <target/>.",
+    "notAllowed": "Not allowed here",
+    "cardMenu": "Actions for {{name}}",
+    "moveTo": "Move to…",
+    "error": {
+      "CYCLE": "That would make someone their own ancestor.",
+      "ALREADY_LINKED": "They are already linked that way.",
+      "PARENTS_FULL": "That person already has two parents.",
+      "AMBIGUOUS_UNION": "Choose which family first.",
+      "NOT_FOUND": "That person isn't in the tree any more.",
+      "INVALID": "That change isn't possible."
+    }
+  },
+  "handles": {
+    "addParent": "Add parent of {{name}}",
+    "addChild": "Add child of {{name}}",
+    "addBesideLeft": "Add spouse or sibling on the left of {{name}}",
+    "addBesideRight": "Add spouse or sibling on the right of {{name}}",
+    "besideMenu": "Add beside {{name}}",
+    "spouse": "Spouse",
+    "sibling": "Sibling",
+    "start": "Start with a person",
+    "startHint": "Type a name, choose ♂ or ♀, press Enter.",
+    "name": "Name",
+    "male": "Male",
+    "female": "Female",
+    "chooseGender": "Choose ♂ or ♀",
+    "editor": {
+      "first": "New person",
+      "child": "New child of {{name}}",
+      "spouse": "New spouse of {{name}}",
+      "parent": "New parent of {{name}}",
+      "sibling": "New sibling of {{name}}"
+    },
+    "unionChooser": {
+      "title": "Child of which family?",
+      "label": "Choose the family of the new child of {{name}}",
+      "noPartner": "No partner",
+      "cancel": "Cancel"
+    },
+    "error": {
+      "PARENTS_FULL": "This person already has two parents.",
+      "AMBIGUOUS_UNION": "Choose which family the child belongs to.",
+      "CYCLE": "That would make someone their own ancestor.",
+      "ALREADY_LINKED": "They are already linked.",
+      "NOT_FOUND": "This person no longer exists.",
+      "INVALID": "That can't be added here."
+    }
+  }
+}

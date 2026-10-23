@@ -1,0 +1,287 @@
+/* Person panel, search, delete dialog and the unconnected popover. Logical properties only. */
+
+.editor-body {
+  display: flex;
+  flex: 1;
+  min-block-size: 0;
+}
+
+/* ---------------------------------------------------------------- person panel */
+
+.person-panel {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  inline-size: 360px;
+  min-block-size: 0;
+  border-inline-start: 1px solid var(--line);
+  background: var(--ground);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px var(--gutter);
+  border-block-end: 1px solid var(--line);
+}
+
+.panel-title {
+  min-inline-size: 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variation-settings: "wdth" 90;
+  overflow-wrap: anywhere;
+}
+
+.panel-body {
+  display: grid;
+  flex: 1;
+  align-content: start;
+  gap: 14px;
+  padding: var(--gutter);
+  overflow-y: auto;
+}
+
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px var(--gutter);
+  border-block-start: 1px solid var(--line);
+}
+
+.panel-actions .button-danger {
+  margin-inline-start: auto;
+}
+
+.panel-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.panel-field {
+  min-inline-size: 0;
+}
+
+.panel-field textarea.field {
+  padding-block: 8px;
+  resize: vertical;
+  font: inherit;
+}
+
+.field-note {
+  margin-block-start: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.field-error {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.field[aria-invalid="true"] {
+  border-color: var(--ink);
+  border-width: 2px;
+}
+
+.toggle-set {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.toggle-set legend {
+  padding: 0;
+}
+
+.toggle {
+  display: flex;
+}
+
+.toggle .button {
+  flex: 1;
+}
+
+.toggle .button + .button {
+  margin-inline-start: -1px;
+}
+
+.toggle .button[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--ground);
+}
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.panel-photo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-photo-image {
+  inline-size: 72px;
+  block-size: 72px;
+  flex: none;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+.panel-photo-empty {
+  background: rgba(17, 19, 17, 0.06);
+}
+
+.panel-photo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.panel-union {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  min-inline-size: 0;
+}
+
+.panel-union legend {
+  padding-inline: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.panel-union legend .link-button {
+  color: var(--ink);
+}
+
+.panel-children {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.panel-children li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.panel-children .field {
+  inline-size: auto;
+  min-block-size: 32px;
+}
+
+/* Under 768px the panel is a bottom sheet over the canvas. */
+@media (max-width: 767px) {
+  .person-panel {
+    position: fixed;
+    inset-inline: 0;
+    inset-block-end: 0;
+    z-index: 20;
+    inline-size: auto;
+    /* R38: half the screen, so the selected card stays visible above it. */
+    max-block-size: 50vh;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--ink);
+  }
+}
+
+/* ---------------------------------------------------------------- search and dialogs */
+
+.field[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search-results {
+  margin: 8px 0 0;
+  padding: 0;
+  max-block-size: 50dvh;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.search-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  inline-size: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-block-end: 1px solid var(--line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.search-result[aria-current="true"] {
+  background: rgba(17, 19, 17, 0.08);
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}
+
+.search-empty {
+  margin-block-start: 12px;
+}
+
+.dialog-actions-stacked {
+  flex-direction: column-reverse;
+  align-items: stretch;
+}
+
+/* ---------------------------------------------------------------- unconnected popover */
+
+.popover {
+  position: fixed;
+  inset-block-start: calc(var(--toolbar-block-size) + 4px);
+  inset-inline-end: var(--gutter);
+  z-index: 15;
+  inline-size: min(320px, calc(100% - 2 * var(--gutter)));
+  max-block-size: 60dvh;
+  padding: 14px;
+  overflow-y: auto;
+  border: 1px solid var(--ink);
+  background: var(--ground);
+}
+
+.popover-title {
+  margin-block-end: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.popover-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
