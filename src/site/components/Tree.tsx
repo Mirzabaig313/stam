@@ -108,6 +108,8 @@ export type StaticTreeProps = {
   preview?: ReadonlySet<string>;
   /** Index used by CSS for a row-by-row entrance. */
   stagger?: boolean;
+  /** Cards and connectors new in this frame (marked "is-new" for an entrance). */
+  fresh?: { cards: ReadonlySet<string>; edges: ReadonlySet<string> };
   children?: ReactNode;
 };
 
@@ -120,6 +122,7 @@ export function StaticTree({
   highlight,
   preview,
   stagger = false,
+  fresh,
   children,
 }: StaticTreeProps) {
   const view = padded(frame.bounds, pad);
@@ -138,7 +141,7 @@ export function StaticTree({
         {frame.edges.map((edge) => (
           <path
             key={edge.id}
-            className={`${edgeClass(edge)}${highlight?.has(edge.id) ? " edge--on" : preview?.has(edge.id) ? " edge--preview" : ""}`}
+            className={`${edgeClass(edge)}${highlight?.has(edge.id) ? " edge--on" : preview?.has(edge.id) ? " edge--preview" : ""}${fresh?.edges.has(edge.id) ? " is-new" : ""}`}
             d={edgePath(edge.points, edge.kind, edge.status)}
             style={stagger ? ({ "--row": edgeRow(edge) } as CSSProperties) : undefined}
           />
@@ -153,7 +156,7 @@ export function StaticTree({
         return (
           <div
             key={card.key}
-            className={cardClass(card.key)}
+            className={cardClass(card.key, fresh?.cards.has(card.key) ? "is-new" : "")}
             style={{ ...placed, ...entrance }}
             aria-hidden="true"
           >

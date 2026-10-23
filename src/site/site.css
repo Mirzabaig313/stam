@@ -363,22 +363,51 @@ dd {
 
 /* Nav: an underline slides in from the start of the line and locks. */
 .nav-link {
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   min-block-size: 40px;
-  background: linear-gradient(currentColor 0 0) 0 calc(100% - 9px) / 0% 1px no-repeat;
-  transition: background-size 0.45s var(--ease);
+  padding-inline: 0.45em;
+  margin-inline: -0.45em;
+  transition: color 0.35s var(--ease);
+}
+
+/* Nav and footer links answer like every other link: an ink fill slides in from the start of
+   the word and locks, and the word inverts. The current page keeps an underline. */
+.nav-link::before {
+  content: "";
+  position: absolute;
+  inset: 7px 0;
+  z-index: -1;
+  border-radius: 3px;
+  background: var(--ink);
+  transform-origin: left center;
+  scale: 0 1;
+  transition: scale 0.45s var(--ease);
 }
 
 @media (hover: hover) {
   .nav-link:hover {
-    background-size: 100% 1px;
+    color: var(--ground);
+  }
+
+  .nav-link:hover::before {
+    scale: 1 1;
   }
 }
 
-.nav-link:focus-visible,
+.nav-link:focus-visible {
+  color: var(--ground);
+}
+
+.nav-link:focus-visible::before {
+  scale: 1 1;
+}
+
 .nav-link[aria-current="page"] {
-  background-size: 100% 1px;
+  text-decoration: underline 1px;
+  text-underline-offset: 0.35em;
 }
 
 /* Secondary links keep a hairline underline at rest. On hover an ink fill slides along the
@@ -390,7 +419,8 @@ dd {
   padding: 0.12em 0.3em 0.18em;
   margin-inline: -0.3em;
   border-radius: 2px;
-  background: linear-gradient(currentColor 0 0) 0.3em 100% / calc(100% - 0.6em) 1px no-repeat;
+  text-decoration: underline 1px;
+  text-underline-offset: 0.3em;
   transition: color 0.35s var(--ease);
 }
 
@@ -730,6 +760,13 @@ dd {
   display: none;
 }
 
+/* The 404's small phone tree drops the years rather than set them too small to read. */
+@container card (max-width: 96px) {
+  .missing .card__years {
+    display: none;
+  }
+}
+
 @container card (max-width: 66px) {
   /* Hidden visually only, so buttons keep their names. */
   .card__text {
@@ -1019,23 +1056,23 @@ dd {
 
 .motion .tree--hero .card {
   animation: settle-in 1s var(--ease) both;
-  animation-delay: calc(var(--enter, 0s) + 0.2s + var(--row) * 0.16s + var(--i) * 0.025s);
+  animation-delay: calc(0.2s + var(--row) * 0.16s + var(--i) * 0.025s);
 }
 
 .motion .tree--hero .edge {
   animation: appear 0.7s var(--ease) both;
-  animation-delay: calc(var(--enter, 0s) + 0.45s + var(--row) * 0.16s);
+  animation-delay: calc(0.45s + var(--row) * 0.16s);
 }
 
 .motion .hero__figure .ruler__mark,
 .motion .missing__figure .ruler__mark {
   animation: appear 0.8s var(--ease) both;
-  animation-delay: calc(var(--enter, 0s) + 0.15s + var(--row) * 0.16s);
+  animation-delay: calc(0.15s + var(--row) * 0.16s);
 }
 
 .motion .hero__line {
   animation: slide-lock 1.1s var(--ease) both;
-  animation-delay: calc(var(--enter, 0s) + var(--i) * 0.08s);
+  animation-delay: calc(var(--i) * 0.08s);
 }
 
 /* ------------------------------------------------------------------ chapters */
@@ -1141,7 +1178,9 @@ dd {
 }
 
 /* Without motion the chapters read as five stacked frames, each led by its numeral. */
-html:not(.motion) .chapter__count {
+/* Stacked frames (phones, no motion) are each led by their step number. */
+html:not(.motion) .chapter__count,
+.frames-reveal .chapter__count {
   font-family: var(--font-wide);
   font-weight: 800;
   font-size: clamp(3rem, 1.5rem + 4vw, 5.5rem);
@@ -1150,7 +1189,8 @@ html:not(.motion) .chapter__count {
   color: var(--ink);
 }
 
-html:not(.motion) .chapter__count .chapter__of {
+html:not(.motion) .chapter__count .chapter__of,
+.frames-reveal .chapter__count .chapter__of {
   font-family: var(--font);
   font-size: var(--t-xs);
   font-weight: 600;
@@ -1418,6 +1458,74 @@ html:not(.motion) .chapter__count .chapter__of {
   .motion .chapter:last-child {
     min-block-size: 100svh;
   }
+}
+
+/* Phones: no pinned stage. The chapters stack as five frames, each with its own tree; the
+   people a chapter adds wait beside their places and settle in when the frame comes into view
+   (motion/index.ts adds .is-in), then the new connectors appear. */
+@media (max-width: 767px) {
+  .motion .chapters__body {
+    display: block;
+  }
+
+  .motion .stage {
+    display: none;
+  }
+
+  .motion .chapter,
+  .motion .chapter:last-child {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 1.25rem;
+    min-block-size: 0;
+    padding-block: 2rem 2.25rem;
+    border-block-start: 1px solid var(--line);
+  }
+
+  .motion .chapter__copy {
+    position: static;
+    inline-size: auto;
+    block-size: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+    padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
+    color: var(--ink);
+    translate: none;
+  }
+
+  .motion .chapter__frame {
+    display: grid;
+  }
+
+  .chapter__frame .tree {
+    max-block-size: none;
+    inline-size: min(100%, calc(var(--tree-w) * 0.62px));
+    justify-self: center;
+  }
+}
+
+.frames-reveal .chapter .card.is-new {
+  opacity: 0;
+  translate: calc(var(--side, 1) * 60%) 0;
+  transition:
+    opacity 0.5s var(--ease),
+    translate 1s var(--ease);
+  transition-delay: calc(var(--row) * 0.12s);
+}
+
+.frames-reveal .chapter .edge.is-new {
+  opacity: 0;
+  transition: opacity 0.6s var(--ease) 0.55s;
+}
+
+.frames-reveal .chapter.is-in .card.is-new {
+  opacity: 1;
+  translate: none;
+}
+
+.frames-reveal .chapter.is-in .edge.is-new {
+  opacity: 1;
 }
 
 /* ------------------------------------------------------------------ drag and drop */
@@ -2170,6 +2278,10 @@ html:not(.motion) .live--drag {
     row-gap: 1.75rem;
   }
 
+  .live--drag {
+    border-block-start: 0;
+  }
+
   /* The pinned tree fades at the sides of the phone instead of being cut by them. */
   .live--stage .live__view {
     mask-image: linear-gradient(
@@ -2433,7 +2545,7 @@ html:not(.motion) .live--drag {
 }
 
 .motion .missing .card--empty {
-  animation: settle-in 1s var(--ease) calc(var(--enter, 0s) + 0.75s) both;
+  animation: settle-in 1s var(--ease) 0.75s both;
   --side: 1;
 }
 
@@ -2569,9 +2681,15 @@ html:not(.motion) .live--drag {
   animation: rows-off 0.62s var(--ease) calc(0.06s + var(--delay)) backwards;
 }
 
-/* The new page's own intro waits until its rows have cleared. */
-.vt-enter {
-  --enter: 0.62s;
+/* Arriving through the curtain, the page is already composed: the rows wiping away are its
+   intro, so the hero's own entrance does not run again underneath them. */
+.vt-enter .hero__line,
+.vt-enter .tree--hero .card,
+.vt-enter .tree--hero .edge,
+.vt-enter .hero__figure .ruler__mark,
+.vt-enter .missing__figure .ruler__mark,
+.vt-enter .missing .card--empty {
+  animation: none;
 }
 
 html:not(.motion) .curtain {

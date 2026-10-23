@@ -5,7 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { startDrag } from "./drag";
-import { isTouch, prefersReducedMotion } from "./env";
+import { isMobile, isTouch, prefersReducedMotion } from "./env";
 import { initScroll, onScroll } from "./scroll";
 import { startStage } from "./stage";
 
@@ -98,6 +98,23 @@ function pageLeave() {
   });
 }
 
+/**
+ * Phones read the chapters as five stacked frames. Each frame's new people slide in sideways
+ * and lock onto their rows when it comes into view, then the new connectors draw (site.css).
+ */
+function chapterFrames() {
+  if (!isMobile()) return;
+  document.documentElement.classList.add("frames-reveal");
+  for (const chapter of document.querySelectorAll<HTMLElement>("[data-chapter]")) {
+    ScrollTrigger.create({
+      trigger: chapter,
+      start: "top 72%",
+      once: true,
+      onEnter: () => chapter.classList.add("is-in"),
+    });
+  }
+}
+
 let started = false;
 
 export function startMotion() {
@@ -116,7 +133,8 @@ export function startMotion() {
   headerStepsAside();
   pageLeave();
   heroLean();
-  startStage();
+  if (isMobile()) chapterFrames();
+  else startStage();
   startDrag();
   // Fonts change line heights; measure the triggers again once they are in.
   void document.fonts?.ready.then(() => ScrollTrigger.refresh());

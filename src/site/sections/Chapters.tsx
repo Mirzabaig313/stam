@@ -4,10 +4,22 @@ import { chapters, chaptersIntro } from "@/site/content";
 import { FINAL, FRAMES } from "@/site/data";
 import { frameAt } from "@/site/sample/frames";
 
+/** What chapter `i` adds to the one before: its cards and connectors. */
+function freshIn(i: number) {
+  const before = i > 0 ? FRAMES[i - 1]! : undefined;
+  const cards = new Set(before?.cards.map((c) => c.key) ?? []);
+  const edges = new Set(before?.edges.map((e) => e.id) ?? []);
+  return {
+    cards: new Set(FRAMES[i]!.cards.filter((c) => !cards.has(c.key)).map((c) => c.key)),
+    edges: new Set(FRAMES[i]!.edges.filter((e) => !edges.has(e.id)).map((e) => e.id)),
+  };
+}
+
 /**
  * Pinned chapters. With motion, a sticky stage runs the engine as you scroll and the chapter
- * texts scroll past it. Without motion (reduced motion, no JavaScript) each chapter shows its
- * own finished frame, so the story reads as five stacked pictures.
+ * texts scroll past it. Phones, and pages without motion, show each chapter with its own frame,
+ * five stacked pictures; with motion the people each chapter adds settle into their rows as it
+ * comes into view.
  */
 export function Chapters() {
   return (
@@ -35,7 +47,7 @@ export function Chapters() {
               <figure className="chapter__frame register">
                 <RulerMarks frame={FRAMES[i]!} />
                 <div className="chapter__tree">
-                  <StaticTree frame={FRAMES[i]!} />
+                  <StaticTree frame={FRAMES[i]!} stagger fresh={freshIn(i)} />
                 </div>
                 <figcaption className="sr-only">
                   {describeFrame(FRAMES[i]!, i > 0 ? FRAMES[i - 1] : undefined)}
