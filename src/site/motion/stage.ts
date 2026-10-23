@@ -8,7 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 import { chapters } from "@/site/content";
 import { FRAMES } from "@/site/data";
-import { type Blend, CARD_W, frameAt, padded, roman, settle } from "@/site/sample/frames";
+import { type Blend, CARD_W, frameAt, padded, settle } from "@/site/sample/frames";
 
 import { clamp01, isMobile } from "./env";
 import { bindLiveTree, type Camera, draw, fit, type LiveTreeView, measure } from "./liveTree";
@@ -83,7 +83,7 @@ export function startStage(): (() => void) | undefined {
         if (el) el.textContent = text;
       };
       const forward = k > shownCaption;
-      set("[data-caption-count]", roman(k + 1));
+      set("[data-caption-count]", String(k + 1));
       set("[data-caption-title]", chapters[k]!.title);
       set("[data-caption-text]", chapters[k]!.text);
       for (const step of caption.querySelectorAll<HTMLElement>("[data-caption-step]")) {

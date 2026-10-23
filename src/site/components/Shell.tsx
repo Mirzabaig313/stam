@@ -89,7 +89,6 @@ function Footer({ page }: { page: PageName }) {
         </div>
       </div>
       <div className="footer__ruled" aria-hidden="true">
-        <span className="footer__numeral">I</span>
         <span className="footer__mark">{footer.wordmark}</span>
       </div>
     </footer>

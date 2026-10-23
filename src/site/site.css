@@ -690,6 +690,10 @@ dd {
   }
 }
 
+.card__first {
+  display: none;
+}
+
 @container card (max-width: 66px) {
   /* Hidden visually only, so buttons keep their names. */
   .card__text {
@@ -702,15 +706,21 @@ dd {
   }
 
   .card__avatar {
-    display: grid;
+    display: none;
+  }
+
+  /* Small cards keep a first name, as small as it can be and still be read. */
+  .card__first {
+    display: block;
     grid-column: 1 / -1;
     justify-self: center;
-    inline-size: auto;
-    block-size: auto;
-    aspect-ratio: auto;
-    background: none;
-    font-size: calc(var(--u) * 34);
-    font-stretch: 112%;
+    max-inline-size: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: max(10px, calc(var(--u) * 30));
+    font-weight: 650;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -801,12 +811,14 @@ dd {
 }
 
 .lod-low .card__avatar {
+  display: none;
+}
+
+.lod-low .card__first {
+  display: block;
   justify-self: center;
-  inline-size: auto;
-  aspect-ratio: auto;
-  background: none;
-  font-size: 40px;
-  font-stretch: 112%;
+  font-size: calc(11px / var(--s, 1));
+  font-weight: 650;
 }
 
 .drop-mark {
@@ -965,7 +977,7 @@ dd {
 
 @keyframes slide-lock {
   from {
-    translate: -0.35em 0;
+    translate: 0.35em 0;
   }
 }
 
@@ -1112,6 +1124,10 @@ html:not(.motion) .chapter__count .chapter__of {
 }
 
 @media (max-width: 767px) {
+  .chapters {
+    padding-block-start: 48px;
+  }
+
   .chapters__intro .heading,
   .chapters__text,
   .chapters__note {
@@ -1303,8 +1319,9 @@ html:not(.motion) .chapter__count .chapter__of {
   /* Phones: one sticky screen. The tree sits above, the current chapter below it. */
   .motion .stage {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr) auto;
-    padding-block: calc(var(--header-h) + 8px) 6svh;
+    grid-template-rows: min(52svh, 460px) auto;
+    align-content: center;
+    padding-block: calc(var(--header-h) + 8px) 4svh;
     padding-inline-end: 0;
   }
 
@@ -1313,7 +1330,7 @@ html:not(.motion) .chapter__count .chapter__of {
     grid-template-columns: auto minmax(0, 1fr);
     column-gap: 1rem;
     align-items: start;
-    min-block-size: 12.5rem;
+    min-block-size: 9.5rem;
     border-inline-start: 0;
     border-block-start: 1px solid var(--line);
     padding-inline: calc(var(--margin) + var(--gutter)) var(--gutter);
@@ -1574,22 +1591,56 @@ html:not(.motion) .live--drag {
   color: var(--ink);
 }
 
+/* Hover: an ink fill slides along the row from its start and locks; the row inverts. */
+.format {
+  isolation: isolate;
+  padding-inline-end: 0.75rem;
+}
+
+.format::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--ink);
+  transform-origin: left center;
+  scale: 0 1;
+  transition: scale 0.5s var(--ease);
+}
+
+.format__text,
+.format__status {
+  transition: color 0.3s var(--ease);
+}
+
 @media (hover: hover) {
-  .format:hover {
-    background: rgb(17 19 17 / 0.06);
+  .format:hover::before {
+    scale: 1 1;
   }
 
   .format:hover .format__name {
-    color: var(--ink);
+    color: var(--ground);
     translate: 6px 0;
   }
 
+  .format:hover .format__text,
+  .format:hover .format__status {
+    color: #a3aaa4;
+  }
+
+  .format:hover .format__status.is-available {
+    color: var(--ink);
+    background: var(--ground);
+  }
+
   .format:hover .format__marker {
+    background: var(--ground);
     scale: 0.6 1;
   }
 
   .format[aria-pressed="true"]:hover .format__marker {
     scale: 1 1;
+    background: var(--ground);
   }
 
   .format[aria-pressed="true"]:hover .format__name {
@@ -1777,30 +1828,15 @@ html:not(.motion) .live--drag {
 }
 
 @media (max-width: 767px) {
-  /* Phones: the family scrolls sideways at a size you can read and tap. */
+  /* Phones: the whole family fits the column; small cards show first names and stay at least
+     28 px tall, so every person is a comfortable tap. */
   .calc__tree {
-    inline-size: calc(100% + var(--gutter));
-    margin-inline-end: calc(var(--gutter) * -1);
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    padding-block: 6px 12px;
+    inline-size: 100%;
   }
 
-  .calc__tree > .tree {
-    inline-size: 430px;
-    margin-inline: 0 24px;
-  }
-
-  /* Soft edges say "there is more to the side". */
-  .calc__tree {
-    mask-image: linear-gradient(
-      to right,
-      transparent 0,
-      #000 28px,
-      #000 calc(100% - 28px),
-      transparent 100%
-    );
+  .calc__tree .card--pick {
+    min-block-size: 28px;
+    translate: 0 min(0px, calc((72 * var(--u) - 28px) / 2));
   }
 
   .calc__answer {
@@ -1867,14 +1903,6 @@ html:not(.motion) .live--drag {
       inset 0 0 0 max(1px, calc(var(--u) * 2.5)) var(--accent),
       0 calc(var(--u) * 8) calc(var(--u) * 18) calc(var(--u) * -8) rgb(43 71 245 / 0.45);
     background: #dde2fb;
-  }
-}
-
-@container card (max-width: 66px) {
-  .card--pick.is-a .card__avatar,
-  .card--pick.is-b .card__avatar {
-    background: none;
-    color: var(--accent);
   }
 }
 
@@ -2029,26 +2057,17 @@ html:not(.motion) .live--drag {
   padding-block-start: clamp(24px, 4svh, 48px);
 }
 
-.footer__numeral {
-  align-self: end;
-  padding-block-end: 0.6rem;
-  text-align: center;
-  font-size: var(--t-xs);
-  font-weight: 600;
-  font-stretch: 125%;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-}
-
 /* The wordmark stands on the last ruled line of the page: its box is trimmed to the baseline
    and the rule is the box's bottom edge. */
 .footer__mark {
   font-family: var(--font-wide);
   display: block;
+  grid-column: 2;
   margin-inline-start: calc(var(--gutter) - 0.06em);
   font-weight: 800;
   font-stretch: 125%;
-  font-size: clamp(6rem, 1rem + 25vw, 28rem);
+  /* Spans the content column exactly: "Stam" is 3.04 em wide in this cut. */
+  font-size: calc((100vw - var(--margin) - var(--gutter) * 2) / 3.04);
   line-height: 0.8;
   letter-spacing: -0.05em;
   text-box: trim-both cap alphabetic;
@@ -2065,6 +2084,18 @@ html:not(.motion) .live--drag {
   .footer__links,
   .footer__notes {
     grid-column: 1 / -1;
+  }
+
+  .site-footer {
+    padding-block-start: 56px;
+  }
+
+  .doc {
+    padding-block-end: 48px;
+  }
+
+  .calc {
+    padding-block: 72px;
   }
 }
 
@@ -2388,10 +2419,6 @@ html:not(.motion) .live--drag {
   .hero__top,
   .chapters__intro {
     row-gap: 1.5rem;
-  }
-
-  .footer__mark {
-    font-size: 21vw;
   }
 
   .missing__title {

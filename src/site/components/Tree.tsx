@@ -67,6 +67,10 @@ export function CardBody({ personKey }: { personKey: string }) {
         <bdi className="card__name">{p.name}</bdi>
         <Years born={p.born} {...(p.died !== undefined ? { died: p.died } : {})} />
       </span>
+      {/* The smallest level of detail shows the first name alone (CSS picks the level). */}
+      <span className="card__first" aria-hidden="true">
+        {p.first}
+      </span>
       <span className="card__sex" aria-hidden="true">
         {p.gender === "male" ? "♂" : "♀"}
       </span>

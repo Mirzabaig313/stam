@@ -2,7 +2,7 @@ import { LiveTree } from "@/site/components/LiveTree";
 import { describeFrame, RulerMarks, StaticTree } from "@/site/components/Tree";
 import { chapters, chaptersIntro } from "@/site/content";
 import { FINAL, FRAMES } from "@/site/data";
-import { frameAt, roman } from "@/site/sample/frames";
+import { frameAt } from "@/site/sample/frames";
 
 /**
  * Pinned chapters. With motion, a sticky stage runs the engine as you scroll and the chapter
@@ -26,8 +26,8 @@ export function Chapters() {
               <div className="chapter__copy">
                 <p className="chapter__count">
                   <span className="sr-only">Step </span>
-                  {roman(i + 1)}
-                  <span className="chapter__of"> of {roman(chapters.length)}</span>
+                  {i + 1}
+                  <span className="chapter__of"> of {chapters.length}</span>
                 </p>
                 <h3 className="chapter__title">{chapter.title}</h3>
                 <p className="chapter__text">{chapter.text}</p>
@@ -57,9 +57,9 @@ export function Chapters() {
           <div className="stage__caption" data-stage-caption>
             <p className="stage__numeral">
               <span className="stage__digits" data-caption-count>
-                {roman(1)}
+                1
               </span>
-              <span className="stage__of">of {roman(chapters.length)}</span>
+              <span className="stage__of">of {chapters.length}</span>
             </p>
             <div className="stage__words">
               <p className="chapter__title" data-caption-title>
@@ -76,7 +76,7 @@ export function Chapters() {
                   className={i === 0 ? "stage__step is-current" : "stage__step"}
                   data-caption-step={i}
                 >
-                  <span className="stage__step-num">{roman(i + 1)}</span>
+                  <span className="stage__step-num">{i + 1}</span>
                   <span className="stage__step-name">{chapter.title}</span>
                 </li>
               ))}
