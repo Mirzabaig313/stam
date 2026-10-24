@@ -2,6 +2,8 @@ mod protocol;
 mod ratelimit;
 mod room;
 mod store;
+#[cfg(feature = "wasm")]
+mod wasm;
 
 pub use protocol::{Attachment, Author, AuthorKind, ClientMessage, PublicAuthor, Role};
 pub use room::{

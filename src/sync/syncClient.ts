@@ -40,6 +40,11 @@ export class SyncClient {
   #pending: PendingOp[] = [];
   #view!: TreeDocument;
   #connected = false;
+  /**
+   * Between `hello` and `welcome`, broadcasts can reach the new socket for versions the client has
+   * not caught up to; the welcome (taken after them, in the room's order) carries them instead.
+   */
+  #awaitingWelcome = false;
   #retry: ReturnType<typeof setTimeout> | undefined;
 
   constructor(opts: SyncClientOptions) {
@@ -95,13 +100,18 @@ export class SyncClient {
 
   connected(): void {
     this.#connected = true;
-    this.#opts.send({ type: "hello", lastVersion: this.#version });
+    this.#hello();
     this.#resend();
   }
 
   disconnected(): void {
     this.#connected = false;
     clearTimeout(this.#retry);
+  }
+
+  #hello(): void {
+    this.#awaitingWelcome = true;
+    this.#opts.send({ type: "hello", lastVersion: this.#version });
   }
 
   #resend(): void {
@@ -111,6 +121,7 @@ export class SyncClient {
   receive(msg: ServerMessage): void {
     switch (msg.type) {
       case "welcome": {
+        this.#awaitingWelcome = false;
         if (msg.doc) this.#confirmed = msg.doc;
         const confirmedIds = new Set<string>();
         for (const op of msg.ops ?? []) {
@@ -124,7 +135,12 @@ export class SyncClient {
         return;
       }
       case "applied": {
-        if (msg.version <= this.#version) return;
+        if (this.#awaitingWelcome || msg.version <= this.#version) return;
+        if (msg.version !== this.#version + 1) {
+          // A version went missing: ask the room to catch this client up.
+          if (this.#connected) this.#hello();
+          return;
+        }
         this.#confirmed = applyChanges(this.#confirmed, msg.changes);
         this.#version = msg.version;
         const own = this.#pending.some((p) => p.opId === msg.opId);

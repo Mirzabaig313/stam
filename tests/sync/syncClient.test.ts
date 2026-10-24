@@ -26,7 +26,12 @@ function setup(doc: TreeDocument = famSimple()) {
     newOpId: () => `op${String(n++).padStart(8, "0")}`,
   });
   client.start(doc, 0);
-  return { client, sent, views, dropped, doc };
+  /** Connects and receives the room's welcome (nothing to catch up). */
+  const online = () => {
+    client.connected();
+    client.receive({ type: "welcome", role: "owner", hideLiving: false, version: 0, ops: [] });
+  };
+  return { client, sent, views, dropped, doc, online };
 }
 
 /** What the room would broadcast for `cmd` applied to `doc` as op `opId`. */
@@ -39,8 +44,8 @@ const rename = (name: string): Command => ({ type: "renameTree", name });
 
 describe("SyncClient", () => {
   test("local submit shows at once and stays pending until applied", () => {
-    const { client, sent, doc } = setup();
-    client.connected();
+    const { client, sent, doc, online } = setup();
+    online();
     sent.length = 0;
     const result = client.submit(rename("Mine"));
     expect(result.doc.name).toBe("Mine");
@@ -126,6 +131,48 @@ describe("SyncClient", () => {
     expect(client.version).toBe(9);
   });
 
+  test("after connecting, applied messages before the welcome are ignored; the welcome brings them", () => {
+    const { client, doc } = setup();
+    const id = Object.keys(doc.persons)[0]!;
+    const first = appliedFor(
+      doc,
+      { type: "updatePerson", personId: id, patch: { notes: "one" } },
+      "aaaaaaaaaa",
+      1,
+    );
+    if (first.type !== "applied") throw new Error("unreachable");
+    const v1 = {
+      ...doc,
+      persons: { ...doc.persons, [id]: { ...doc.persons[id]!, notes: "one" } },
+      updatedAt: NOW.toISOString(),
+    };
+    const second = appliedFor(v1, rename("Two"), "bbbbbbbbbb", 2);
+    if (second.type !== "applied") throw new Error("unreachable");
+    client.connected();
+    client.receive(second); // broadcast reached the new socket before the room handled hello
+    expect(client.version).toBe(0);
+    client.receive({
+      type: "welcome",
+      role: "owner",
+      hideLiving: false,
+      version: 2,
+      ops: [first, second],
+    });
+    expect(client.version).toBe(2);
+    expect(client.view.persons[id]!.notes).toBe("one");
+    expect(client.view.name).toBe("Two");
+  });
+
+  test("a gap in versions after the welcome asks the room to catch up", () => {
+    const { client, sent, doc } = setup();
+    client.connected();
+    client.receive({ type: "welcome", role: "owner", hideLiving: false, version: 0, ops: [] });
+    sent.length = 0;
+    client.receive(appliedFor(doc, rename("Far"), "aaaaaaaaaa", 5));
+    expect(client.version).toBe(0);
+    expect(sent).toEqual([{ type: "hello", lastVersion: 0 }]);
+  });
+
   test("an applied the client already has is ignored", () => {
     const { client, doc } = setup();
     client.receive(appliedFor(doc, rename("One"), "zzzzzzzzzz", 1));
@@ -134,8 +181,8 @@ describe("SyncClient", () => {
   });
 
   test("revert conflict is raised locally before sending", () => {
-    const { client, sent, doc } = setup();
-    client.connected();
+    const { client, sent, doc, online } = setup();
+    online();
     const id = Object.keys(doc.persons)[0]!;
     const mine = client.submit({
       type: "updatePerson",
