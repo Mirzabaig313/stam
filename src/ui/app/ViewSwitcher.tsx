@@ -1,8 +1,10 @@
+import { useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
 import { FAN_MAX_GENERATIONS, FAN_MIN_GENERATIONS } from "@/core/layout/fan";
 import { displayName } from "@/core/model/tree";
 import type { ViewMode } from "@/core/views/types";
+import { Menu, MenuItem } from "@/ui/design/Menu";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isFocusView, resolveFocus, VIEW_MODES } from "@/ui/store/viewLayouts";
 
@@ -48,6 +50,78 @@ export function ViewSwitcher() {
         );
       })}
     </fieldset>
+  );
+}
+
+/**
+ * The views on a phone, where the dock has no room to name six icons: one button with the
+ * current view's icon and name, opening a menu of all six, each with what it shows.
+ */
+export function ViewPicker() {
+  const { t } = useTranslation();
+  const store = useEditorStore();
+  const viewMode = useEditor((s) => s.viewMode);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [at, setAt] = useState<[number, number] | null>(null);
+  const current = t(`views.mode.${viewMode}`);
+
+  function open() {
+    const el = trigger.current;
+    if (!el) return;
+    const box = el.getBoundingClientRect();
+    const rtl = getComputedStyle(el).direction === "rtl";
+    // Up from the dock, its end edge on the button's.
+    setAt([rtl ? box.left : box.right, box.top - 8]);
+  }
+
+  return (
+    <div className="view-picker">
+      <button
+        ref={trigger}
+        type="button"
+        className="view-picker__button"
+        aria-label={t("views.picker", { view: current })}
+        aria-haspopup="menu"
+        aria-expanded={at !== null}
+        onClick={() => (at ? setAt(null) : open())}
+      >
+        <Icon name={ICONS[viewMode]} />
+        <span className="view-picker__current">{current}</span>
+        <Icon name="chevronDown" size={14} />
+      </button>
+      {at && (
+        <Menu
+          at={at}
+          opens="start"
+          above
+          label={t("views.switcher")}
+          className="view-picker__menu"
+          toggle={trigger}
+          onClose={() => setAt(null)}
+        >
+          {VIEW_MODES.map((mode) => (
+            <MenuItem
+              key={mode}
+              role="menuitemradio"
+              aria-checked={viewMode === mode}
+              icon={ICONS[mode]}
+              onClick={() => {
+                setAt(null);
+                store.getState().setViewMode(mode);
+              }}
+            >
+              <span className="view-picker__text">
+                <span className="view-picker__name">{t(`views.mode.${mode}`)}</span>
+                <span className="view-picker__hint">{t(`views.hint.${mode}`)}</span>
+              </span>
+              <span className="menu-item__check" aria-hidden="true">
+                {viewMode === mode && <Icon name="check" />}
+              </span>
+            </MenuItem>
+          ))}
+        </Menu>
+      )}
+    </div>
   );
 }
 

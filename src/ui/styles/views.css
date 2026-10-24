@@ -258,3 +258,79 @@
 .birthdays-name {
   font-weight: 600;
 }
+
+/* ---- The phone's view picker: one named button, a menu of the six with what each shows ---- */
+.view-picker {
+  display: none;
+}
+
+.view-picker__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-block-size: 40px;
+  padding-inline: 12px 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-picker__button[aria-expanded="true"] {
+  background: var(--hover);
+}
+
+.view-picker__button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.view-picker__menu {
+  inline-size: min(320px, calc(100vw - 24px));
+  max-inline-size: none;
+}
+
+.view-picker__menu .menu-item {
+  align-items: flex-start;
+  padding-block: 10px;
+}
+
+.view-picker__menu .menu-item > .icon {
+  margin-block-start: 2px;
+}
+
+.view-picker__text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-inline-size: 0;
+}
+
+.view-picker__name {
+  font-weight: 600;
+}
+
+.view-picker__hint {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.view-picker__menu .menu-item[aria-checked="true"] {
+  background: var(--hover);
+}
+
+@media (max-width: 767px) {
+  .view-switcher {
+    display: none;
+  }
+
+  .view-picker {
+    display: block;
+  }
+}

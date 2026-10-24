@@ -19,7 +19,7 @@ import { Icon, type IconName } from "./Icon";
 import { MoreMenu } from "./MoreMenu";
 import { SaveStatus } from "./SaveStatus";
 import { shortcutLabel, Tip } from "./Tip";
-import { FanGenerations, FocusControl, ViewSwitcher } from "./ViewSwitcher";
+import { FanGenerations, FocusControl, ViewPicker, ViewSwitcher } from "./ViewSwitcher";
 
 /** The Look dialog draws six template previews: it loads when first opened. */
 const LookDialog = lazy(() =>
@@ -236,6 +236,7 @@ export function Toolbar({
       <div className="toolbar-dock">
         <div className="toolbar-group toolbar-views">
           <ViewSwitcher />
+          <ViewPicker />
         </div>
         <div className="toolbar-group toolbar-primary">
           <AddPersonButton />

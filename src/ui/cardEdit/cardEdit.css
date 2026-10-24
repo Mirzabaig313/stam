@@ -260,21 +260,29 @@
   cursor: pointer;
 }
 
-/* On a phone the toolbar is a bar along the bottom of the canvas. */
+/* On a phone the toolbar is a bar along the bottom of the canvas: above the dock (and above the
+   person sheet when it is open, as the zoom buttons are), clear of the zoom column on the right. */
 /* Physical sides only here: the bar's inline style places it with left and top. */
-@media (max-width: 600px) {
+@media (max-width: 767px) {
   .card-frame__bar,
   .card-frame__bar--below {
     position: fixed;
     left: 8px !important;
-    right: 8px;
-    bottom: 12px;
+    right: 68px;
+    bottom: calc(var(--dock-block-size, 0px) + 12px);
     top: auto !important;
     transform: none;
   }
 
+  .editor:has(.person-panel, .sheet) .card-frame__bar {
+    bottom: calc(50vh + var(--dock-block-size, 0px) + 12px);
+  }
+
   .card-toolbar {
     justify-content: center;
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    margin-inline: auto;
     overflow-x: auto;
   }
 

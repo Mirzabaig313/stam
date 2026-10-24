@@ -360,7 +360,7 @@
     "spouse": "Spouse",
     "sibling": "Sibling",
     "start": "Start with a person",
-    "startHint": "Type a name, choose ♂ or ♀, press Enter.",
+    "startHint": "Type a name and press Enter.",
     "name": "Name",
     "namePlaceholder": "Full name",
     "male": "Male",
@@ -668,7 +668,8 @@
     "shortcut": "{{label}} (Alt+{{n}})",
     "focus": "Focus: <name/>",
     "focusOn": "Focus on {{name}}",
-    "focusSelected": "Focus on the selected person"
+    "focusSelected": "Focus on the selected person",
+    "picker": "View: {{view}}"
   },
   "birthdays": {
     "open": "Birthdays",

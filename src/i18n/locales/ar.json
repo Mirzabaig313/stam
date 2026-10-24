@@ -417,7 +417,7 @@
     "spouse": "زوج",
     "sibling": "أخ أو أخت",
     "start": "ابدأ بشخص",
-    "startHint": "اكتب اسمًا، واختر ♂ أو ♀، ثم اضغط Enter.",
+    "startHint": "اكتب اسمًا ثم اضغط Enter.",
     "name": "الاسم",
     "namePlaceholder": "الاسم الكامل",
     "male": "ذكر",
@@ -751,7 +751,8 @@
     "shortcut": "{{label}} (Alt+{{n}})",
     "focus": "التركيز: <name/>",
     "focusOn": "التركيز على {{name}}",
-    "focusSelected": "التركيز على الشخص المحدد"
+    "focusSelected": "التركيز على الشخص المحدد",
+    "picker": "العرض: {{view}}"
   },
   "birthdays": {
     "open": "أعياد الميلاد",

@@ -361,7 +361,7 @@
     "spouse": "شریک حیات",
     "sibling": "بہن بھائی",
     "start": "کسی فرد سے شروع کریں",
-    "startHint": "نام لکھیں، ♂ یا ♀ چنیں، Enter دبائیں۔",
+    "startHint": "نام لکھیں اور Enter دبائیں۔",
     "name": "نام",
     "namePlaceholder": "پورا نام",
     "male": "مرد",
@@ -667,7 +667,8 @@
     "shortcut": "{{label}} (Alt+{{n}})",
     "focus": "توجہ: <name/>",
     "focusOn": "{{name}} پر توجہ",
-    "focusSelected": "منتخب فرد پر توجہ"
+    "focusSelected": "منتخب فرد پر توجہ",
+    "picker": "منظر: {{view}}"
   },
   "birthdays": {
     "open": "سالگرہیں",

@@ -209,6 +209,14 @@
   position: relative;
 }
 
+/* The tools sit at the window's end: their tips hang from the control's end edge, not past it. */
+.toolbar-tools .tip--center,
+.toolbar-tools .tip--center:dir(rtl) {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+  translate: 0 0;
+}
+
 .toolbar-more__dot {
   position: absolute;
   inset-block-start: 6px;
@@ -419,6 +427,10 @@
     --dock-block-size: calc(60px + env(safe-area-inset-bottom, 0px));
 
     padding-block-end: var(--dock-block-size);
+    /* Nothing inside may widen the page: a phone would grow its layout viewport to fit and the
+       fixed dock, placed against that, would slip under the screen's bottom edge. Paint
+       containment clips the editor's contents and makes it the box the dock is fixed in. */
+    contain: paint;
   }
 
   /* Above the bottom sheets (z-index 20): the dock and its menus stay usable with a sheet open. */
@@ -478,6 +490,13 @@
     margin-inline-start: auto;
   }
 
+  /* The dock's tips would hang below the screen, and the zoom column's past its edge; their
+     controls are labelled. */
+  .toolbar-dock .tip,
+  .zoom-cluster .tip {
+    display: none !important;
+  }
+
   .toolbar-add {
     min-block-size: 40px;
   }
@@ -504,8 +523,8 @@
     inset-block-end: calc(50vh + var(--dock-block-size) + 12px);
   }
 
-  /* While a name is typed, nothing floats over the inline editor. */
-  .editor:has(.inline-editor) .zoom-cluster {
+  /* While a name is typed, or the views menu is open, nothing floats over it. */
+  .editor:has(.inline-editor, .view-picker__button[aria-expanded="true"]) .zoom-cluster {
     display: none;
   }
 
