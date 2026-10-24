@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { createSessionStore } from "@/cloud/session";
 import { connectRoom, type SocketLike } from "@/cloud/transport";
 
 /** A socket the test drives by hand. */
@@ -56,6 +57,45 @@ function setup(opts: { shouldRetry?: () => Promise<boolean> } = {}) {
 }
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
+
+describe("who the socket says it is", () => {
+  function protocolsFor(token: string | undefined, session: string | null) {
+    const seen: string[][] = [];
+    connectRoom({
+      treeId: "t1",
+      ...(token ? { token } : {}),
+      handlers: {
+        onOpen() {},
+        onMessage() {},
+        onDown() {},
+        onClosed() {},
+        shouldRetry: async () => false,
+      },
+      session: createSessionStore({
+        getItem: () => session,
+        setItem() {},
+        removeItem() {},
+      }),
+      createSocket: (url, protocols) => {
+        seen.push(protocols);
+        return new FakeSocket(url);
+      },
+    });
+    return { protocols: seen[0], url: FakeSocket.all.at(-1)!.url };
+  }
+
+  test("the owner's socket carries the session token in a subprotocol, not the URL", () => {
+    const { protocols, url } = protocolsFor(undefined, "sess");
+    expect(protocols).toEqual(["stam", "stam-auth.sess"]);
+    expect(url).not.toContain("sess");
+  });
+
+  test("a link socket carries the link token and never the owner's session", () => {
+    const { protocols, url } = protocolsFor("linktok", "sess");
+    expect(protocols).toEqual(["stam"]);
+    expect(url).toEndWith("/api/trees/t1/ws?t=linktok");
+  });
+});
 
 describe("room transport", () => {
   test("connects to the tree's socket with the link token", () => {

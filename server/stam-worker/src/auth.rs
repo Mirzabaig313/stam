@@ -1,5 +1,8 @@
-//! Google sign-in (authorization code + PKCE) and sessions (spec §7.1). Only owners sign in; the
-//! session cookie holds a random token whose SHA-256 is the database key.
+//! Google sign-in (authorization code + PKCE) and sessions (spec §7.1). Only owners sign in. The
+//! app runs on another site than this API, so a session is a random bearer token the app keeps
+//! (cross-site cookies are blocked by Safari); its SHA-256 is the database key. Sign-in hands the
+//! token over in two steps: the callback sends the browser back to the app with a one-time code
+//! in the URL fragment, which the app trades for the token (`POST /api/auth/exchange`).
 
 use base64::Engine;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -13,8 +16,14 @@ use crate::db::{self, User};
 use crate::headers::is_dev;
 use crate::routes::error;
 
-const SESSION_COOKIE: &str = "stam_session";
 const OAUTH_COOKIE: &str = "stam_oauth";
+/// The WebSocket subprotocol the app asks for; a second one carries the token (browsers cannot set
+/// headers on a WebSocket, and a URL would end up in logs).
+pub const WS_PROTOCOL: &str = "stam";
+const WS_TOKEN_PREFIX: &str = "stam-auth.";
+/// A one-time sign-in code lives 2 minutes; it is stored under another hash than sessions, so it
+/// never works as a session token itself.
+const HANDOFF_MS: f64 = 2.0 * 60.0 * 1000.0;
 /// Secrets that sign or encrypt must be long enough to resist guessing.
 const MIN_SECRET_BYTES: usize = 32;
 const DAY_MS: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
@@ -53,8 +62,8 @@ fn signing_secret(env: &Env) -> Result<String> {
     Ok(key)
 }
 
-/// In production cookies carry the `__Host-` prefix, so no other subdomain can set them; a
-/// `__Host-` cookie needs `Secure`, which plain-http development cannot have.
+/// In production the OAuth cookie carries the `__Host-` prefix, so no other subdomain can set it;
+/// a `__Host-` cookie needs `Secure`, which plain-http development cannot have.
 fn cookie_name(env: &Env, base: &str) -> String {
     if is_dev(env) {
         base.to_owned()
@@ -97,13 +106,54 @@ fn redirect(location: &str) -> Result<Response> {
     Ok(res)
 }
 
-/// Every state-changing request must come from the site itself (CSRF): its `Origin` header must be
-/// the origin the request arrived on. (`wrangler dev` rewrites both to the route's host, so this
-/// holds locally too, where a fixed `SITE_ORIGIN` would not.)
-pub fn same_origin(req: &Request) -> bool {
-    let origin = req.headers().get("origin").ok().flatten();
+/// Whether `origin` is the app: `SITE_ORIGIN`, or the origin the request arrived on (`wrangler
+/// dev` rewrites both Host and Origin to its own host, where a fixed `SITE_ORIGIN` would not hold).
+pub fn is_app_origin(req: &Request, env: &Env, origin: &str) -> bool {
     let arrived = req.url().ok().map(|u| u.origin().ascii_serialization());
-    origin.is_some() && origin == arrived
+    let site = var(env, "SITE_ORIGIN").ok();
+    arrived.as_deref() == Some(origin) || site.as_deref() == Some(origin)
+}
+
+/// Every state-changing request and every socket must come from the app: its `Origin` header must
+/// be the app's. Tokens are not sent by other sites on their own, so this is defence in depth.
+pub fn from_app(req: &Request, env: &Env) -> bool {
+    req.headers()
+        .get("origin")
+        .ok()
+        .flatten()
+        .is_some_and(|origin| is_app_origin(req, env, &origin))
+}
+
+/// The session token: `Authorization: Bearer <token>`, or on a WebSocket upgrade the
+/// `stam-auth.<token>` subprotocol.
+pub fn bearer_token(req: &Request) -> Option<String> {
+    let header = |name: &str| req.headers().get(name).ok().flatten();
+    if let Some(token) =
+        header("authorization").and_then(|h| h.strip_prefix("Bearer ").map(|t| t.trim().to_owned()))
+    {
+        return (!token.is_empty()).then_some(token);
+    }
+    header("sec-websocket-protocol").and_then(|list| {
+        list.split(',')
+            .map(str::trim)
+            .find_map(|p| p.strip_prefix(WS_TOKEN_PREFIX))
+            .filter(|t| !t.is_empty())
+            .map(str::to_owned)
+    })
+}
+
+/// Whether the client asked for the app's WebSocket subprotocol (the room must then name it).
+pub fn wants_ws_protocol(req: &Request) -> bool {
+    req.headers()
+        .get("sec-websocket-protocol")
+        .ok()
+        .flatten()
+        .is_some_and(|list| list.split(',').any(|p| p.trim() == WS_PROTOCOL))
+}
+
+/// Where a one-time sign-in code is stored: a hash no session token can have.
+fn handoff_hash(code: &str) -> String {
+    sha256_b64(&format!("handoff:{code}"))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -138,7 +188,7 @@ pub async fn sign_in(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         .append_pair("client_id", &secret(env, "GOOGLE_CLIENT_ID")?)
         .append_pair(
             "redirect_uri",
-            &format!("{}/api/auth/google/callback", var(env, "SITE_ORIGIN")?),
+            &format!("{}/api/auth/google/callback", var(env, "API_ORIGIN")?),
         )
         .append_pair("response_type", "code")
         .append_pair("scope", "openid email profile")
@@ -174,7 +224,7 @@ async fn google_user(env: &Env, code: &str, verifier: &str) -> Result<Option<Goo
         .append_pair("client_secret", &secret(env, "GOOGLE_CLIENT_SECRET")?)
         .append_pair(
             "redirect_uri",
-            &format!("{}/api/auth/google/callback", var(env, "SITE_ORIGIN")?),
+            &format!("{}/api/auth/google/callback", var(env, "API_ORIGIN")?),
         )
         .append_pair("code_verifier", verifier)
         .finish();
@@ -246,6 +296,43 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         &iso(now),
     )
     .await?;
+    // A one-time code for the app, which trades it for the session token (`exchange`).
+    let code = random_token();
+    db::create_session(
+        &db,
+        &handoff_hash(&code),
+        &user_id,
+        &iso(now),
+        &iso(now + HANDOFF_MS),
+    )
+    .await?;
+
+    // The fragment never reaches a server, and the app removes it from the address at once.
+    let path = stored.return_to.split('#').next().unwrap_or("/app");
+    let res = redirect(&format!(
+        "{}{path}#stamSignIn={code}",
+        var(env, "SITE_ORIGIN")?
+    ))?;
+    res.headers()
+        .append("Set-Cookie", &set_cookie(env, OAUTH_COOKIE, "", 0))?;
+    Ok(res)
+}
+
+/// `POST /api/auth/exchange` with `Authorization: Bearer <one-time code>`: the session token.
+/// The code is deleted as it is read, so it works once.
+pub async fn exchange(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let env = &ctx.env;
+    if !from_app(&req, env) {
+        return error(403, "FORBIDDEN");
+    }
+    let Some(code) = bearer_token(&req) else {
+        return error(401, "BAD_SIGN_IN");
+    };
+    let db = env.d1("DB")?;
+    let now = now_ms();
+    let Some(user_id) = db::take_session(&db, &handoff_hash(&code), &iso(now)).await? else {
+        return error(401, "BAD_SIGN_IN");
+    };
     let token = random_token();
     db::create_session(
         &db,
@@ -255,26 +342,12 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         &iso(now + SESSION_DAYS * DAY_MS),
     )
     .await?;
-
-    let separator = if stored.return_to.contains('?') {
-        '&'
-    } else {
-        '?'
-    };
-    let res = redirect(&format!("{}{separator}signedIn=1", stored.return_to))?;
-    let max_age = (SESSION_DAYS * 24.0 * 3600.0) as u32;
-    res.headers().append(
-        "Set-Cookie",
-        &set_cookie(env, SESSION_COOKIE, &token, max_age),
-    )?;
-    res.headers()
-        .append("Set-Cookie", &set_cookie(env, OAUTH_COOKIE, "", 0))?;
-    Ok(res)
+    Response::from_json(&json!({ "token": token }))
 }
 
 /// The signed-in user, renewing the session when it has fewer than 15 days left.
 pub async fn current_user(req: &Request, env: &Env) -> Result<Option<User>> {
-    let Some(token) = read_cookie(req, &cookie_name(env, SESSION_COOKIE)) else {
+    let Some(token) = bearer_token(req) else {
         return Ok(None);
     };
     let db = env.d1("DB")?;
@@ -291,33 +364,20 @@ pub async fn current_user(req: &Request, env: &Env) -> Result<Option<User>> {
 
 /// `POST /api/auth/signout`.
 pub async fn sign_out(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if !same_origin(&req) {
+    if !from_app(&req, &ctx.env) {
         return error(403, "FORBIDDEN");
     }
-    if let Some(token) = read_cookie(&req, &cookie_name(&ctx.env, SESSION_COOKIE)) {
+    if let Some(token) = bearer_token(&req) {
         db::delete_session(&ctx.env.d1("DB")?, &sha256_b64(&token)).await?;
     }
-    let res = Response::empty()?.with_status(204);
-    res.headers()
-        .append("Set-Cookie", &set_cookie(&ctx.env, SESSION_COOKIE, "", 0))?;
-    Ok(res)
+    Response::empty().map(|r| r.with_status(204))
 }
 
-/// `GET /api/me`: the user and their shared trees.
+/// `GET /api/me`: the user and their shared trees (the session slides in `current_user`).
 pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(user) = current_user(&req, &ctx.env).await? else {
         return error(401, "SIGNED_OUT");
     };
     let trees = db::user_trees(&ctx.env.d1("DB")?, &user.id).await?;
-    let res = Response::from_json(&json!({ "user": user, "trees": trees }))?;
-    // The app asks this on every start: renew the cookie too, or the browser would drop it 30
-    // days after sign-in however active the user is (the server side slides in current_user).
-    if let Some(token) = read_cookie(&req, &cookie_name(&ctx.env, SESSION_COOKIE)) {
-        let max_age = (SESSION_DAYS * 24.0 * 3600.0) as u32;
-        res.headers().append(
-            "Set-Cookie",
-            &set_cookie(&ctx.env, SESSION_COOKIE, &token, max_age),
-        )?;
-    }
-    Ok(res)
+    Response::from_json(&json!({ "user": user, "trees": trees }))
 }

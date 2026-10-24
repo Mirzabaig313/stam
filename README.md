@@ -27,7 +27,10 @@ Bun 1.4.4 or newer. For the backend: Rust (stable, with the `wasm32-unknown-unkn
 | `bun run verify:server`     | cargo fmt, clippy, cargo test, then `bun run test:worker`          |
 | `bun run test:worker`       | Start a local Worker (port 8788) and run `tests/worker` against it |
 | `bun run dev:worker`        | The Worker on http://localhost:8787 (`bun dev` proxies `/api`)     |
-| `bun run deploy`            | Build, apply D1 migrations, deploy the Worker                      |
+| `bun run test:frontend`     | The app's checks and tests (`verify`)                              |
+| `bun run test:backend`      | The API's checks and tests (`verify:server`)                       |
+| `bun run deploy:backend`    | Apply D1 migrations, deploy the Worker (its Cloudflare account)    |
+| `bun run deploy:frontend`   | Build, deploy `dist/` to Pages (the Pages account)                 |
 
 ## Public pages
 
@@ -38,7 +41,8 @@ server renders them on the client.
 
 ## Backend
 
-Sharing, accounts and live editing run on one Cloudflare Worker written in Rust (`server/`): the
+Sharing, accounts and live editing run on a Cloudflare Worker written in Rust (`server/`), on
+`workers.dev` and another Cloudflare account than the app, which calls it cross-site: the
 tree rules (`server/stam-core`, a port of `src/core` held to it by `tests/parity`), the room that
 referees a shared tree (`server/stam-room`) and the Worker itself (`server/stam-worker`). The
 design is in `docs/superpowers/specs/2026-10-24-stam-backend-design.md`; setup and deploy steps in
@@ -51,18 +55,18 @@ design is in `docs/superpowers/specs/2026-10-24-stam-backend-design.md`; setup a
    - `SESSION_SECRET`: any long random string (`openssl rand -base64 48`)
    - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: only for real Google sign-in. Add
      `http://localhost:3000/api/auth/google/callback` as a redirect URI on the OAuth client.
-2. Terminal 1: `bun run dev:worker`. It builds the site, sets up the local D1 database and runs
-   the Worker on http://localhost:8787 (the first run compiles the Rust code: a few minutes).
+2. Terminal 1: `bun run dev:worker`. It sets up the local D1 database and runs the Worker on
+   http://localhost:8787 (the first run compiles the Rust code: a few minutes).
 3. Terminal 2: `bun dev`, then open http://localhost:3000/app. Its `/api` requests go to the
    Worker.
 
-If the app runs on another port, set `SITE_ORIGIN` in `.dev.vars` to match (and use that port in
-the Google redirect URI). `bun run test:worker` needs none of this: it starts its own Worker on
+If the app runs on another port, set `SITE_ORIGIN` and `API_ORIGIN` in `.dev.vars` to match (and
+use that port in the Google redirect URI). `bun run test:worker` needs none of this: it starts its own Worker on
 port 8788 with a stand-in for Google.
 
-## Hosting (Cloudflare Pages, before the backend)
+## Hosting (Cloudflare Pages)
 
-The Worker (see `docs/deploy.md`) replaces this once it is deployed.
+The app stays on Pages; the API is the Worker (see `docs/deploy.md`).
 
 | Setting                | Value               |
 | ---------------------- | ------------------- |
@@ -70,11 +74,12 @@ The Worker (see `docs/deploy.md`) replaces this once it is deployed.
 | Build output directory | `dist`              |
 | Custom domain          | `stam.mirzalabs.in` |
 
-The build copies `public/_redirects` (the `/app` and `/app/*` rewrites to `app.html`) and `public/_headers`
-(CSP, referrer, nosniff and permissions policies) into `dist/`. Nothing is deployed until the owner says so.
+The build copies `public/_redirects` (`/app/*` and share links `/s/*` rewrite to `app.html`) and
+`public/_headers` (CSP with the API's address from `src/config.ts`, referrer, nosniff and
+permissions policies) into `dist/`. Nothing is deployed until the owner says so.
 
 Deploy to the `stam` Pages project (https://stam-3ov.pages.dev) with:
 
 ```sh
-bun run build && wrangler pages deploy dist --project-name stam --branch main
+bun run deploy:frontend
 ```

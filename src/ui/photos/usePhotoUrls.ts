@@ -4,6 +4,7 @@ import { api } from "@/cloud/api";
 import type { TreeDocument } from "@/core/model/types";
 import { useRepo } from "@/ui/app/RepoContext";
 
+import { fetchOwnerPhoto } from "./ownerPhotos";
 import { CloudPhotoContext } from "./usePhotoUrl";
 
 /**
@@ -43,13 +44,16 @@ export function usePhotoUrls(doc: TreeDocument | null): (photoId: string) => str
       repo
         .getPhoto(photoId)
         .then((blob) => {
+          if (blob || cancelled) return blob;
+          // Not on this device: the owner downloads it; a link user's <img> loads it by URL.
+          if (cloud && !cloud.token) return fetchOwnerPhoto(repo, cloud.treeId, photoId);
+          missing.current.add(photoId);
+          setVersion((v) => v + 1);
+          return undefined;
+        })
+        .then((blob) => {
           // A change of the photo set while loading cancels this run; the next run loads again.
-          if (cancelled || urls.current.has(photoId)) return;
-          if (!blob) {
-            missing.current.add(photoId);
-            setVersion((v) => v + 1);
-            return;
-          }
+          if (!blob || cancelled || urls.current.has(photoId)) return;
           urls.current.set(photoId, URL.createObjectURL(blob));
           setVersion((v) => v + 1);
         })
@@ -58,7 +62,7 @@ export function usePhotoUrls(doc: TreeDocument | null): (photoId: string) => str
     return () => {
       cancelled = true;
     };
-  }, [repo, photoKey]);
+  }, [repo, photoKey, cloud]);
 
   // Unmount (and a strict-mode remount): release everything; the effect above loads again.
   useEffect(() => {
@@ -74,7 +78,7 @@ export function usePhotoUrls(doc: TreeDocument | null): (photoId: string) => str
   return useCallback(
     (photoId: string) =>
       urls.current.get(photoId) ??
-      (cloud && missing.current.has(photoId)
+      (cloud?.token && missing.current.has(photoId)
         ? api.photoUrl(cloud.treeId, photoId, cloud.token)
         : undefined),
     // oxlint-disable-next-line react-hooks/exhaustive-deps

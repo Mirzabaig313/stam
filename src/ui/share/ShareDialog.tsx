@@ -49,7 +49,7 @@ export function ShareDialog({
   const view = links?.find((l) => l.role === "view");
 
   useEffect(() => {
-    void auth.getState().refresh({ force: true });
+    void auth.getState().refresh();
   }, [auth]);
 
   // Photos that did not upload last time are remembered with the tree (Retry below).

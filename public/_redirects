@@ -1,2 +1,4 @@
 # Pages serves app.html at /app and redirects /app.html to /app, so nested routes rewrite to /app.
 /app/* /app 200
+# Share links open in the app too.
+/s/* /app 200

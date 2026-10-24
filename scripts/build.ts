@@ -1,6 +1,7 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import { PRODUCTION_API_ORIGIN } from "../src/config";
 import { injectHeadScript } from "./headScript";
 import { findLoweredLogical, logicalCssPlugin, restoreLogical } from "./logical-css";
 import { appShell, shellGaps } from "./precache";
@@ -79,10 +80,18 @@ await writeFile(join(outdir, bootName), boot);
 const appHtmlPath = join(outdir, "app.html");
 await writeFile(appHtmlPath, injectHeadScript(await readFile(appHtmlPath, "utf8"), `/${bootName}`));
 
-// Hosting files (_redirects, _headers, ...) are copied verbatim next to the build output.
+// Hosting files (_redirects, _headers, ...) are copied next to the build output.
 for (const name of await readdir(publicDir)) {
   await cp(join(publicDir, name), join(outdir, name), { recursive: true });
 }
+// The CSP lets the app reach the API, on another site: its address comes from src/config.ts.
+const headersPath = join(outdir, "_headers");
+await writeFile(
+  headersPath,
+  (await readFile(headersPath, "utf8"))
+    .replaceAll("__API_WS_ORIGIN__", PRODUCTION_API_ORIGIN.replace(/^http/, "ws"))
+    .replaceAll("__API_ORIGIN__", PRODUCTION_API_ORIGIN),
+);
 
 console.log(`Built ${result.outputs.length} files into dist/`);
 

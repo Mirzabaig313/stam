@@ -74,7 +74,7 @@ describeWorker("live tree rooms", () => {
     v.close();
   });
 
-  test("a socket opened from another site is refused, even with the owner's cookie", async () => {
+  test("a socket opened from another site is refused, even with the owner's token", async () => {
     const owner = await signIn("eli");
     const doc = await upload(owner);
     const evil = new Socket(`/api/trees/${doc.id}/ws`, owner, "https://evil.mirzalabs.in");

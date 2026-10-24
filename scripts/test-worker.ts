@@ -1,8 +1,8 @@
-// Runs tests/worker against a fresh local Worker: builds the site if needed, applies the D1
+// Runs tests/worker against a fresh local Worker: applies the D1
 // migrations to an empty local state, starts `wrangler dev` (port 8788, never the owner's 3333),
 // waits until it answers, runs the tests, then stops it.
 
-import { existsSync, rmSync } from "node:fs";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { GOOGLE_MOCK_PORT, startGoogleMock } from "./google-mock";
@@ -15,7 +15,9 @@ const state = join(root, ".wrangler", "test-state");
 /** Test-only values; the real ones are Worker secrets (docs/deploy.md). */
 const VARS: Record<string, string> = {
   ENVIRONMENT: "dev",
-  SITE_ORIGIN: origin,
+  // The app runs on another site than the API, as in production (tests/worker/helpers.ts APP).
+  SITE_ORIGIN: "http://app.test",
+  API_ORIGIN: origin,
   SESSION_SECRET: "test-session-secret-test-session-secret",
   LINK_KEY: "c3RhbS10ZXN0LWxpbmsta2V5LTMyLWJ5dGVzLWxvbmc=",
   GOOGLE_CLIENT_ID: "test-client",
@@ -31,7 +33,6 @@ function run(cmd: string[]): void {
   if (r.exitCode !== 0) throw new Error(`${cmd.join(" ")} failed`);
 }
 
-if (!existsSync(join(root, "dist", "app.html"))) run(["bun", "run", "build"]);
 rmSync(state, { recursive: true, force: true });
 run(["bunx", "wrangler", "d1", "migrations", "apply", "stam", "--local", "--persist-to", state]);
 

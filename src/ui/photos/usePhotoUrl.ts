@@ -3,9 +3,12 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { api } from "@/cloud/api";
 import { useRepo } from "@/ui/app/RepoContext";
 
+import { fetchOwnerPhoto } from "./ownerPhotos";
+
 /**
  * Set by the editor for a cloud tree: photos not stored on this device (a tree opened by a link,
- * or on another device) are shown from the server instead.
+ * or on another device) come from the server: the owner downloads them (and keeps them), a link
+ * user's `<img>` loads them with the link token.
  */
 export const CloudPhotoContext = createContext<{ treeId: string; token?: string } | null>(null);
 
@@ -28,10 +31,13 @@ export function usePhotoUrl(photoId: string | undefined): string | undefined {
       .getPhoto(photoId)
       .then((blob) => {
         if (cancelled) return;
-        if (!blob) {
-          setMissing(photoId);
-          return;
-        }
+        if (blob) return blob;
+        if (cloud && !cloud.token) return fetchOwnerPhoto(repo, cloud.treeId, photoId);
+        setMissing(photoId);
+        return undefined;
+      })
+      .then((blob) => {
+        if (cancelled || !blob) return;
         url = URL.createObjectURL(blob);
         setLoaded({ photoId, url });
       })
@@ -41,10 +47,10 @@ export function usePhotoUrl(photoId: string | undefined): string | undefined {
       if (url !== undefined) URL.revokeObjectURL(url);
       setLoaded(null);
     };
-  }, [repo, photoId]);
+  }, [repo, photoId, cloud]);
 
   if (loaded !== null && loaded.photoId === photoId) return loaded.url;
-  return photoId !== undefined && cloud && missing === photoId
+  return photoId !== undefined && cloud?.token && missing === photoId
     ? api.photoUrl(cloud.treeId, photoId, cloud.token)
     : undefined;
 }

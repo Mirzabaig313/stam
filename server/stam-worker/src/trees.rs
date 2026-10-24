@@ -8,7 +8,7 @@ use stam_room::{Attachment, Author, AuthorKind, MAX_PEOPLE, Role};
 use worker::wasm_bindgen::JsValue;
 use worker::{Env, Headers, Method, Request, RequestInit, Response, Result, RouteContext, Stub};
 
-use crate::auth::{current_user, iso, now_ms, same_origin, secret};
+use crate::auth::{WS_PROTOCOL, current_user, from_app, iso, now_ms, secret, wants_ws_protocol};
 use crate::crypto::{decrypt, encrypt, random_id, random_token, sha256_b64};
 use crate::db::{self, User};
 use crate::room_do::{ATTACHMENT_HEADER, MAX_PHOTO_BYTES};
@@ -55,9 +55,9 @@ async fn room_json(env: &Env, tree_id: &str, path: &str, body: &Value) -> Result
     .await
 }
 
-/// State-changing JSON requests come from the site (CSRF) and say they are JSON.
-fn check_json_request(req: &Request) -> Option<Result<Response>> {
-    if !same_origin(req) {
+/// State-changing JSON requests come from the app and say they are JSON.
+fn check_json_request(req: &Request, env: &Env) -> Option<Result<Response>> {
+    if !from_app(req, env) {
         return Some(error(403, "FORBIDDEN"));
     }
     let json = req
@@ -91,7 +91,7 @@ async fn owner_of(
 
 /// `POST /api/trees` `{doc}`: upload a tree and create its room.
 pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if let Some(refused) = check_json_request(&req) {
+    if let Some(refused) = check_json_request(&req, &ctx.env) {
         return refused;
     }
     let env = &ctx.env;
@@ -140,7 +140,7 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
 
 /// `DELETE /api/trees/:id`: stop sharing and delete the cloud copy.
 pub async fn delete(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if !same_origin(&req) {
+    if !from_app(&req, &ctx.env) {
         return error(403, "FORBIDDEN");
     }
     let id = param(&ctx, "id").to_owned();
@@ -191,7 +191,7 @@ pub async fn list_links(req: Request, ctx: RouteContext<()>) -> Result<Response>
 
 /// `POST /api/trees/:id/links` `{role, hideLiving?}`: a new link (resetting the old one of that role).
 pub async fn create_link(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if let Some(refused) = check_json_request(&req) {
+    if let Some(refused) = check_json_request(&req, &ctx.env) {
         return refused;
     }
     let env = &ctx.env;
@@ -246,7 +246,7 @@ pub async fn create_link(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
 
 /// `DELETE /api/trees/:id/links/:linkId`: turn a link off; its sockets close with 4401.
 pub async fn delete_link(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if !same_origin(&req) {
+    if !from_app(&req, &ctx.env) {
         return error(403, "FORBIDDEN");
     }
     let (id, link_id) = (
@@ -265,7 +265,7 @@ pub async fn delete_link(req: Request, ctx: RouteContext<()>) -> Result<Response
 
 /// `POST /api/__test/evict/:id` (dev only): the owner's room forgets its memory (see TreeRoom).
 pub async fn evict(req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    if !crate::headers::is_dev(&ctx.env) || !same_origin(&req) {
+    if !crate::headers::is_dev(&ctx.env) || !from_app(&req, &ctx.env) {
         return error(404, "NOT_FOUND");
     }
     let id = param(&ctx, "id").to_owned();
@@ -344,9 +344,9 @@ pub async fn socket(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     if !upgrade.is_some_and(|u| u.eq_ignore_ascii_case("websocket")) {
         return error(426, "WEBSOCKET_ONLY");
     }
-    // An owner socket edits, so it must come from the site: other pages (another subdomain is
-    // same-site for cookies) cannot open it with the owner's cookie.
-    if !same_origin(&req) {
+    // Sockets come from the app only (another page could not send the owner's token on its own;
+    // this is defence in depth).
+    if !from_app(&req, &ctx.env) {
         return error(403, "FORBIDDEN");
     }
     let id = param(&ctx, "id").to_owned();
@@ -355,13 +355,18 @@ pub async fn socket(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     };
     let headers = attachment_headers(&att)?;
     headers.set("Upgrade", "websocket")?;
+    // The app asks for the `stam` subprotocol; the room must name it in its answer, or the
+    // browser drops the socket.
+    if wants_ws_protocol(&req) {
+        headers.set("Sec-WebSocket-Protocol", WS_PROTOCOL)?;
+    }
     to_room(&ctx.env, &id, Method::Get, "/ws", headers, None).await
 }
 
 /// `GET|PUT /api/trees/:id/photos/:photoId`: photos through the room's access check.
 pub async fn photo(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let put = req.method() == Method::Put;
-    if put && !same_origin(&req) {
+    if put && !from_app(&req, &ctx.env) {
         return error(403, "FORBIDDEN");
     }
     let (id, photo_id) = (

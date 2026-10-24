@@ -72,13 +72,17 @@ if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
   });
 }
 
-// Back from Google sign-in: note it (so the account is asked about from now on) and tidy the URL.
+// Back from Google sign-in: take the one-time code out of the address at once, then trade it for
+// the session token. Otherwise only a browser with a session asks the server anything (spec D14).
 const returned = authStore
   .getState()
-  .noteReturn(location.pathname + location.search + location.hash);
-if (returned !== null) history.replaceState(history.state, "", returned);
-// Only a browser that has signed in before asks the server anything (spec D14).
-void authStore.getState().refresh();
+  .takeSignInCode(location.pathname + location.search + location.hash);
+if (returned !== null) {
+  history.replaceState(history.state, "", returned.path);
+  void authStore.getState().finishSignIn(returned.code);
+} else {
+  void authStore.getState().refresh();
+}
 
 const repo = await openRepo();
 // What the repo holds wins over the cache (another device's cache, or a cleared one).

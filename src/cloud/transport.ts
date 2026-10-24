@@ -1,4 +1,7 @@
+import { API_ORIGIN } from "@/config";
 import { type ClientMessage, parseServerMessage, type ServerMessage } from "@/sync/protocol";
+
+import { type SessionStore, sessionStore } from "./session";
 
 /** The parts of a WebSocket the transport uses (tests drive a fake). */
 export type SocketLike = {
@@ -28,10 +31,18 @@ export type RoomConnection = { send(msg: ClientMessage): void; stop(): void };
 const MIN_DELAY_MS = 1000;
 const MAX_DELAY_MS = 30_000;
 
-/** Where the room's sockets are: the page's own origin, or the local Worker in development. */
+/** Where the room's sockets are: the API's origin, or the local Worker in development. */
 export function wsOrigin(): string {
   if (process.env.NODE_ENV !== "production") return "ws://localhost:8787";
-  return location.origin.replace(/^http/, "ws");
+  return API_ORIGIN.replace(/^http/, "ws");
+}
+
+/**
+ * The subprotocols a socket asks for: `stam`, and for the owner a second one carrying the session
+ * token (a WebSocket cannot send headers, and a token in the URL would end up in logs).
+ */
+export function socketProtocols(token: string | null): string[] {
+  return token ? ["stam", `stam-auth.${token}`] : ["stam"];
 }
 
 /**
@@ -42,13 +53,15 @@ export function connectRoom(opts: {
   treeId: string;
   token?: string;
   handlers: RoomHandlers;
-  createSocket?: (url: string) => SocketLike;
+  session?: SessionStore;
+  createSocket?: (url: string, protocols: string[]) => SocketLike;
   schedule?: (fn: () => void, ms: number) => void;
   random?: () => number;
 }): RoomConnection {
   const {
     handlers,
-    createSocket = (url) => new WebSocket(url) as unknown as SocketLike,
+    session = sessionStore,
+    createSocket = (url, protocols) => new WebSocket(url, protocols) as unknown as SocketLike,
     schedule = (fn, ms) => void setTimeout(fn, ms),
     random = Math.random,
   } = opts;
@@ -66,7 +79,9 @@ export function connectRoom(opts: {
   }
 
   function connect() {
-    const s = createSocket(url);
+    // A link socket is the link's; the owner's carries the session token, read at each connect
+    // (it changes when they sign in again).
+    const s = createSocket(url, socketProtocols(opts.token ? null : session.get()));
     socket = s;
     let opened = false;
     s.addEventListener("open", () => {

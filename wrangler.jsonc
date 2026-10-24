@@ -1,25 +1,22 @@
 {
-  // One Worker (Rust, server/stam-worker) serves the built site (dist/) and the API.
+  // The API (Rust, server/stam-worker) on workers.dev. The app is on Cloudflare Pages at
+  // SITE_ORIGIN, another account, and calls it cross-site (docs/deploy.md).
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "stam",
   "main": "server/stam-worker/build/index.js",
   "compatibility_date": "2026-10-01",
-  // Only the custom domain serves the app: no workers.dev or preview hosts beside it.
-  "workers_dev": false,
+  // Served at https://stam.<account subdomain>.workers.dev (API_ORIGIN below); no preview hosts.
+  "workers_dev": true,
   "preview_urls": false,
   "build": {
     "command": "cd server/stam-worker && worker-build --release",
   },
-  "assets": {
-    "directory": "./dist",
-    "binding": "ASSETS",
-    "not_found_handling": "404-page",
-    // The API, the app's client-side routes and share links run the Worker; the rest is static.
-    "run_worker_first": ["/api/*", "/app", "/app/*", "/s/*"],
-  },
   "vars": {
     "ENVIRONMENT": "production",
+    // The app (Pages): the only other site allowed to call the API; sign-in returns there.
     "SITE_ORIGIN": "https://stam.mirzalabs.in",
+    // This Worker's own address; Google's redirect URI is API_ORIGIN/api/auth/google/callback.
+    "API_ORIGIN": "https://stam.stammirzalabs.workers.dev",
     "GOOGLE_AUTH_URL": "https://accounts.google.com/o/oauth2/v2/auth",
     "GOOGLE_TOKEN_URL": "https://oauth2.googleapis.com/token",
     "GOOGLE_USERINFO_URL": "https://openidconnect.googleapis.com/v1/userinfo",
@@ -46,5 +43,4 @@
     "bindings": [{ "name": "TREE_ROOM", "class_name": "TreeRoom" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TreeRoom"] }],
-  "routes": [{ "pattern": "stam.mirzalabs.in", "custom_domain": true }],
 }

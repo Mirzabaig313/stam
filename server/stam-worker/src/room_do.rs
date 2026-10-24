@@ -351,10 +351,14 @@ impl TreeRoom {
         let tag = att.link_id.clone().unwrap_or_else(|| "owner".into());
         self.state.accept_websocket_with_tags(&pair.server, &[&tag]);
         pair.server.serialize_attachment(&att)?;
-        Ok(ResponseBuilder::new()
+        let mut res = ResponseBuilder::new()
             .with_status(101)
-            .with_websocket(pair.client)
-            .empty())
+            .with_websocket(pair.client);
+        // The Worker passes on the subprotocol the app asked for; the answer must name it.
+        if let Some(protocol) = req.headers().get("Sec-WebSocket-Protocol")? {
+            res = res.with_header("Sec-WebSocket-Protocol", &protocol)?;
+        }
+        Ok(res.empty())
     }
 
     /// Closes sockets with a close code, saying so in a `closed` message first: a close frame does

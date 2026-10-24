@@ -83,6 +83,13 @@ The sections below are updated to match; this list says what changed and why.
     session cookie; only the custom domain serves the app.
 14. **Nicknames** stay visible for living people under hide-living (a nickname is a name, as in
     the export privacy mode).
+15. **Two Cloudflare accounts** (after P1, 2026-10-24): the app stays on Pages at
+    `stam.mirzalabs.in`; the API is a Worker on another account's `workers.dev`. The app calls it
+    cross-site, so sessions are bearer tokens the app keeps (localStorage), not cookies: sign-in
+    returns to the app with a one-time code (2 minutes, single use) traded for the token; sockets
+    carry it as a subprotocol. CORS is answered for `SITE_ORIGIN` only. Owners download photos
+    they lack with the token and keep them; link users' photos load by `?t=` URL.
+16. **Per-IP rate limits** moved forward from P3 into P1 (Cloudflare rate-limit bindings).
 
 ## 3. Architecture
 

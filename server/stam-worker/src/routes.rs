@@ -1,10 +1,10 @@
-//! HTTP routing. `/api/*` is the REST API (spec §7); `/app`, `/app/*` and `/s/*` are the app's
-//! client-side routes, all served `app.html`.
+//! HTTP routing: the REST API (spec §7) under `/api`. The app itself is served elsewhere (Cloudflare
+//! Pages at `SITE_ORIGIN`) and calls this Worker cross-site, so every answer carries CORS headers
+//! for the app's origin.
 
 use serde_json::json;
-use worker::{Env, Request, Response, Result, RouteContext, Router};
+use worker::{Env, Headers, Method, Request, Response, Result, Router};
 
-use crate::headers::{is_dev, security_headers};
 use crate::{auth, ratelimit, trees};
 
 /// A JSON error body: `{"error": code}`.
@@ -13,15 +13,55 @@ pub fn error(status: u16, code: &str) -> Result<Response> {
 }
 
 pub async fn handle(req: Request, env: Env) -> Result<Response> {
-    if let Some(limited) = ratelimit::check(&req, &env).await? {
-        return Ok(limited);
+    let origin = req.headers().get("origin")?;
+    let cors_origin = origin.filter(|o| auth::is_app_origin(&req, &env, o));
+    let res = if let Some(limited) = ratelimit::check(&req, &env).await? {
+        limited
+    } else if req.method() == Method::Options {
+        preflight(cors_origin.is_some())?
+    } else {
+        route(req, env).await?
+    };
+    // A socket's answer (101) carries no CORS headers, and its headers cannot change.
+    let Some(origin) = cors_origin.filter(|_| res.status_code() != 101) else {
+        return Ok(res);
+    };
+    // Answers fetched from a room have read-only headers: copy them into a fresh set.
+    let headers = Headers::new();
+    for (name, value) in res.headers().entries() {
+        headers.append(&name, &value)?;
     }
+    headers.set("Access-Control-Allow-Origin", &origin)?;
+    headers.set("Access-Control-Expose-Headers", "Retry-After")?;
+    headers.append("Vary", "Origin")?;
+    Ok(res.with_headers(headers))
+}
+
+/// The browser's question before a cross-site request with a token or a JSON body. Answers are
+/// cached for a day (Chrome keeps them 2 hours), so most requests skip it.
+fn preflight(allowed: bool) -> Result<Response> {
+    if !allowed {
+        return error(403, "FORBIDDEN");
+    }
+    let res = Response::empty()?.with_status(204);
+    let headers = res.headers();
+    headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")?;
+    headers.set(
+        "Access-Control-Allow-Headers",
+        "Authorization, Content-Type",
+    )?;
+    headers.set("Access-Control-Max-Age", "86400")?;
+    Ok(res)
+}
+
+async fn route(req: Request, env: Env) -> Result<Response> {
     Router::new()
         .get("/api/health", |_, _| {
             Response::from_json(&json!({ "ok": true }))
         })
         .get_async("/api/auth/google", auth::sign_in)
         .get_async("/api/auth/google/callback", auth::callback)
+        .post_async("/api/auth/exchange", auth::exchange)
         .post_async("/api/auth/signout", auth::sign_out)
         .get_async("/api/me", auth::me)
         .post_async("/api/trees", trees::create)
@@ -34,26 +74,7 @@ pub async fn handle(req: Request, env: Env) -> Result<Response> {
         .put_async("/api/trees/:id/photos/:photoId", trees::photo)
         .get_async("/api/s/:token", trees::resolve)
         .post_async("/api/__test/evict/:id", trees::evict)
-        .get_async("/app", serve_app)
-        .get_async("/app/*path", serve_app)
-        .get_async("/s/*path", serve_app)
-        .or_else_any_method("/api/*path", |_, _| error(404, "NOT_FOUND"))
+        .or_else_any_method("/*path", |_, _| error(404, "NOT_FOUND"))
         .run(req, env)
         .await
-}
-
-/// The app's page for any of its routes, with the security headers.
-async fn serve_app(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
-    // Static assets serve `app.html` at `/app` (the `.html` is dropped).
-    let page = ctx
-        .env
-        .assets("ASSETS")?
-        .fetch("https://assets.local/app", None)
-        .await?;
-    let status = page.status_code();
-    let mut page = page;
-    let html = page.text().await?;
-    let res = Response::from_html(html)?.with_status(status);
-    security_headers(res.headers(), is_dev(&ctx.env))?;
-    Ok(res)
 }

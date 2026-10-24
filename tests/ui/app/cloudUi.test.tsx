@@ -7,6 +7,7 @@ import { Route, Routes } from "react-router";
 import { createApi } from "@/cloud/api";
 import { createAuthStore } from "@/cloud/auth";
 import { createCloudSession } from "@/cloud/cloudSession";
+import { createSessionStore } from "@/cloud/session";
 import type { RoomConnection, RoomHandlers } from "@/cloud/transport";
 import type { TreeDocument } from "@/core/model/types";
 import { AddPersonButton } from "@/ui/app/AddPerson";
@@ -26,7 +27,7 @@ import { renderApp } from "../../fixtures/renderApp";
 afterEach(cleanup);
 
 const noStorage = { getItem: () => null, setItem() {}, removeItem() {} };
-const signedIn = { getItem: () => "1", setItem() {}, removeItem() {} };
+const signedIn = { getItem: () => "tok", setItem() {}, removeItem() {} };
 
 /** A room that answers hello with a welcome carrying `doc`. */
 function roomWith(doc: TreeDocument) {
@@ -149,7 +150,7 @@ async function setupList(routes: Parameters<typeof fakeFetch>[0] = {}) {
   };
   const { fetch, calls } = fakeFetch({ "GET /api/me": () => json(me), ...routes });
   const api = createApi(fetch);
-  const auth = createAuthStore({ api, storage: signedIn });
+  const auth = createAuthStore({ api, session: createSessionStore(signedIn) });
   renderApp(<TreeListPage api={api} auth={auth} afterImport={async () => {}} />, {
     repo: env.repo,
   });
@@ -208,7 +209,7 @@ describe("view links in the editor", () => {
     await env.repo.saveTree(doc);
     await env.repo.setCloud(doc.id, { role: "view", token: "t", version: 0 });
     const api = createApi(fakeFetch().fetch);
-    const auth = createAuthStore({ api, storage: noStorage });
+    const auth = createAuthStore({ api, session: createSessionStore(noStorage) });
     const room = fakeRoom();
     const store = createEditorStore({
       repo: env.repo,
@@ -246,7 +247,7 @@ describe("local use", () => {
     const doc = famSimple();
     await env.repo.saveTree(doc);
     const spy = spyOn(globalThis, "fetch");
-    const auth = createAuthStore({ storage: noStorage });
+    const auth = createAuthStore({ session: createSessionStore(noStorage) });
     renderApp(<TreeListPage auth={auth} afterImport={async () => {}} />, { repo: env.repo });
     await screen.findByText(doc.name);
     cleanup();

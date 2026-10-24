@@ -3,17 +3,7 @@ import { expect, test } from "bun:test";
 import type { TreeDocument } from "@/core/model/types";
 
 import { famSimple } from "../fixtures/families";
-import {
-  api,
-  describeWorker,
-  http,
-  newTree,
-  ORIGIN,
-  signIn,
-  upload,
-  url,
-  viewLink,
-} from "./helpers";
+import { api, APP, describeWorker, http, newTree, signIn, upload, url, viewLink } from "./helpers";
 
 const post = (path: string, session: string, body: unknown) =>
   api(path, { method: "POST", session, body: JSON.stringify(body) });
@@ -36,7 +26,7 @@ describeWorker("shared trees and view links", () => {
     const session = await signIn("tina");
     const noOrigin = await http(url("/api/trees"), {
       method: "POST",
-      headers: { cookie: session, "content-type": "application/json" },
+      headers: { authorization: `Bearer ${session}`, "content-type": "application/json" },
       body: JSON.stringify({ doc: newTree() }),
     });
     expect(noOrigin.status).toBe(403);
@@ -112,7 +102,7 @@ describeWorker("shared trees and view links", () => {
     expect((await post(`/api/trees/${doc.id}/links`, stranger, { role: "view" })).status).toBe(404);
     expect((await api(`/api/trees/${doc.id}/links`, { session: stranger })).status).toBe(404);
     const link = await viewLink(owner, doc.id);
-    expect(link.url).toBe(`${ORIGIN}/s/${link.token}`);
+    expect(link.url).toBe(`${APP}/s/${link.token}`);
     const del = await api(`/api/trees/${doc.id}/links/${link.id}`, {
       method: "DELETE",
       session: stranger,

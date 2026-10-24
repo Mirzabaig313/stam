@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import { createApi } from "@/cloud/api";
-import { createAuthStore, HAS_SIGNED_IN } from "@/cloud/auth";
+import { createAuthStore } from "@/cloud/auth";
 import { createCloudSession } from "@/cloud/cloudSession";
+import { createSessionStore } from "@/cloud/session";
 import { applyCommand } from "@/core/commands/apply";
 import type { TreeDocument } from "@/core/model/types";
 import { openStamDb } from "@/storage/db";
@@ -29,7 +30,7 @@ async function setup(cloud: CloudMeta, routes: Parameters<typeof fakeFetch>[0] =
   const api = createApi(fetch);
   const auth = createAuthStore({
     api,
-    storage: { getItem: () => "1", setItem() {}, removeItem() {} },
+    session: createSessionStore({ getItem: () => "tok", setItem() {}, removeItem() {} }),
   });
   const views: { doc: TreeDocument; cause: string }[] = [];
   const closed: number[] = [];
@@ -202,6 +203,5 @@ describe("cloud session", () => {
   test("a view link cannot edit", async () => {
     const { session } = await setup({ role: "view", token: "tok", version: 0 });
     expect(session.canEdit).toBe(false);
-    expect(HAS_SIGNED_IN).toBe("stam.hasSignedIn");
   });
 });

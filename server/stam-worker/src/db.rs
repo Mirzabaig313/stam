@@ -114,6 +114,20 @@ pub async fn extend_session(db: &D1Database, token_hash: &str, expires_at: &str)
     Ok(())
 }
 
+/// Deletes an unexpired session and returns its user: whoever deletes it first gets it.
+pub async fn take_session(db: &D1Database, token_hash: &str, now: &str) -> Result<Option<String>> {
+    #[derive(Deserialize)]
+    struct Taken {
+        user_id: String,
+    }
+    let row = db
+        .prepare("DELETE FROM session WHERE token_hash = ?1 AND expires_at > ?2 RETURNING user_id")
+        .bind(&[text(token_hash), text(now)])?
+        .first::<Taken>(None)
+        .await?;
+    Ok(row.map(|r| r.user_id))
+}
+
 pub async fn delete_session(db: &D1Database, token_hash: &str) -> Result<()> {
     db.prepare("DELETE FROM session WHERE token_hash = ?1")
         .bind(&[text(token_hash)])?

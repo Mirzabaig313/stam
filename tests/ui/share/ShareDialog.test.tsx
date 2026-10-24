@@ -6,6 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { createApi } from "@/cloud/api";
 import { createAuthStore } from "@/cloud/auth";
 import { createCloudSession } from "@/cloud/cloudSession";
+import { createSessionStore } from "@/cloud/session";
 import type { CloudMeta } from "@/storage/treeRepo";
 import { ShareDialog } from "@/ui/share/ShareDialog";
 import { createEditorStore } from "@/ui/store/editorStore";
@@ -50,7 +51,7 @@ async function setup(opts: {
   const api = createApi(fetch);
   const auth = createAuthStore({
     api,
-    storage: { getItem: () => "1", setItem() {}, removeItem() {} },
+    session: createSessionStore({ getItem: () => "tok", setItem() {}, removeItem() {} }),
   });
   const room = fakeRoom();
   const store = createEditorStore({

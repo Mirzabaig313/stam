@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createApi } from "@/cloud/api";
 import { createAuthStore } from "@/cloud/auth";
 import { createCloudSession } from "@/cloud/cloudSession";
+import { createSessionStore } from "@/cloud/session";
 import { applyCommand } from "@/core/commands/apply";
 import type { TreeDocument } from "@/core/model/types";
 import type { CloudMeta } from "@/storage/treeRepo";
@@ -25,7 +26,7 @@ async function setup(cloud: CloudMeta | null) {
   const api = createApi(fakeFetch().fetch);
   const auth = createAuthStore({
     api,
-    storage: { getItem: () => "1", setItem() {}, removeItem() {} },
+    session: createSessionStore({ getItem: () => "tok", setItem() {}, removeItem() {} }),
   });
   let n = 0;
   const openCloud: OpenCloud = (args) =>
@@ -193,7 +194,7 @@ describe("cloud trees across a reload", () => {
     const api = createApi(fakeFetch().fetch);
     const auth = createAuthStore({
       api,
-      storage: { getItem: () => "1", setItem() {}, removeItem() {} },
+      session: createSessionStore({ getItem: () => "tok", setItem() {}, removeItem() {} }),
     });
     const store = createEditorStore({
       repo: first.env.repo,

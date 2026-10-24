@@ -1,6 +1,18 @@
 import { expect, test } from "bun:test";
 
-import { api, cookie, d1, describeWorker, http, ORIGIN, signIn, startSignIn, url } from "./helpers";
+import {
+  api,
+  APP,
+  d1,
+  describeWorker,
+  exchange,
+  finishSignIn,
+  http,
+  ORIGIN,
+  signIn,
+  startSignIn,
+  url,
+} from "./helpers";
 
 const googleMock = process.env.GOOGLE_MOCK_URL ?? "";
 
@@ -28,36 +40,65 @@ describeWorker("Google sign-in and sessions", () => {
     expect(raw).toContain("Path=/");
   });
 
-  test("callback with matching state creates the user and a session", async () => {
-    const { location, oauth } = await startSignIn("/app/t/abc");
-    const state = location.searchParams.get("state");
-    const res = await http(url(`/api/auth/google/callback?code=alice&state=${state}`), {
-      headers: { cookie: oauth },
-      redirect: "manual",
-    });
+  test("callback goes back to the app with a one-time code it trades for a session", async () => {
+    const { res, back, code } = await finishSignIn("alice", "/app/t/abc");
     expect(res.status).toBe(302);
-    expect(res.headers.get("location")).toBe("/app/t/abc?signedIn=1");
-    const session = cookie(res, "stam_session")!;
-    expect(session).toBeDefined();
-    const raw = res.headers.getSetCookie().find((c) => c.startsWith("stam_session="))!;
-    expect(raw).toContain("HttpOnly");
-    expect(raw).toContain("Path=/");
+    expect(`${back.origin}${back.pathname}`).toBe(`${APP}/app/t/abc`);
+    expect(code.length).toBeGreaterThanOrEqual(32);
+    // No session cookie any more: the app keeps a token; the OAuth cookie is cleared.
+    expect(res.headers.getSetCookie().some((c) => c.startsWith("stam_session"))).toBe(false);
     // PKCE: the token request carried the verifier for the challenge sent to Google.
     const sent = (await (await http(`${googleMock}/__last`)).json()) as Record<string, string>;
-    expect(s256(sent.code_verifier!)).toBe(location.searchParams.get("code_challenge")!);
     expect(sent.client_secret).toBe("test-secret");
-    const me = await api("/api/me", { session });
+    // The code itself is not a session.
+    expect((await api("/api/me", { session: code })).status).toBe(401);
+
+    const traded = await exchange(code);
+    expect(traded.status).toBe(200);
+    const { token } = (await traded.json()) as { token: string };
+    const me = await api("/api/me", { session: token });
     expect(me.status).toBe(200);
     expect(await me.json()).toMatchObject({
       user: { name: "Alice", email: "alice@example.com" },
       trees: [],
     });
     // Only the hash of the session token is stored.
-    const token = session.split("=")[1]!;
     expect(JSON.stringify(d1("SELECT token_hash FROM session"))).not.toContain(token);
   });
 
-  test("callback with a wrong or missing state is refused and sets no session", async () => {
+  test("PKCE: the token request carries the verifier for the challenge", async () => {
+    const { location, oauth } = await startSignIn();
+    await http(
+      url(`/api/auth/google/callback?code=pia&state=${location.searchParams.get("state")}`),
+      { headers: { cookie: oauth }, redirect: "manual" },
+    );
+    const sent = (await (await http(`${googleMock}/__last`)).json()) as Record<string, string>;
+    expect(s256(sent.code_verifier!)).toBe(location.searchParams.get("code_challenge")!);
+  });
+
+  test("a sign-in code works once, and only from the app", async () => {
+    const { code } = await finishSignIn("otto");
+    const evil = await http(url("/api/auth/exchange"), {
+      method: "POST",
+      headers: { origin: "https://evil.example", authorization: `Bearer ${code}` },
+    });
+    expect(evil.status).toBe(403);
+    expect((await exchange(code)).status).toBe(200);
+    const again = await exchange(code);
+    expect(again.status).toBe(401);
+    expect(await again.json()).toEqual({ error: "BAD_SIGN_IN" });
+    expect((await exchange("made-up-code")).status).toBe(401);
+  });
+
+  test("an expired sign-in code is refused", async () => {
+    const { code } = await finishSignIn("una");
+    d1(
+      "UPDATE session SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM user WHERE google_sub = 'sub-una')",
+    );
+    expect((await exchange(code)).status).toBe(401);
+  });
+
+  test("callback with a wrong or missing state is refused", async () => {
     const { oauth } = await startSignIn();
     for (const query of ["code=alice&state=forged", "code=alice"]) {
       const res = await http(url(`/api/auth/google/callback?${query}`), {
@@ -65,7 +106,7 @@ describeWorker("Google sign-in and sessions", () => {
         redirect: "manual",
       });
       expect(res.status).toBe(400);
-      expect(cookie(res, "stam_session")).toBeUndefined();
+      expect(res.headers.get("location")).toBeNull();
     }
     const { location } = await startSignIn();
     const noCookie = await http(
@@ -82,10 +123,10 @@ describeWorker("Google sign-in and sessions", () => {
       { headers: { cookie: oauth }, redirect: "manual" },
     );
     expect(res.status).toBe(502);
-    expect(cookie(res, "stam_session")).toBeUndefined();
+    expect(res.headers.get("location")).toBeNull();
   });
 
-  test("return only accepts same-origin paths", async () => {
+  test("return only accepts paths on the app's site", async () => {
     for (const evil of [
       "//evil.com",
       "https://evil.com",
@@ -94,21 +135,9 @@ describeWorker("Google sign-in and sessions", () => {
       "/\t/evil.com",
       "/\n/evil.com",
     ]) {
-      const { location, oauth } = await startSignIn(evil);
-      const res = await http(
-        url(`/api/auth/google/callback?code=alice&state=${location.searchParams.get("state")}`),
-        { headers: { cookie: oauth }, redirect: "manual" },
-      );
-      expect(res.headers.get("location")).toBe("/app?signedIn=1");
+      const { back } = await finishSignIn("alice", evil);
+      expect(`${back.origin}${back.pathname}`).toBe(`${APP}/app`);
     }
-  });
-
-  test("/api/me renews the session cookie, so an active user stays signed in", async () => {
-    const session = await signIn("greta");
-    const res = await api("/api/me", { session });
-    const raw = res.headers.getSetCookie().find((c) => c.startsWith("stam_session="))!;
-    expect(raw).toContain(`${session};`);
-    expect(raw).toContain("Max-Age=2592000");
   });
 
   test("/api/me without a session is 401", async () => {
@@ -129,7 +158,6 @@ describeWorker("Google sign-in and sessions", () => {
     const session = await signIn("dave");
     const out = await api("/api/auth/signout", { method: "POST", session });
     expect(out.status).toBe(204);
-    expect(out.headers.getSetCookie().join()).toContain("stam_session=;");
     expect((await api("/api/me", { session })).status).toBe(401);
   });
 
@@ -137,12 +165,12 @@ describeWorker("Google sign-in and sessions", () => {
     const session = await signIn("erin");
     const res = await http(url("/api/auth/signout"), {
       method: "POST",
-      headers: { cookie: session },
+      headers: { authorization: `Bearer ${session}` },
     });
     expect(res.status).toBe(403);
     const other = await http(url("/api/auth/signout"), {
       method: "POST",
-      headers: { cookie: session, origin: "https://evil.com" },
+      headers: { authorization: `Bearer ${session}`, origin: "https://evil.com" },
     });
     expect(other.status).toBe(403);
     expect((await api("/api/me", { session })).status).toBe(200);

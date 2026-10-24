@@ -11,7 +11,7 @@ const isDev = process.env.NODE_ENV !== "production";
 /** The local Worker (`bun run dev:worker`) answers the API; its sockets are reached directly. */
 const apiOrigin = process.env.API_ORIGIN ?? "http://localhost:8787";
 
-/** Forwards an /api request to the local Worker. Cookies are per host, not port, so sign-in works. */
+/** Forwards an /api request to the local Worker (same origin here; production calls it cross-site). */
 async function proxyApi(req: Request): Promise<Response> {
   const url = new URL(req.url);
   return fetch(new URL(url.pathname + url.search, apiOrigin), {

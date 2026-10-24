@@ -19,6 +19,9 @@ export function url(path: string): string {
 /** The Worker's own origin, as browsers send it on same-origin requests. */
 export const ORIGIN = WORKER_URL.replace(/\/$/, "");
 
+/** The app's site (`SITE_ORIGIN` in scripts/test-worker.ts): it calls the API cross-site. */
+export const APP = "http://app.test";
+
 /** A made-up client address: the local Worker rate-limits by it (`x-stam-test-ip`, dev only). */
 export const freshIp = () => `10.${[0, 0, 0].map(() => Math.floor(Math.random() * 256)).join(".")}`;
 
@@ -71,17 +74,33 @@ export async function startSignIn(returnTo = "/app") {
   return { res, location, oauth: cookie(res, "stam_oauth") ?? "" };
 }
 
-/** Signs in as `who` through the Google mock; returns the session cookie (`stam_session=...`). */
-export async function signIn(who = "alice"): Promise<string> {
-  const { location, oauth } = await startSignIn();
+/** Finishes Google sign-in as `who`; returns the callback's answer and its one-time code. */
+export async function finishSignIn(who = "alice", returnTo = "/app") {
+  const { location, oauth } = await startSignIn(returnTo);
   const state = location.searchParams.get("state");
   const res = await http(url(`/api/auth/google/callback?code=${who}&state=${state}`), {
     headers: { cookie: oauth },
     redirect: "manual",
   });
-  const session = cookie(res, "stam_session");
-  if (!session) throw new Error(`sign-in failed: ${res.status}`);
-  return session;
+  const back = new URL(res.headers.get("location") ?? "about:blank");
+  const code = new URLSearchParams(back.hash.slice(1)).get("stamSignIn") ?? "";
+  return { res, back, code };
+}
+
+/** Trades a one-time sign-in code for a session token, as the app does. */
+export function exchange(code: string): Promise<Response> {
+  return http(url("/api/auth/exchange"), {
+    method: "POST",
+    headers: { origin: ORIGIN, authorization: `Bearer ${code}` },
+  });
+}
+
+/** Signs in as `who` through the Google mock; returns the session token. */
+export async function signIn(who = "alice"): Promise<string> {
+  const { res, code } = await finishSignIn(who);
+  const traded = await exchange(code);
+  if (!traded.ok) throw new Error(`sign-in failed: ${res.status} ${traded.status}`);
+  return ((await traded.json()) as { token: string }).token;
 }
 
 /** A same-origin JSON request, as the app sends it. */
@@ -90,12 +109,12 @@ export function api(
   { session, ...init }: RequestInit & { session?: string } = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
-  headers.set("origin", ORIGIN);
+  if (!headers.has("origin")) headers.set("origin", ORIGIN);
   if (init.body !== undefined && !headers.has("content-type")) {
     headers.set("content-type", "application/json");
   }
-  // `session` is ours (the cookie); Bun's fetch has an option of that name, so it is not passed on.
-  if (session) headers.set("cookie", session);
+  // `session` is ours (the token); Bun's fetch has an option of that name, so it is not passed on.
+  if (session) headers.set("authorization", `Bearer ${session}`);
   return http(url(path), { ...init, headers, redirect: "manual" });
 }
 
@@ -141,13 +160,11 @@ export class Socket {
     socketOrigin: string = ORIGIN,
     ip: string = freshIp(),
   ) {
-    this.ws = new WebSocket(url(path).replace(/^http/, "ws"), {
+    // As the app does: the `stam` subprotocol, and the owner's token in a second one.
+    const protocols = session ? ["stam", `stam-auth.${session}`] : ["stam"];
+    this.ws = new WebSocket(url(path).replace(/^http/, "ws"), protocols, {
       // Browsers send the page's Origin on WebSocket upgrades; the server checks it.
-      headers: {
-        origin: socketOrigin,
-        "x-stam-test-ip": ip,
-        ...(session ? { cookie: session } : {}),
-      },
+      headers: { origin: socketOrigin, "x-stam-test-ip": ip },
     });
     this.opened = new Promise((resolve) => {
       this.ws.on("open", () => resolve(true));
