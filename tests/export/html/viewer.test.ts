@@ -9,8 +9,8 @@ import { fixtureMeta, fixturePeople, fixtureSvg } from "../../fixtures/exportSvg
  * written into the file: the script text is evaluated on its own, with no module scope.
  */
 function load(html: string): void {
-  // happy-dom's HTML parser drops everything after a <style> inside inline SVG (browsers don't;
-  // the Playwright spec covers the real file), so the SVG's own stylesheet is left out here.
+  // happy-dom's HTML parser drops everything after a <style> inside inline SVG (browsers don't),
+  // so the SVG's own stylesheet is left out here.
   const parsed = new DOMParser().parseFromString(
     html.replace(/(<svg[^>]*>)<style>[\s\S]*?<\/style>/, "$1"),
     "text/html",

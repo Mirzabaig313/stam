@@ -6,6 +6,5 @@ printWidth = 100
 sortImports = true
 
 [test]
-# Playwright specs in e2e/ are not bun tests.
 root = "tests"
 preload = ["./tests/setup.ts"]

@@ -10,7 +10,7 @@ import { defaultSettings, type ExportSettings, switchFormat } from "@/ui/export/
 import { famRemarriage, person, union } from "../../fixtures/families";
 
 // The dialog's door with the real render and HTML modules behind it (no fakes): the seams
-// between lanes R, H and U. Raster and PDF need a real browser and are covered by e2e/export.
+// between lanes R, H and U. Raster and PDF need a real browser, so they are not run here.
 
 const t = i18n.t.bind(i18n);
 const PHOTO = "data:image/png;base64,iVBORw0KGgo=";

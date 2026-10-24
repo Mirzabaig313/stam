@@ -1,6 +1,6 @@
 // Static server for dist/ that emulates Cloudflare Pages `_redirects` (status 200 rewrites),
 // `_headers`, extensionless `.html` pages (/privacy serves privacy.html) and the 404 page
-// (404.html with status 404), so Playwright tests see the same routing as production. Text files
+// (404.html with status 404), so a local preview sees the same routing as production. Text files
 // are gzipped for clients that accept it, as Cloudflare does, so load timings are realistic.
 import { stat } from "node:fs/promises";
 import { join, normalize, sep } from "node:path";

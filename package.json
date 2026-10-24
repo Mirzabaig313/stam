@@ -11,7 +11,6 @@
     "build": "bun run scripts/build.ts",
     "lint": "oxlint",
     "test": "bun test",
-    "e2e": "playwright test -c e2e/playwright.config.ts",
     "bench": "bun run scripts/bench-layout.ts",
     "verify": "bun check && bun fmt --check && bun run lint && PROPERTY_RUNS=10000 bun test"
   },
@@ -35,11 +34,9 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.14.0",
     "@fontsource/archivo": "^5.3.0",
     "@fontsource/noto-naskh-arabic": "^5.3.0",
     "@happy-dom/global-registrator": "^21.0.4",
-    "@playwright/test": "^1.64.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "@types/bun": "^1.4.3",
