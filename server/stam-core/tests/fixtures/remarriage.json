@@ -1,0 +1,109 @@
+{
+ "id": "doc",
+ "name": "Fixture",
+ "schemaVersion": 1,
+ "rootPersonId": "ali",
+ "persons": {
+  "ali": {
+   "id": "ali",
+   "firstName": "Ali",
+   "lastName": "Raza",
+   "gender": "male",
+   "isLiving": true
+  },
+  "wife1": {
+   "id": "wife1",
+   "firstName": "Hina",
+   "lastName": "Raza",
+   "gender": "female",
+   "isLiving": true
+  },
+  "wife2": {
+   "id": "wife2",
+   "firstName": "Mehr",
+   "lastName": "Raza",
+   "gender": "female",
+   "isLiving": true
+  },
+  "a1": {
+   "id": "a1",
+   "firstName": "Bilal",
+   "lastName": "Raza",
+   "gender": "male",
+   "isLiving": true
+  },
+  "a2": {
+   "id": "a2",
+   "firstName": "Noor",
+   "lastName": "Raza",
+   "gender": "female",
+   "isLiving": true
+  },
+  "a3": {
+   "id": "a3",
+   "firstName": "Sana",
+   "lastName": "Raza",
+   "gender": "female",
+   "isLiving": true
+  }
+ },
+ "unions": {
+  "m1": {
+   "id": "m1",
+   "partners": [
+    "ali",
+    "wife1"
+   ],
+   "status": "divorced",
+   "children": [
+    {
+     "personId": "a1",
+     "type": "biological"
+    },
+    {
+     "personId": "a2",
+     "type": "biological"
+    }
+   ],
+   "start": {
+    "year": 1975
+   }
+  },
+  "m2": {
+   "id": "m2",
+   "partners": [
+    "ali",
+    "wife2"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "a3",
+     "type": "biological"
+    }
+   ],
+   "start": {
+    "year": 1990
+   }
+  }
+ },
+ "unionOrder": {
+  "ali": [
+   "m1",
+   "m2"
+  ],
+  "wife1": [
+   "m1"
+  ],
+  "wife2": [
+   "m2"
+  ]
+ },
+ "settings": {
+  "theme": "default",
+  "colorMode": "light",
+  "direction": "ltr"
+ },
+ "createdAt": "2026-01-01T00:00:00.000Z",
+ "updatedAt": "2026-01-01T00:00:00.000Z"
+}

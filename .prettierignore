@@ -1,2 +1,6 @@
 docs
 .superpowers
+.wasm
+target
+build
+.wrangler

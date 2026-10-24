@@ -1,0 +1,105 @@
+{
+ "id": "doc",
+ "name": "Fixture",
+ "schemaVersion": 1,
+ "rootPersonId": "a",
+ "persons": {
+  "a": {
+   "id": "a",
+   "firstName": "Usman",
+   "lastName": "Aziz",
+   "gender": "male",
+   "isLiving": true
+  },
+  "b": {
+   "id": "b",
+   "firstName": "Lubna",
+   "lastName": "Aziz",
+   "gender": "female",
+   "isLiving": true
+  },
+  "k1": {
+   "id": "k1",
+   "firstName": "Hira",
+   "lastName": "Aziz",
+   "gender": "female",
+   "isLiving": true
+  },
+  "k2": {
+   "id": "k2",
+   "firstName": "Zaid",
+   "lastName": "Aziz",
+   "gender": "male",
+   "isLiving": true
+  },
+  "n1": {
+   "id": "n1",
+   "firstName": "Rashid",
+   "lastName": "Iqbal",
+   "gender": "male",
+   "isLiving": true
+  },
+  "n2": {
+   "id": "n2",
+   "firstName": "Saima",
+   "lastName": "Iqbal",
+   "gender": "female",
+   "isLiving": true
+  }
+ },
+ "unions": {
+  "ua": {
+   "id": "ua",
+   "partners": [
+    "a",
+    "b"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "k1",
+     "type": "biological"
+    },
+    {
+     "personId": "k2",
+     "type": "adopted"
+    }
+   ]
+  },
+  "un": {
+   "id": "un",
+   "partners": [
+    "n1",
+    "n2"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "k2",
+     "type": "biological"
+    }
+   ]
+  }
+ },
+ "unionOrder": {
+  "a": [
+   "ua"
+  ],
+  "b": [
+   "ua"
+  ],
+  "n1": [
+   "un"
+  ],
+  "n2": [
+   "un"
+  ]
+ },
+ "settings": {
+  "theme": "default",
+  "colorMode": "light",
+  "direction": "ltr"
+ },
+ "createdAt": "2026-01-01T00:00:00.000Z",
+ "updatedAt": "2026-01-01T00:00:00.000Z"
+}

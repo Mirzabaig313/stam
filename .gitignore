@@ -4,3 +4,12 @@ dist/
 *.log
 .DS_Store
 coverage/
+
+# Rust and Cloudflare build output; agent worktrees and scratch
+target/
+.wasm/
+.wrangler/
+build/
+.dev.vars
+.worktrees/
+.superpowers/

@@ -1,0 +1,166 @@
+{
+ "id": "doc",
+ "name": "Fixture",
+ "schemaVersion": 1,
+ "rootPersonId": "g1",
+ "persons": {
+  "g1": {
+   "id": "g1",
+   "firstName": "Jamil",
+   "lastName": "Malik",
+   "gender": "male",
+   "isLiving": true
+  },
+  "g2": {
+   "id": "g2",
+   "firstName": "Razia",
+   "lastName": "Malik",
+   "gender": "female",
+   "isLiving": true
+  },
+  "p1": {
+   "id": "p1",
+   "firstName": "Tariq",
+   "lastName": "Malik",
+   "gender": "male",
+   "isLiving": true
+  },
+  "p2": {
+   "id": "p2",
+   "firstName": "Yasmin",
+   "lastName": "Malik",
+   "gender": "female",
+   "isLiving": true
+  },
+  "s1": {
+   "id": "s1",
+   "firstName": "Nazia",
+   "lastName": "Malik",
+   "gender": "female",
+   "isLiving": true
+  },
+  "s2": {
+   "id": "s2",
+   "firstName": "Waqar",
+   "lastName": "Butt",
+   "gender": "male",
+   "isLiving": true
+  },
+  "cousin1": {
+   "id": "cousin1",
+   "firstName": "Imran",
+   "lastName": "Malik",
+   "gender": "male",
+   "isLiving": true
+  },
+  "cousin2": {
+   "id": "cousin2",
+   "firstName": "Rabia",
+   "lastName": "Butt",
+   "gender": "female",
+   "isLiving": true
+  },
+  "kid": {
+   "id": "kid",
+   "firstName": "Danish",
+   "lastName": "Malik",
+   "gender": "male",
+   "isLiving": true
+  }
+ },
+ "unions": {
+  "ug": {
+   "id": "ug",
+   "partners": [
+    "g1",
+    "g2"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "p1",
+     "type": "biological"
+    },
+    {
+     "personId": "p2",
+     "type": "biological"
+    }
+   ]
+  },
+  "up1": {
+   "id": "up1",
+   "partners": [
+    "p1",
+    "s1"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "cousin1",
+     "type": "biological"
+    }
+   ]
+  },
+  "up2": {
+   "id": "up2",
+   "partners": [
+    "s2",
+    "p2"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "cousin2",
+     "type": "biological"
+    }
+   ]
+  },
+  "uc": {
+   "id": "uc",
+   "partners": [
+    "cousin1",
+    "cousin2"
+   ],
+   "status": "married",
+   "children": [
+    {
+     "personId": "kid",
+     "type": "biological"
+    }
+   ]
+  }
+ },
+ "unionOrder": {
+  "g1": [
+   "ug"
+  ],
+  "g2": [
+   "ug"
+  ],
+  "p1": [
+   "up1"
+  ],
+  "s1": [
+   "up1"
+  ],
+  "s2": [
+   "up2"
+  ],
+  "p2": [
+   "up2"
+  ],
+  "cousin1": [
+   "uc"
+  ],
+  "cousin2": [
+   "uc"
+  ]
+ },
+ "settings": {
+  "theme": "default",
+  "colorMode": "light",
+  "direction": "ltr"
+ },
+ "createdAt": "2026-01-01T00:00:00.000Z",
+ "updatedAt": "2026-01-01T00:00:00.000Z"
+}
