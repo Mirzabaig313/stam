@@ -62,3 +62,9 @@ outlines), `polish.spec.ts` (selection outline, handle placement, dateless cards
 
 The build copies `public/_redirects` (the `/app` and `/app/*` rewrites to `app.html`) and `public/_headers`
 (CSP, referrer, nosniff and permissions policies) into `dist/`. Nothing is deployed until the owner says so.
+
+Deploy to the `stam` Pages project (https://stam-3ov.pages.dev) with:
+
+```sh
+bun run build && wrangler pages deploy dist --project-name stam --branch main
+```

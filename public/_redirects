@@ -1,2 +1,2 @@
-/app /app.html 200
-/app/* /app.html 200
+# Pages serves app.html at /app and redirects /app.html to /app, so nested routes rewrite to /app.
+/app/* /app 200
