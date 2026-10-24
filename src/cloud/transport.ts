@@ -4,9 +4,9 @@ import { type ClientMessage, parseServerMessage, type ServerMessage } from "@/sy
 export type SocketLike = {
   send(data: string): void;
   close(): void;
-  onopen: (() => void) | null;
-  onmessage: ((e: { data: string }) => void) | null;
-  onclose: ((e: { code: number }) => void) | null;
+  addEventListener(type: "open", listener: () => void): void;
+  addEventListener(type: "message", listener: (e: { data: string }) => void): void;
+  addEventListener(type: "close", listener: (e: { code: number }) => void): void;
 };
 
 export type RoomHandlers = {
@@ -69,13 +69,13 @@ export function connectRoom(opts: {
     const s = createSocket(url);
     socket = s;
     let opened = false;
-    s.onopen = () => {
+    s.addEventListener("open", () => {
       opened = true;
       open = true;
       attempt = 0;
       handlers.onOpen();
-    };
-    s.onmessage = (e) => {
+    });
+    s.addEventListener("message", (e) => {
       let msg: ServerMessage;
       try {
         msg = parseServerMessage(e.data);
@@ -89,8 +89,8 @@ export function connectRoom(opts: {
         return;
       }
       handlers.onMessage(msg);
-    };
-    s.onclose = (e) => {
+    });
+    s.addEventListener("close", (e) => {
       open = false;
       if (socket === s) socket = null;
       if (stopped) return;
@@ -108,7 +108,7 @@ export function connectRoom(opts: {
         if (retry && !stopped) retryLater();
         else stopped = true;
       });
-    };
+    });
   }
 
   connect();

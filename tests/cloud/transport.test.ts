@@ -6,12 +6,16 @@ import { connectRoom, type SocketLike } from "@/cloud/transport";
 class FakeSocket implements SocketLike {
   static all: FakeSocket[] = [];
   sent: string[] = [];
-  onopen: (() => void) | null = null;
-  onmessage: ((e: { data: string }) => void) | null = null;
-  onclose: ((e: { code: number }) => void) | null = null;
+  #listeners: Record<string, ((e: never) => void)[]> = {};
   closedByClient = false;
   constructor(readonly url: string) {
     FakeSocket.all.push(this);
+  }
+  addEventListener(type: string, listener: (e: never) => void) {
+    (this.#listeners[type] ??= []).push(listener);
+  }
+  #emit(type: string, e: unknown) {
+    for (const l of this.#listeners[type] ?? []) l(e as never);
   }
   send(data: string) {
     this.sent.push(data);
@@ -20,13 +24,13 @@ class FakeSocket implements SocketLike {
     this.closedByClient = true;
   }
   open() {
-    this.onopen?.();
+    this.#emit("open", {});
   }
   receive(msg: unknown) {
-    this.onmessage?.({ data: JSON.stringify(msg) });
+    this.#emit("message", { data: JSON.stringify(msg) });
   }
   drop(code = 1006) {
-    this.onclose?.({ code });
+    this.#emit("close", { code });
   }
 }
 
