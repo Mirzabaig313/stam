@@ -31,13 +31,15 @@ export function createAuthStore(deps: { api?: Api; session?: SessionStore } = {}
     me: null,
 
     async refresh() {
-      if (!session.get()) {
+      const token = session.get();
+      if (!token) {
         set({ status: "signedOut", me: null });
         return;
       }
       try {
         const me = await api.getMe();
-        if (!me) session.clear();
+        // Only the token that was refused goes: another tab may have signed in meanwhile.
+        if (!me) session.clear(token);
         set(me ? { status: "signedIn", me } : { status: "signedOut", me: null });
       } catch {
         // Offline or the server is down: what we knew stands.
@@ -56,17 +58,23 @@ export function createAuthStore(deps: { api?: Api; session?: SessionStore } = {}
     },
 
     async finishSignIn(code) {
-      try {
-        session.set(await api.exchangeSignIn(code));
-      } catch {
-        // A used or expired code (a reload of the returned page): whatever session there was stands.
+      // A tab that never started a sign-in has no nonce: a code in a link from someone else's
+      // sign-in is ignored (it would sign this browser into their account).
+      const nonce = session.takeSignInNonce();
+      if (nonce) {
+        try {
+          session.set(await api.exchangeSignIn(code, nonce));
+        } catch {
+          // A used or expired code (a reload of the returned page): the session there was stands.
+        }
       }
       await get().refresh();
     },
 
     sessionLost() {
-      session.clear();
       set({ status: "signedOut", me: null });
+      // Asking again forgets the token only if it is still the refused one (see refresh).
+      void get().refresh();
     },
 
     async signOut() {

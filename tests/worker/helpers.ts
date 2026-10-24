@@ -65,18 +65,21 @@ export function cookie(res: Response, name: string): string | undefined {
     .find((c) => c.startsWith(`${name}=`));
 }
 
+/** A sign-in nonce as the app makes one (32 random bytes, base64url). */
+export const freshNonce = () =>
+  Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url");
+
 /** Starts Google sign-in; returns the redirect and the OAuth cookie. */
-export async function startSignIn(returnTo = "/app") {
-  const res = await http(url(`/api/auth/google?return=${encodeURIComponent(returnTo)}`), {
-    redirect: "manual",
-  });
+export async function startSignIn(returnTo = "/app", nonce: string | null = freshNonce()) {
+  const query = `return=${encodeURIComponent(returnTo)}${nonce === null ? "" : `&nonce=${nonce}`}`;
+  const res = await http(url(`/api/auth/google?${query}`), { redirect: "manual" });
   const location = new URL(res.headers.get("location") ?? "about:blank");
   return { res, location, oauth: cookie(res, "stam_oauth") ?? "" };
 }
 
 /** Finishes Google sign-in as `who`; returns the callback's answer and its one-time code. */
-export async function finishSignIn(who = "alice", returnTo = "/app") {
-  const { location, oauth } = await startSignIn(returnTo);
+export async function finishSignIn(who = "alice", returnTo = "/app", nonce = freshNonce()) {
+  const { location, oauth } = await startSignIn(returnTo, nonce);
   const state = location.searchParams.get("state");
   const res = await http(url(`/api/auth/google/callback?code=${who}&state=${state}`), {
     headers: { cookie: oauth },
@@ -84,21 +87,26 @@ export async function finishSignIn(who = "alice", returnTo = "/app") {
   });
   const back = new URL(res.headers.get("location") ?? "about:blank");
   const code = new URLSearchParams(back.hash.slice(1)).get("stamSignIn") ?? "";
-  return { res, back, code };
+  return { res, back, code, nonce };
 }
 
-/** Trades a one-time sign-in code for a session token, as the app does. */
-export function exchange(code: string): Promise<Response> {
+/** Trades a one-time sign-in code (with the nonce its sign-in started with) for a session token. */
+export function exchange(code: string, nonce: string): Promise<Response> {
   return http(url("/api/auth/exchange"), {
     method: "POST",
-    headers: { origin: ORIGIN, authorization: `Bearer ${code}` },
+    headers: {
+      origin: ORIGIN,
+      authorization: `Bearer ${code}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ nonce }),
   });
 }
 
 /** Signs in as `who` through the Google mock; returns the session token. */
 export async function signIn(who = "alice"): Promise<string> {
-  const { res, code } = await finishSignIn(who);
-  const traded = await exchange(code);
+  const { res, code, nonce } = await finishSignIn(who);
+  const traded = await exchange(code, nonce);
   if (!traded.ok) throw new Error(`sign-in failed: ${res.status} ${traded.status}`);
   return ((await traded.json()) as { token: string }).token;
 }

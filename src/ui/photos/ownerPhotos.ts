@@ -1,4 +1,5 @@
 import { type Api, api as defaultApi } from "@/cloud/api";
+import { type SessionStore, sessionStore } from "@/cloud/session";
 import type { TreeRepo } from "@/storage/treeRepo";
 
 /** Downloads running now, so the canvas and a panel asking at once fetch a photo once. */
@@ -14,7 +15,10 @@ export function fetchOwnerPhoto(
   treeId: string,
   photoId: string,
   api: Api = defaultApi,
+  session: SessionStore = sessionStore,
 ): Promise<Blob | undefined> {
+  // Signed out on this device: the server would refuse, so it is not asked.
+  if (!session.get()) return Promise.resolve(undefined);
   let pending = downloading.get(photoId);
   if (!pending) {
     pending = api

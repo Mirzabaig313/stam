@@ -48,6 +48,24 @@ describeWorker("cross-site calls from the app", () => {
     expect(out.status).toBe(204);
   });
 
+  test("preflights never count against the rate limits", async () => {
+    const ip = "10.250.250.250";
+    const statuses = await Promise.all(
+      Array.from({ length: 40 }, () =>
+        http(url("/api/s/sometoken"), {
+          method: "OPTIONS",
+          headers: { origin: APP, "access-control-request-method": "GET", "x-stam-test-ip": ip },
+        }).then((r) => r.status),
+      ),
+    );
+    expect(statuses.every((s) => s === 204)).toBe(true);
+  });
+
+  test("every answer varies by Origin, also those without CORS", async () => {
+    const plain = await http(url("/api/health"));
+    expect(plain.headers.get("vary")).toContain("Origin");
+  });
+
   test("the Worker serves only the API", async () => {
     for (const path of ["/", "/app", "/s/sometoken"]) {
       expect((await http(url(path))).status).toBe(404);

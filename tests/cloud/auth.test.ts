@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { ApiError, createApi } from "@/cloud/api";
 import { createAuthStore } from "@/cloud/auth";
-import { createSessionStore, SESSION_KEY } from "@/cloud/session";
+import { createSessionStore, SESSION_KEY, SIGN_IN_NONCE_KEY } from "@/cloud/session";
 
 import { famSimple } from "../fixtures/families";
 import { fakeFetch, json } from "./fakeFetch";
@@ -20,9 +20,13 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 /** An api and an auth store sharing one session store, as the app's do. */
-function setup(routes: Parameters<typeof fakeFetch>[0], initial: Record<string, string> = {}) {
+function setup(
+  routes: Parameters<typeof fakeFetch>[0],
+  initial: Record<string, string> = {},
+  tab: Record<string, string> = {},
+) {
   const storage = memoryStorage(initial);
-  const session = createSessionStore(storage);
+  const session = createSessionStore(storage, memoryStorage(tab));
   const { fetch, calls } = fakeFetch(routes);
   const api = createApi(fetch, { session });
   return { storage, session, calls, api, auth: createAuthStore({ api, session }) };
@@ -50,8 +54,11 @@ describe("api", () => {
     const api = createApi(fetch, { base: "https://api.test", session });
     await api.getMe();
     expect(calls).toEqual([{ method: "GET", path: "/api/me", authorization: "Bearer tok123" }]);
+    const nonce = session.signInNonce();
+    expect(nonce).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(session.signInNonce()).toBe(nonce);
     expect(api.signInUrl("/app/t/x?share=1")).toBe(
-      "https://api.test/api/auth/google?return=%2Fapp%2Ft%2Fx%3Fshare%3D1",
+      `https://api.test/api/auth/google?return=%2Fapp%2Ft%2Fx%3Fshare%3D1&nonce=${nonce}`,
     );
     expect(api.photoUrl("t1", "p1", "link tok")).toBe(
       "https://api.test/api/trees/t1/photos/p1?t=link%20tok",
@@ -103,18 +110,36 @@ describe("sign-in state", () => {
     expect(auth.getState().takeSignInCode("/app")).toBeNull();
   });
 
-  test("finishing sign-in trades the code for the token and asks who is signed in", async () => {
-    const { auth, calls, storage } = setup({
-      "POST /api/auth/exchange": () => json({ token: "session-tok" }),
-      "GET /api/me": () => json(ME),
-    });
+  test("finishing sign-in trades the code and this tab's nonce for the token", async () => {
+    const { auth, calls, storage, session } = setup(
+      {
+        "POST /api/auth/exchange": () => json({ token: "session-tok" }),
+        "GET /api/me": () => json(ME),
+      },
+      {},
+      { [SIGN_IN_NONCE_KEY]: "tab-nonce" },
+    );
     await auth.getState().finishSignIn("one-time");
     expect(calls).toEqual([
-      { method: "POST", path: "/api/auth/exchange", authorization: "Bearer one-time" },
+      {
+        method: "POST",
+        path: "/api/auth/exchange",
+        authorization: "Bearer one-time",
+        body: { nonce: "tab-nonce" },
+      },
       { method: "GET", path: "/api/me", authorization: "Bearer session-tok" },
     ]);
     expect(storage.data[SESSION_KEY]).toBe("session-tok");
+    // The nonce is used up: the next sign-in gets a new one.
+    expect(session.signInNonce()).not.toBe("tab-nonce");
     expect(auth.getState()).toMatchObject({ status: "signedIn", me: ME });
+  });
+
+  test("a code arriving in a tab that never started a sign-in is ignored (login CSRF)", async () => {
+    const { auth, calls } = setup({ "POST /api/auth/exchange": () => json({ token: "attacker" }) });
+    await auth.getState().finishSignIn("someone-elses-code");
+    expect(calls.some((c) => c.path === "/api/auth/exchange")).toBe(false);
+    expect(auth.getState().status).toBe("signedOut");
   });
 
   test("a used code (the returned page reloaded) keeps the session there was", async () => {
@@ -124,6 +149,7 @@ describe("sign-in state", () => {
         "GET /api/me": () => json(ME),
       },
       { [SESSION_KEY]: "kept" },
+      { [SIGN_IN_NONCE_KEY]: "n" },
     );
     await auth.getState().finishSignIn("used");
     expect(storage.data[SESSION_KEY]).toBe("kept");
@@ -150,11 +176,37 @@ describe("sign-in state", () => {
   });
 
   test("an API call that finds the session gone reports signed out and forgets it", async () => {
-    const { auth, storage } = setup({ "GET /api/me": () => json(ME) }, { [SESSION_KEY]: "tok" });
-    await auth.getState().refresh();
+    const { auth, storage } = setup(
+      { "GET /api/me": () => json({ error: "SIGNED_OUT" }, 401) },
+      { [SESSION_KEY]: "tok" },
+    );
     auth.getState().sessionLost();
     expect(auth.getState().status).toBe("signedOut");
+    await Bun.sleep(0);
     expect(storage.data[SESSION_KEY]).toBeUndefined();
+  });
+
+  test("a stale tab's rejected token never wipes a newer sign-in", async () => {
+    const storage = memoryStorage({ [SESSION_KEY]: "old" });
+    const session = createSessionStore(storage, memoryStorage());
+    const { fetch } = fakeFetch({
+      "GET /api/me": async () => {
+        // Another tab signs in again while this request is out.
+        storage.data[SESSION_KEY] = "new";
+        return json({ error: "SIGNED_OUT" }, 401);
+      },
+    });
+    const auth = createAuthStore({ api: createApi(fetch, { session }), session });
+    await auth.getState().refresh();
+    expect(storage.data[SESSION_KEY]).toBe("new");
+  });
+
+  test("the token another tab stored is used, not this tab's older copy", () => {
+    const storage = memoryStorage();
+    const session = createSessionStore(storage, memoryStorage());
+    session.set("first");
+    storage.data[SESSION_KEY] = "second";
+    expect(session.get()).toBe("second");
   });
 
   test("a browser that refuses storage keeps the session for this tab", () => {

@@ -21,8 +21,8 @@ const OAUTH_COOKIE: &str = "stam_oauth";
 /// headers on a WebSocket, and a URL would end up in logs).
 pub const WS_PROTOCOL: &str = "stam";
 const WS_TOKEN_PREFIX: &str = "stam-auth.";
-/// A one-time sign-in code lives 2 minutes; it is stored under another hash than sessions, so it
-/// never works as a session token itself.
+/// A one-time sign-in code lives 2 minutes. It is stored under a hash no bearer token can have
+/// (tokens are checked for their form, see `is_token`), so it never works as a session itself.
 const HANDOFF_MS: f64 = 2.0 * 60.0 * 1000.0;
 /// Secrets that sign or encrypt must be long enough to resist guessing.
 const MIN_SECRET_BYTES: usize = 32;
@@ -87,17 +87,29 @@ fn set_cookie(env: &Env, base: &str, value: &str, max_age: u32) -> String {
     format!("{name}={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}")
 }
 
-/// A path on this site to come back to after sign-in; anything else goes to `/app`. Only plain
-/// URL characters pass: browsers drop tabs and newlines and read `\` as `/`, which would turn
+/// A page of the app to come back to after sign-in (`/app...` or a share link `/s/...`, the pages
+/// that take the sign-in code out of the address); anything else goes to `/app`. Only plain URL
+/// characters pass: browsers drop tabs and newlines and read `\` as `/`, which would turn
 /// `/<tab>/evil.com` into `//evil.com`.
 fn safe_return(path: Option<&str>) -> String {
     let plain = |c: char| c.is_ascii_alphanumeric() || "/-._~%?=&+,:@!$'()*;#".contains(c);
+    let app_page = |p: &str| {
+        p == "/app"
+            || ["/app/", "/app?", "/app#", "/s/"]
+                .iter()
+                .any(|s| p.starts_with(s))
+    };
     match path {
-        Some(p) if p.starts_with('/') && !p.starts_with("//") && p.chars().all(plain) => {
-            p.to_owned()
-        }
+        Some(p) if app_page(p) && p.chars().all(plain) => p.to_owned(),
         _ => "/app".to_owned(),
     }
+}
+
+/// Whether `s` has the form of our tokens and nonces: 32 random bytes, base64url (43 characters).
+pub fn is_token(s: &str) -> bool {
+    s.len() == 43
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_')
 }
 
 fn redirect(location: &str) -> Result<Response> {
@@ -106,12 +118,16 @@ fn redirect(location: &str) -> Result<Response> {
     Ok(res)
 }
 
-/// Whether `origin` is the app: `SITE_ORIGIN`, or the origin the request arrived on (`wrangler
-/// dev` rewrites both Host and Origin to its own host, where a fixed `SITE_ORIGIN` would not hold).
+/// Whether `origin` is the app: `SITE_ORIGIN`; in development also the origin the request arrived
+/// on (`wrangler dev` may rewrite Host and Origin to its own host).
 pub fn is_app_origin(req: &Request, env: &Env, origin: &str) -> bool {
-    let arrived = req.url().ok().map(|u| u.origin().ascii_serialization());
-    let site = var(env, "SITE_ORIGIN").ok();
-    arrived.as_deref() == Some(origin) || site.as_deref() == Some(origin)
+    if var(env, "SITE_ORIGIN").is_ok_and(|site| site == origin) {
+        return true;
+    }
+    is_dev(env)
+        && req
+            .url()
+            .is_ok_and(|u| u.origin().ascii_serialization() == origin)
 }
 
 /// Every state-changing request and every socket must come from the app: its `Origin` header must
@@ -125,21 +141,19 @@ pub fn from_app(req: &Request, env: &Env) -> bool {
 }
 
 /// The session token: `Authorization: Bearer <token>`, or on a WebSocket upgrade the
-/// `stam-auth.<token>` subprotocol.
+/// `stam-auth.<token>` subprotocol. Only the form our tokens have counts.
 pub fn bearer_token(req: &Request) -> Option<String> {
     let header = |name: &str| req.headers().get(name).ok().flatten();
-    if let Some(token) =
-        header("authorization").and_then(|h| h.strip_prefix("Bearer ").map(|t| t.trim().to_owned()))
-    {
-        return (!token.is_empty()).then_some(token);
-    }
-    header("sec-websocket-protocol").and_then(|list| {
-        list.split(',')
-            .map(str::trim)
-            .find_map(|p| p.strip_prefix(WS_TOKEN_PREFIX))
-            .filter(|t| !t.is_empty())
-            .map(str::to_owned)
-    })
+    let token = match header("authorization") {
+        Some(h) => h.strip_prefix("Bearer ").map(|t| t.trim().to_owned()),
+        None => header("sec-websocket-protocol").and_then(|list| {
+            list.split(',')
+                .map(str::trim)
+                .find_map(|p| p.strip_prefix(WS_TOKEN_PREFIX))
+                .map(str::to_owned)
+        }),
+    };
+    token.filter(|t| is_token(t))
 }
 
 /// Whether the client asked for the app's WebSocket subprotocol (the room must then name it).
@@ -151,32 +165,42 @@ pub fn wants_ws_protocol(req: &Request) -> bool {
         .is_some_and(|list| list.split(',').any(|p| p.trim() == WS_PROTOCOL))
 }
 
-/// Where a one-time sign-in code is stored: a hash no session token can have.
-fn handoff_hash(code: &str) -> String {
-    sha256_b64(&format!("handoff:{code}"))
+/// Where a one-time sign-in code is stored: a hash no session token can have, bound to the nonce
+/// of the browser tab that started the sign-in (so a code sent to another browser is useless).
+fn handoff_hash(code: &str, nonce: &str) -> String {
+    sha256_b64(&format!("handoff:{nonce}:{code}"))
 }
 
 #[derive(Serialize, Deserialize)]
 struct OAuthState {
     state: String,
     verifier: String,
+    /// The app tab's sign-in nonce (see `handoff_hash`).
+    nonce: String,
     #[serde(rename = "return")]
     return_to: String,
 }
 
-/// `GET /api/auth/google?return=<path>`: off to Google, with state and a PKCE challenge.
+/// `GET /api/auth/google?return=<path>&nonce=<nonce>`: off to Google, with state and a PKCE
+/// challenge.
 pub async fn sign_in(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let env = &ctx.env;
     let url = req.url()?;
-    let return_to = url
-        .query_pairs()
-        .find(|(k, _)| k == "return")
-        .map(|(_, v)| v.into_owned());
+    let query = |name: &str| {
+        url.query_pairs()
+            .find(|(k, _)| k == name)
+            .map(|(_, v)| v.into_owned())
+    };
+    let return_to = query("return");
+    let Some(nonce) = query("nonce").filter(|n| is_token(n)) else {
+        return error(400, "BAD_SIGN_IN");
+    };
     let (verifier, challenge) = pkce_pair();
     let state = random_token();
     let payload = OAuthState {
         state: state.clone(),
         verifier,
+        nonce,
         return_to: safe_return(return_to.as_deref()),
     };
     let encoded = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload)?);
@@ -300,7 +324,7 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let code = random_token();
     db::create_session(
         &db,
-        &handoff_hash(&code),
+        &handoff_hash(&code, &stored.nonce),
         &user_id,
         &iso(now),
         &iso(now + HANDOFF_MS),
@@ -318,19 +342,39 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     Ok(res)
 }
 
-/// `POST /api/auth/exchange` with `Authorization: Bearer <one-time code>`: the session token.
-/// The code is deleted as it is read, so it works once.
-pub async fn exchange(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+#[derive(Deserialize)]
+struct ExchangeBody {
+    nonce: String,
+}
+
+/// Bearer-token answers are never cached anywhere.
+fn no_store(res: Response) -> Result<Response> {
+    res.headers().set("Cache-Control", "no-store")?;
+    Ok(res)
+}
+
+/// `POST /api/auth/exchange` `{nonce}` with `Authorization: Bearer <one-time code>`: the session
+/// token. The code is deleted as it is read, so it works once, and only with the nonce of the tab
+/// that started the sign-in.
+pub async fn exchange(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let env = &ctx.env;
     if !from_app(&req, env) {
         return error(403, "FORBIDDEN");
     }
-    let Some(code) = bearer_token(&req) else {
+    let code = bearer_token(&req);
+    let nonce = req
+        .json::<ExchangeBody>()
+        .await
+        .ok()
+        .map(|b| b.nonce)
+        .filter(|n| is_token(n));
+    let (Some(code), Some(nonce)) = (code, nonce) else {
         return error(401, "BAD_SIGN_IN");
     };
     let db = env.d1("DB")?;
     let now = now_ms();
-    let Some(user_id) = db::take_session(&db, &handoff_hash(&code), &iso(now)).await? else {
+    let Some(user_id) = db::take_session(&db, &handoff_hash(&code, &nonce), &iso(now)).await?
+    else {
         return error(401, "BAD_SIGN_IN");
     };
     let token = random_token();
@@ -342,7 +386,7 @@ pub async fn exchange(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         &iso(now + SESSION_DAYS * DAY_MS),
     )
     .await?;
-    Response::from_json(&json!({ "token": token }))
+    no_store(Response::from_json(&json!({ "token": token }))?)
 }
 
 /// The signed-in user, renewing the session when it has fewer than 15 days left.
@@ -379,5 +423,7 @@ pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         return error(401, "SIGNED_OUT");
     };
     let trees = db::user_trees(&ctx.env.d1("DB")?, &user.id).await?;
-    Response::from_json(&json!({ "user": user, "trees": trees }))
+    no_store(Response::from_json(
+        &json!({ "user": user, "trees": trees }),
+    )?)
 }

@@ -6,11 +6,18 @@
  */
 export const SESSION_KEY = "stam.session";
 
+/**
+ * This tab's sign-in nonce (sessionStorage): sign-in starts with it and the server hands the
+ * one-time code back only to a tab that holds it, so a code from someone else's sign-in, sent in a
+ * link, signs nobody in (login CSRF).
+ */
+export const SIGN_IN_NONCE_KEY = "stam.signInNonce";
+
 export type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-/** localStorage, or nothing when the browser refuses it (private mode, blocked storage). */
-export function safeStorage(storage?: StorageLike): StorageLike {
-  const backing = storage ?? (typeof localStorage === "undefined" ? undefined : localStorage);
+/** `storage`, or nothing when the browser refuses it (private mode, blocked storage). */
+export function safeStorage(storage: StorageLike | undefined): StorageLike {
+  const backing = storage;
   return {
     getItem: (k) => {
       try {
@@ -39,22 +46,59 @@ export function safeStorage(storage?: StorageLike): StorageLike {
 export type SessionStore = {
   get(): string | null;
   set(token: string): void;
-  clear(): void;
+  /** Forgets the token; with `ifToken`, only while it is still that one (another tab may have
+   * signed in again since). */
+  clear(ifToken?: string): void;
+  /** This tab's sign-in nonce, made on first use (stable, so every sign-in link has the same). */
+  signInNonce(): string;
+  /** The nonce, once: sign-in is over (or never started in this tab, then null). */
+  takeSignInNonce(): string | null;
 };
 
-export function createSessionStore(storage?: StorageLike): SessionStore {
-  const backing = safeStorage(storage);
-  /** Kept here too, so a browser that refuses storage still works until the tab closes. */
+const randomToken = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes))
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
+};
+
+export function createSessionStore(storage?: StorageLike, tabStorage?: StorageLike): SessionStore {
+  const shared = safeStorage(
+    storage ?? (typeof localStorage === "undefined" ? undefined : localStorage),
+  );
+  const tab = safeStorage(
+    tabStorage ?? (typeof sessionStorage === "undefined" ? undefined : sessionStorage),
+  );
+  /** Only for a browser that refuses storage: the session then lasts until the tab closes. */
   let memory: string | null = null;
+  let memoryNonce: string | null = null;
   return {
-    get: () => memory ?? backing.getItem(SESSION_KEY),
+    // Storage first: another tab may have signed in (or out) since this one stored its copy.
+    get: () => shared.getItem(SESSION_KEY) ?? memory,
     set(token) {
       memory = token;
-      backing.setItem(SESSION_KEY, token);
+      shared.setItem(SESSION_KEY, token);
     },
-    clear() {
+    clear(ifToken) {
+      if (ifToken !== undefined && shared.getItem(SESSION_KEY) !== ifToken) {
+        if (memory === ifToken) memory = null;
+        return;
+      }
       memory = null;
-      backing.removeItem(SESSION_KEY);
+      shared.removeItem(SESSION_KEY);
+    },
+    signInNonce() {
+      const nonce = tab.getItem(SIGN_IN_NONCE_KEY) ?? memoryNonce ?? randomToken();
+      memoryNonce = nonce;
+      tab.setItem(SIGN_IN_NONCE_KEY, nonce);
+      return nonce;
+    },
+    takeSignInNonce() {
+      const nonce = tab.getItem(SIGN_IN_NONCE_KEY) ?? memoryNonce;
+      memoryNonce = null;
+      tab.removeItem(SIGN_IN_NONCE_KEY);
+      return nonce;
     },
   };
 }

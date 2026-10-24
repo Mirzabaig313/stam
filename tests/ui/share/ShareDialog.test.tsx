@@ -75,8 +75,10 @@ describe("share dialog", () => {
   test("signed out, it offers Google sign-in that comes back to the same tree", async () => {
     await setup({ signedIn: false });
     const link = await screen.findByRole("link", { name: "Sign in with Google" });
-    expect(link.getAttribute("href")).toBe(
-      `/api/auth/google?return=${encodeURIComponent(`${location.pathname}?share=1`)}`,
+    expect(link.getAttribute("href")).toMatch(
+      new RegExp(
+        `^/api/auth/google\\?return=${encodeURIComponent(`${location.pathname}?share=1`)}&nonce=[\\w-]{43}$`,
+      ),
     );
   });
 

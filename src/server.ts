@@ -30,6 +30,8 @@ const server = serve({
     "/privacy": siteHtml,
     "/app": appHtml,
     "/app/*": appHtml,
+    // Share links open in the app (Pages rewrites them the same way, public/_redirects).
+    "/s/*": appHtml,
     // Manual check of the canvas on bigFamily(?n=N). This server is for `bun dev` only;
     // production serves dist/, whose build entrypoints do not include the demo.
     "/dev/canvas": canvasDemoHtml,

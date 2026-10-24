@@ -26,8 +26,8 @@ describe("an owner's photo from another device", () => {
     const api = createApi(fetch, { session });
     const { repo, stored } = fakeRepo();
     const [a, b] = await Promise.all([
-      fetchOwnerPhoto(repo, "t1", "p1", api),
-      fetchOwnerPhoto(repo, "t1", "p1", api),
+      fetchOwnerPhoto(repo, "t1", "p1", api, session),
+      fetchOwnerPhoto(repo, "t1", "p1", api, session),
     ]);
     expect(a).toBeDefined();
     expect(b).toBe(a);
@@ -37,10 +37,18 @@ describe("an owner's photo from another device", () => {
     expect(stored.has("p1")).toBe(true);
   });
 
+  test("is not asked for without a session (signed out on this device)", async () => {
+    const { fetch, calls } = fakeFetch();
+    const signedOut = createSessionStore({ getItem: () => null, setItem() {}, removeItem() {} });
+    const api = createApi(fetch, { session: signedOut });
+    expect(await fetchOwnerPhoto(fakeRepo().repo, "t1", "p2", api, signedOut)).toBeUndefined();
+    expect(calls).toEqual([]);
+  });
+
   test("is undefined when the server does not have it", async () => {
     const api = createApi(fakeFetch().fetch, { session });
     const { repo, stored } = fakeRepo();
-    expect(await fetchOwnerPhoto(repo, "t1", "nope", api)).toBeUndefined();
+    expect(await fetchOwnerPhoto(repo, "t1", "nope", api, session)).toBeUndefined();
     expect(stored.size).toBe(0);
   });
 });

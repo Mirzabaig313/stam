@@ -116,12 +116,13 @@ export function createApi(
     /** Where a link tree's photo is, for an `<img>` (owners download theirs with the token). */
     photoUrl: (treeId: string, photoId: string, token: string) =>
       `${base}/api/trees/${treeId}/photos/${photoId}?t=${encodeURIComponent(token)}`,
+    /** Where sign-in starts, with this tab's nonce (see ./session). */
     signInUrl: (returnPath: string) =>
-      `${base}/api/auth/google?return=${encodeURIComponent(returnPath)}`,
-    /** Trades the one-time code sign-in brought back for the session token. */
-    exchangeSignIn: async (code: string) =>
+      `${base}/api/auth/google?return=${encodeURIComponent(returnPath)}&nonce=${session.signInNonce()}`,
+    /** Trades the one-time code sign-in brought back (and this tab's nonce) for the token. */
+    exchangeSignIn: async (code: string, nonce: string) =>
       (
-        (await (await request("POST", "/api/auth/exchange", undefined, code)).json()) as {
+        (await (await request("POST", "/api/auth/exchange", { nonce }, code)).json()) as {
           token: string;
         }
       ).token,

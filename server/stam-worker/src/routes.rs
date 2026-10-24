@@ -15,25 +15,34 @@ pub fn error(status: u16, code: &str) -> Result<Response> {
 pub async fn handle(req: Request, env: Env) -> Result<Response> {
     let origin = req.headers().get("origin")?;
     let cors_origin = origin.filter(|o| auth::is_app_origin(&req, &env, o));
-    let res = if let Some(limited) = ratelimit::check(&req, &env).await? {
-        limited
-    } else if req.method() == Method::Options {
+    // Preflights are the browser's, not the app's requests: they never count against a limit (a
+    // refused preflight would hide the real answer from the app).
+    let res = if req.method() == Method::Options {
         preflight(cors_origin.is_some())?
+    } else if let Some(limited) = ratelimit::check(&req, &env).await? {
+        limited
     } else {
-        route(req, env).await?
+        // A handler that fails still answers (with CORS), so the app can tell it from offline.
+        match route(req, env).await {
+            Ok(res) => res,
+            Err(_) => error(500, "INTERNAL")?,
+        }
     };
     // A socket's answer (101) carries no CORS headers, and its headers cannot change.
-    let Some(origin) = cors_origin.filter(|_| res.status_code() != 101) else {
+    if res.status_code() == 101 {
         return Ok(res);
-    };
+    }
     // Answers fetched from a room have read-only headers: copy them into a fresh set.
     let headers = Headers::new();
     for (name, value) in res.headers().entries() {
         headers.append(&name, &value)?;
     }
-    headers.set("Access-Control-Allow-Origin", &origin)?;
-    headers.set("Access-Control-Expose-Headers", "Retry-After")?;
+    // Every answer varies by Origin, so a cached one without CORS never serves a CORS request.
     headers.append("Vary", "Origin")?;
+    if let Some(origin) = cors_origin {
+        headers.set("Access-Control-Allow-Origin", &origin)?;
+        headers.set("Access-Control-Expose-Headers", "Retry-After")?;
+    }
     Ok(res.with_headers(headers))
 }
 

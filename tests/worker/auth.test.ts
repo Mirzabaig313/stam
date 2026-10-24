@@ -7,6 +7,7 @@ import {
   describeWorker,
   exchange,
   finishSignIn,
+  freshNonce,
   http,
   ORIGIN,
   signIn,
@@ -41,7 +42,7 @@ describeWorker("Google sign-in and sessions", () => {
   });
 
   test("callback goes back to the app with a one-time code it trades for a session", async () => {
-    const { res, back, code } = await finishSignIn("alice", "/app/t/abc");
+    const { res, back, code, nonce } = await finishSignIn("alice", "/app/t/abc");
     expect(res.status).toBe(302);
     expect(`${back.origin}${back.pathname}`).toBe(`${APP}/app/t/abc`);
     expect(code.length).toBeGreaterThanOrEqual(32);
@@ -53,8 +54,9 @@ describeWorker("Google sign-in and sessions", () => {
     // The code itself is not a session.
     expect((await api("/api/me", { session: code })).status).toBe(401);
 
-    const traded = await exchange(code);
+    const traded = await exchange(code, nonce);
     expect(traded.status).toBe(200);
+    expect(traded.headers.get("cache-control")).toBe("no-store");
     const { token } = (await traded.json()) as { token: string };
     const me = await api("/api/me", { session: token });
     expect(me.status).toBe(200);
@@ -77,25 +79,43 @@ describeWorker("Google sign-in and sessions", () => {
   });
 
   test("a sign-in code works once, and only from the app", async () => {
-    const { code } = await finishSignIn("otto");
+    const { code, nonce } = await finishSignIn("otto");
     const evil = await http(url("/api/auth/exchange"), {
       method: "POST",
-      headers: { origin: "https://evil.example", authorization: `Bearer ${code}` },
+      headers: {
+        origin: "https://evil.example",
+        authorization: `Bearer ${code}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ nonce }),
     });
     expect(evil.status).toBe(403);
-    expect((await exchange(code)).status).toBe(200);
-    const again = await exchange(code);
+    expect((await exchange(code, nonce)).status).toBe(200);
+    const again = await exchange(code, nonce);
     expect(again.status).toBe(401);
     expect(await again.json()).toEqual({ error: "BAD_SIGN_IN" });
-    expect((await exchange("made-up-code")).status).toBe(401);
+    expect((await exchange("made-up-code", nonce)).status).toBe(401);
   });
 
-  test("an expired sign-in code is refused", async () => {
-    const { code } = await finishSignIn("una");
-    d1(
-      "UPDATE session SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = (SELECT id FROM user WHERE google_sub = 'sub-una')",
-    );
-    expect((await exchange(code)).status).toBe(401);
+  test("a sign-in code is no session, whatever is put in front of it", async () => {
+    const { code } = await finishSignIn("hana");
+    for (const token of [code, `handoff:${code}`]) {
+      expect((await api("/api/me", { session: token })).status).toBe(401);
+    }
+  });
+
+  test("a code works only with the nonce of the browser that started the sign-in", async () => {
+    // An attacker's own code, sent to someone else's browser, which has another nonce.
+    const { code } = await finishSignIn("mallory");
+    const victim = await exchange(code, freshNonce());
+    expect(victim.status).toBe(401);
+  });
+
+  test("sign-in needs a nonce", async () => {
+    const { res } = await startSignIn("/app", null);
+    expect(res.status).toBe(400);
+    const { res: bad } = await startSignIn("/app", "not a nonce");
+    expect(bad.status).toBe(400);
   });
 
   test("callback with a wrong or missing state is refused", async () => {
@@ -126,8 +146,11 @@ describeWorker("Google sign-in and sessions", () => {
     expect(res.headers.get("location")).toBeNull();
   });
 
-  test("return only accepts paths on the app's site", async () => {
+  test("return only accepts the app's pages", async () => {
     for (const evil of [
+      "/",
+      "/privacy",
+      "/application",
       "//evil.com",
       "https://evil.com",
       "/\\evil.com",
@@ -137,6 +160,10 @@ describeWorker("Google sign-in and sessions", () => {
     ]) {
       const { back } = await finishSignIn("alice", evil);
       expect(`${back.origin}${back.pathname}`).toBe(`${APP}/app`);
+    }
+    for (const ok of ["/app", "/app/t/x", "/s/tok"]) {
+      const { back } = await finishSignIn("alice", ok);
+      expect(back.pathname).toBe(ok);
     }
   });
 
