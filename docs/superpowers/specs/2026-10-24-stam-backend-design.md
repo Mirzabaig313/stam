@@ -1,4 +1,4 @@
-# Stam Sharing: Share Links, Live Co-editing, Comments and History
+# Stam Backend: Accounts, Sync, Share Links, Live Co-editing, Comments and History
 
 | | |
 |---|---|

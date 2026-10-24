@@ -1,4 +1,4 @@
-# Stam Sharing P1: Foundation Implementation Plan
+# Stam Backend P1: Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -23,10 +23,10 @@ every edit as it happens.
 - Add every crate with `cargo add` and every package with `bun add`, so each lands on its latest
   version.
 
-**Spec:** `docs/superpowers/specs/2026-10-24-stam-sharing-design.md` (read it first; this plan
+**Spec:** `docs/superpowers/specs/2026-10-24-stam-backend-design.md` (read it first; this plan
 argues from it). Background: `stam-prd.md`.
 
-**Branch:** `feat/sharing-p1` from `main`. Commit per task on the branch. At merge, squash into
+**Branch:** `feat/backend-p1` from `main`. Commit per task on the branch. At merge, squash into
 one commit per area (core, server, client), per the owner's preference.
 
 ## Deviations from the spec (decided while planning; the spec is updated in Task 13)
@@ -1098,7 +1098,7 @@ role checks, header forwarding, photo access.
 - [ ] **Step 2: Run** `bun run scripts/wasm-size.ts` and `bun run scripts/bench-room.ts`.
   Record both results in `docs/deploy.md`.
 - [ ] **Step 3: Update the spec.**
-  - Add deviations 1–4 at the top of `docs/superpowers/specs/2026-10-24-stam-sharing-design.md`.
+  - Add deviations 1–4 at the top of `docs/superpowers/specs/2026-10-24-stam-backend-design.md`.
   - Move `SyncClient` and revert into P1 in §12.
   - Drop `ts-rs` from §3.1 and §5.3.
   - Add `token_cipher` to §4.1.
@@ -1108,7 +1108,7 @@ role checks, header forwarding, photo access.
     files.
 - [ ] **Step 5: Commit**
 
-`git commit -m "chore(sharing): measurements, sharing E2E, deploy guide and spec update"`
+`git commit -m "chore(backend): measurements, sharing E2E, deploy guide and spec update"`
 
 **→ Final review:** the whole branch against the spec, then squash into one commit per area.
 Do not push or deploy; the owner deploys with `docs/deploy.md`.
