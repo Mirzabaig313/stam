@@ -24,7 +24,7 @@ function assertDropAllowed(
   }
 }
 
-export const relinkAsChild: Handler<"relinkAsChild"> = (doc, cmd) => {
+export const relinkAsChild: Handler<"relinkAsChild"> = (doc, cmd, ctx) => {
   assertDropAllowed(doc, "child", cmd.personId, cmd.parentId);
   // Only the biological link moves; adopted, step and foster links stay where they are.
   const old = parentUnionOf(doc, cmd.personId);
@@ -34,16 +34,16 @@ export const relinkAsChild: Handler<"relinkAsChild"> = (doc, cmd) => {
     );
     old.children.splice(index, 1);
   }
-  const union = linkChild(doc, cmd.parentId, cmd.unionId, cmd.personId);
+  const union = linkChild(doc, cmd.parentId, cmd.unionId, cmd.personId, "biological", ctx.newId);
   moveRootUp(doc, cmd.personId, union);
 };
 
-export const relinkAsSpouse: Handler<"relinkAsSpouse"> = (doc, cmd) => {
+export const relinkAsSpouse: Handler<"relinkAsSpouse"> = (doc, cmd, ctx) => {
   assertDropAllowed(doc, "spouse", cmd.personId, cmd.targetId);
-  linkSpouse(doc, cmd.targetId, cmd.personId, "married", false);
+  linkSpouse(doc, cmd.targetId, cmd.personId, "married", false, ctx.newId);
 };
 
-export const relinkAsParent: Handler<"relinkAsParent"> = (doc, cmd) => {
+export const relinkAsParent: Handler<"relinkAsParent"> = (doc, cmd, ctx) => {
   assertDropAllowed(doc, "parent", cmd.personId, cmd.childId);
-  linkParent(doc, cmd.childId, cmd.personId);
+  linkParent(doc, cmd.childId, cmd.personId, ctx.newId);
 };

@@ -6,6 +6,7 @@ import {
   type FuzzyDate,
   lifespanLabel,
   parseFuzzyDate,
+  sameFuzzyDate,
 } from "@/core/dates/fuzzy";
 
 const ok: [string, FuzzyDate][] = [
@@ -133,5 +134,16 @@ describe("lifespanLabel", () => {
         { qualifier: "about", year: 2019, month: 5 },
       ),
     ).toBe("1950 – †abt 2019");
+  });
+});
+
+describe("sameFuzzyDate", () => {
+  test("compares fields, not key order or undefined fields", () => {
+    expect(sameFuzzyDate({ year: 1990, month: 1 }, { month: 1, year: 1990 })).toBe(true);
+    expect(sameFuzzyDate({ year: 1990 }, { year: 1990, month: undefined })).toBe(true);
+    expect(sameFuzzyDate({ year: 1990 }, { year: 1991 })).toBe(false);
+    expect(sameFuzzyDate({ year: 1990 }, { year: 1990, qualifier: "about" })).toBe(false);
+    expect(sameFuzzyDate({ year: 1990 }, undefined)).toBe(false);
+    expect(sameFuzzyDate(undefined, undefined)).toBe(true);
   });
 });

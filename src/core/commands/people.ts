@@ -1,4 +1,4 @@
-import { newId } from "@/core/model/ids";
+import { sameFuzzyDate } from "@/core/dates/fuzzy";
 import type { Person, PersonInput } from "@/core/model/types";
 
 import { CommandError } from "./errors";
@@ -31,9 +31,9 @@ function assignPatch(
   }
 }
 
-export function buildPerson(input: PersonInput): Person {
+export function buildPerson(input: PersonInput, id: string): Person {
   const person: Person = {
-    id: newId(),
+    id,
     firstName: "",
     lastName: "",
     gender: input.gender,
@@ -44,7 +44,7 @@ export function buildPerson(input: PersonInput): Person {
 }
 
 export const addPerson: Handler<"addPerson"> = (draft, cmd, ctx) => {
-  const person = buildPerson(cmd.person);
+  const person = buildPerson(cmd.person, ctx.newId());
   draft.persons[person.id] = person;
   ctx.created.push(person.id);
   if (draft.rootPersonId === undefined) draft.rootPersonId = person.id;
@@ -64,10 +64,10 @@ export const updatePerson: Handler<"updatePerson"> = (draft, cmd) => {
 export const updateUnion: Handler<"updateUnion"> = (draft, cmd) => {
   const union = requireUnion(draft, cmd.unionId);
   const { status, ...dates } = cmd.patch;
-  const oldStart = JSON.stringify(union.start);
+  const oldStart = union.start && { ...union.start };
   if (status !== undefined) union.status = status;
   assignPatch(union, dates);
-  if (JSON.stringify(union.start) !== oldStart) {
+  if (!sameFuzzyDate(oldStart, union.start)) {
     // FR-R9: unions are ordered by start date, so reposition this one for each partner.
     for (const partnerId of union.partners) {
       const order = draft.unionOrder[partnerId];

@@ -50,7 +50,21 @@ export type CommandResult = {
   createdIds: string[];
 };
 
-export type HandlerContext = { created: string[] };
+export type HandlerContext = {
+  created: string[];
+  /** Where new person and union ids come from (see `ApplyOptions.opId`). */
+  newId: () => string;
+};
+
+export type ApplyOptions = {
+  /** Becomes the document's `updatedAt`; defaults to now. */
+  now?: Date;
+  /**
+   * The op this command belongs to. With it, new ids derive from the op id (`opIdSource`), so
+   * every machine that applies the op creates the same ids.
+   */
+  opId?: string;
+};
 
 export type Handler<T extends Command["type"]> = (
   draft: Draft<TreeDocument>,
