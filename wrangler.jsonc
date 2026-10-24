@@ -1,0 +1,39 @@
+{
+  // One Worker (Rust, server/stam-worker) serves the built site (dist/) and the API.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "stam",
+  "main": "server/stam-worker/build/index.js",
+  "compatibility_date": "2026-10-01",
+  "build": {
+    "command": "cd server/stam-worker && worker-build --release",
+  },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page",
+    // The API, the app's client-side routes and share links run the Worker; the rest is static.
+    "run_worker_first": ["/api/*", "/app", "/app/*", "/s/*"],
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "SITE_ORIGIN": "https://stam.mirzalabs.in",
+    "GOOGLE_AUTH_URL": "https://accounts.google.com/o/oauth2/v2/auth",
+    "GOOGLE_TOKEN_URL": "https://oauth2.googleapis.com/token",
+    "GOOGLE_USERINFO_URL": "https://openidconnect.googleapis.com/v1/userinfo",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "stam",
+      // Set by `wrangler d1 create stam` (docs/deploy.md); local dev and tests ignore it.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "server/migrations",
+    },
+  ],
+  "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "stam-photos" }],
+  "durable_objects": {
+    "bindings": [{ "name": "TREE_ROOM", "class_name": "TreeRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TreeRoom"] }],
+  "routes": [{ "pattern": "stam.mirzalabs.in", "custom_domain": true }],
+}

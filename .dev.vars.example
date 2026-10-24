@@ -1,0 +1,8 @@
+# Copy to .dev.vars for `bun run dev:worker` (never commit .dev.vars).
+ENVIRONMENT=dev
+SITE_ORIGIN=http://localhost:3000
+SESSION_SECRET=change-me-to-a-long-random-string
+# 32 random bytes, base64: openssl rand -base64 32
+LINK_KEY=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

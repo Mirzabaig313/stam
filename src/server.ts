@@ -8,9 +8,24 @@ import siteHtml from "./index.html";
 
 const isDev = process.env.NODE_ENV !== "production";
 
+/** The local Worker (`bun run dev:worker`) answers the API; its sockets are reached directly. */
+const apiOrigin = process.env.API_ORIGIN ?? "http://localhost:8787";
+
+/** Forwards an /api request to the local Worker. Cookies are per host, not port, so sign-in works. */
+async function proxyApi(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+  return fetch(new URL(url.pathname + url.search, apiOrigin), {
+    method: req.method,
+    headers: req.headers,
+    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
+    redirect: "manual",
+  });
+}
+
 // Dev server. The public pages render on the client here; `bun run build` prerenders them.
 const server = serve({
   routes: {
+    "/api/*": proxyApi,
     "/": siteHtml,
     "/privacy": siteHtml,
     "/app": appHtml,
