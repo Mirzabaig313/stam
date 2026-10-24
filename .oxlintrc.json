@@ -1,11 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "react",
-    "jsx-a11y",
-    "typescript",
-    "unicorn"
-  ],
+  "plugins": ["react", "jsx-a11y", "typescript", "unicorn"],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
@@ -15,10 +10,5 @@
     "react-hooks/exhaustive-deps": "error",
     "react/react-in-jsx-scope": "off"
   },
-  "ignorePatterns": [
-    ".wasm/**",
-    "target/**",
-    "build/**",
-    ".wrangler/**"
-  ]
+  "ignorePatterns": [".wasm/**", "target/**", "build/**", ".wrangler/**"]
 }

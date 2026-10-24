@@ -336,7 +336,7 @@ mod properties {
         let p = people[n % people.len()];
         match k % 4 {
             0 => {
-                json!({"type": "updatePerson", "personId": p, "patch": {"isLiving": n % 2 == 0, "death": null, "notes": "n"}})
+                json!({"type": "updatePerson", "personId": p, "patch": {"isLiving": n.is_multiple_of(2), "death": null, "notes": "n"}})
             }
             1 => {
                 json!({"type": "updatePerson", "personId": p, "patch": {"death": {"place": "Here"}}})

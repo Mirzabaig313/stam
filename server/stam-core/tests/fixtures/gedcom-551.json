@@ -1,202 +1,185 @@
 {
- "id": "jHhVQPxRRPDv",
- "name": "Family",
- "schemaVersion": 1,
- "persons": {
-  "I1": {
-   "id": "I1",
-   "firstName": "Ahmed",
-   "lastName": "Khan",
-   "nickname": "Billu",
-   "nativeName": "احمد خان",
-   "gender": "male",
-   "isLiving": false,
-   "birth": {
-    "date": {
-     "qualifier": "about",
-     "year": 1900
+  "id": "jHhVQPxRRPDv",
+  "name": "Family",
+  "schemaVersion": 1,
+  "persons": {
+    "I1": {
+      "id": "I1",
+      "firstName": "Ahmed",
+      "lastName": "Khan",
+      "nickname": "Billu",
+      "nativeName": "احمد خان",
+      "gender": "male",
+      "isLiving": false,
+      "birth": {
+        "date": {
+          "qualifier": "about",
+          "year": 1900
+        },
+        "place": "Lahore, Punjab"
+      },
+      "death": {
+        "date": {
+          "year": 1970,
+          "month": 3,
+          "day": 12
+        },
+        "place": "Karachi"
+      },
+      "notes": "First line of a long note that continues here.\nSecond line, mail: a@b.example"
     },
-    "place": "Lahore, Punjab"
-   },
-   "death": {
-    "date": {
-     "year": 1970,
-     "month": 3,
-     "day": 12
+    "I2": {
+      "id": "I2",
+      "firstName": "Fatima",
+      "lastName": "Bibi",
+      "gender": "female",
+      "isLiving": false,
+      "birth": {
+        "date": {
+          "qualifier": "between",
+          "year": 1900,
+          "toYear": 1905
+        }
+      },
+      "notes": "A shared note\non two lines"
     },
-    "place": "Karachi"
-   },
-   "notes": "First line of a long note that continues here.\nSecond line, mail: a@b.example"
-  },
-  "I2": {
-   "id": "I2",
-   "firstName": "Fatima",
-   "lastName": "Bibi",
-   "gender": "female",
-   "isLiving": false,
-   "birth": {
-    "date": {
-     "qualifier": "between",
-     "year": 1900,
-     "toYear": 1905
-    }
-   },
-   "notes": "A shared note\non two lines"
-  },
-  "I3": {
-   "id": "I3",
-   "firstName": "Zainab",
-   "lastName": "Khan",
-   "gender": "female",
-   "isLiving": true,
-   "birth": {
-    "date": {
-     "year": 1925,
-     "month": 2,
-     "day": 2
-    }
-   }
-  },
-  "I4": {
-   "id": "I4",
-   "firstName": "Omar",
-   "lastName": "Khan",
-   "gender": "male",
-   "isLiving": true,
-   "birth": {
-    "date": {
-     "qualifier": "after",
-     "year": 1930
-    }
-   }
-  },
-  "I5": {
-   "id": "I5",
-   "firstName": "Yusuf",
-   "lastName": "",
-   "gender": "male",
-   "isLiving": true
-  },
-  "I6": {
-   "id": "I6",
-   "firstName": "Sara",
-   "lastName": "Ali",
-   "gender": "female",
-   "isLiving": false,
-   "birth": {
-    "date": {
-     "qualifier": "before",
-     "year": 1910
-    }
-   }
-  },
-  "I7": {
-   "id": "I7",
-   "firstName": "Bilal",
-   "lastName": "Khan Jr.",
-   "gender": "male",
-   "isLiving": true,
-   "birth": {
-    "date": {
-     "qualifier": "between",
-     "year": 1940,
-     "toYear": 1945
-    }
-   }
-  },
-  "I8": {
-   "id": "I8",
-   "firstName": "Mystery",
-   "lastName": "Person",
-   "gender": "female",
-   "isLiving": true
-  },
-  "I9": {
-   "id": "I9",
-   "firstName": "Loner",
-   "lastName": "",
-   "gender": "male",
-   "isLiving": true
-  }
- },
- "unions": {
-  "F1": {
-   "id": "F1",
-   "partners": [
-    "I1",
-    "I2"
-   ],
-   "status": "married",
-   "start": {
-    "year": 1922
-   },
-   "children": [
-    {
-     "personId": "I3",
-     "type": "biological"
+    "I3": {
+      "id": "I3",
+      "firstName": "Zainab",
+      "lastName": "Khan",
+      "gender": "female",
+      "isLiving": true,
+      "birth": {
+        "date": {
+          "year": 1925,
+          "month": 2,
+          "day": 2
+        }
+      }
     },
-    {
-     "personId": "I4",
-     "type": "adopted"
+    "I4": {
+      "id": "I4",
+      "firstName": "Omar",
+      "lastName": "Khan",
+      "gender": "male",
+      "isLiving": true,
+      "birth": {
+        "date": {
+          "qualifier": "after",
+          "year": 1930
+        }
+      }
     },
-    {
-     "personId": "I5",
-     "type": "foster"
+    "I5": {
+      "id": "I5",
+      "firstName": "Yusuf",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "I6": {
+      "id": "I6",
+      "firstName": "Sara",
+      "lastName": "Ali",
+      "gender": "female",
+      "isLiving": false,
+      "birth": {
+        "date": {
+          "qualifier": "before",
+          "year": 1910
+        }
+      }
+    },
+    "I7": {
+      "id": "I7",
+      "firstName": "Bilal",
+      "lastName": "Khan Jr.",
+      "gender": "male",
+      "isLiving": true,
+      "birth": {
+        "date": {
+          "qualifier": "between",
+          "year": 1940,
+          "toYear": 1945
+        }
+      }
+    },
+    "I8": {
+      "id": "I8",
+      "firstName": "Mystery",
+      "lastName": "Person",
+      "gender": "female",
+      "isLiving": true
+    },
+    "I9": {
+      "id": "I9",
+      "firstName": "Loner",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
     }
-   ]
   },
-  "F2": {
-   "id": "F2",
-   "partners": [
-    "I1",
-    "I6"
-   ],
-   "status": "divorced",
-   "end": {
-    "year": 1950
-   },
-   "children": [
-    {
-     "personId": "I7",
-     "type": "biological"
+  "unions": {
+    "F1": {
+      "id": "F1",
+      "partners": ["I1", "I2"],
+      "status": "married",
+      "start": {
+        "year": 1922
+      },
+      "children": [
+        {
+          "personId": "I3",
+          "type": "biological"
+        },
+        {
+          "personId": "I4",
+          "type": "adopted"
+        },
+        {
+          "personId": "I5",
+          "type": "foster"
+        }
+      ]
+    },
+    "F2": {
+      "id": "F2",
+      "partners": ["I1", "I6"],
+      "status": "divorced",
+      "end": {
+        "year": 1950
+      },
+      "children": [
+        {
+          "personId": "I7",
+          "type": "biological"
+        }
+      ]
+    },
+    "F3": {
+      "id": "F3",
+      "partners": ["I8"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "I9",
+          "type": "step"
+        }
+      ]
     }
-   ]
   },
-  "F3": {
-   "id": "F3",
-   "partners": [
-    "I8"
-   ],
-   "status": "married",
-   "children": [
-    {
-     "personId": "I9",
-     "type": "step"
-    }
-   ]
-  }
- },
- "unionOrder": {
-  "I1": [
-   "F1",
-   "F2"
-  ],
-  "I2": [
-   "F1"
-  ],
-  "I6": [
-   "F2"
-  ],
-  "I8": [
-   "F3"
-  ]
- },
- "settings": {
-  "theme": "default",
-  "colorMode": "light",
-  "direction": "ltr"
- },
- "createdAt": "2026-10-24T11:08:14.415Z",
- "updatedAt": "2026-10-24T11:08:14.415Z",
- "rootPersonId": "I1"
+  "unionOrder": {
+    "I1": ["F1", "F2"],
+    "I2": ["F1"],
+    "I6": ["F2"],
+    "I8": ["F3"]
+  },
+  "settings": {
+    "theme": "default",
+    "colorMode": "light",
+    "direction": "ltr"
+  },
+  "createdAt": "2026-10-24T11:08:14.415Z",
+  "updatedAt": "2026-10-24T11:08:14.415Z",
+  "rootPersonId": "I1"
 }

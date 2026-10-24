@@ -1,103 +1,90 @@
 {
- "id": "doc",
- "name": "Fixture",
- "schemaVersion": 1,
- "rootPersonId": "f",
- "persons": {
-  "f": {
-   "id": "f",
-   "firstName": "Hamid",
-   "lastName": "Shah",
-   "gender": "male",
-   "isLiving": true
-  },
-  "m1": {
-   "id": "m1",
-   "firstName": "Aisha",
-   "lastName": "Shah",
-   "gender": "female",
-   "isLiving": true
-  },
-  "m2": {
-   "id": "m2",
-   "firstName": "Farah",
-   "lastName": "Shah",
-   "gender": "female",
-   "isLiving": true
-  },
-  "k1": {
-   "id": "k1",
-   "firstName": "Kamran",
-   "lastName": "Shah",
-   "gender": "male",
-   "isLiving": true
-  },
-  "k2": {
-   "id": "k2",
-   "firstName": "Kiran",
-   "lastName": "Shah",
-   "gender": "female",
-   "isLiving": true
-  },
-  "k3": {
-   "id": "k3",
-   "firstName": "Kashif",
-   "lastName": "Shah",
-   "gender": "male",
-   "isLiving": true
-  }
- },
- "unions": {
-  "u1": {
-   "id": "u1",
-   "partners": [
-    "f",
-    "m1"
-   ],
-   "status": "married",
-   "children": [
-    {
-     "personId": "k1",
-     "type": "biological"
+  "id": "doc",
+  "name": "Fixture",
+  "schemaVersion": 1,
+  "rootPersonId": "f",
+  "persons": {
+    "f": {
+      "id": "f",
+      "firstName": "Hamid",
+      "lastName": "Shah",
+      "gender": "male",
+      "isLiving": true
     },
-    {
-     "personId": "k2",
-     "type": "biological"
+    "m1": {
+      "id": "m1",
+      "firstName": "Aisha",
+      "lastName": "Shah",
+      "gender": "female",
+      "isLiving": true
+    },
+    "m2": {
+      "id": "m2",
+      "firstName": "Farah",
+      "lastName": "Shah",
+      "gender": "female",
+      "isLiving": true
+    },
+    "k1": {
+      "id": "k1",
+      "firstName": "Kamran",
+      "lastName": "Shah",
+      "gender": "male",
+      "isLiving": true
+    },
+    "k2": {
+      "id": "k2",
+      "firstName": "Kiran",
+      "lastName": "Shah",
+      "gender": "female",
+      "isLiving": true
+    },
+    "k3": {
+      "id": "k3",
+      "firstName": "Kashif",
+      "lastName": "Shah",
+      "gender": "male",
+      "isLiving": true
     }
-   ]
   },
-  "u2": {
-   "id": "u2",
-   "partners": [
-    "f",
-    "m2"
-   ],
-   "status": "married",
-   "children": [
-    {
-     "personId": "k3",
-     "type": "biological"
+  "unions": {
+    "u1": {
+      "id": "u1",
+      "partners": ["f", "m1"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "k1",
+          "type": "biological"
+        },
+        {
+          "personId": "k2",
+          "type": "biological"
+        }
+      ]
+    },
+    "u2": {
+      "id": "u2",
+      "partners": ["f", "m2"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "k3",
+          "type": "biological"
+        }
+      ]
     }
-   ]
-  }
- },
- "unionOrder": {
-  "f": [
-   "u1",
-   "u2"
-  ],
-  "m1": [
-   "u1"
-  ],
-  "m2": [
-   "u2"
-  ]
- },
- "settings": {
-  "theme": "default",
-  "colorMode": "light",
-  "direction": "ltr"
- },
- "createdAt": "2026-01-01T00:00:00.000Z",
- "updatedAt": "2026-01-01T00:00:00.000Z"
+  },
+  "unionOrder": {
+    "f": ["u1", "u2"],
+    "m1": ["u1"],
+    "m2": ["u2"]
+  },
+  "settings": {
+    "theme": "default",
+    "colorMode": "light",
+    "direction": "ltr"
+  },
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
 }
