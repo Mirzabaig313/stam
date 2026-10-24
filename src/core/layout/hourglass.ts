@@ -1,5 +1,6 @@
 import type { TreeDocument } from "@/core/model/types";
 
+import { type CardMetrics, DEFAULT_METRICS, type SizeOf } from "./constants";
 import { layoutFamily } from "./family";
 import { layoutPedigree } from "./pedigree";
 import { boundsOf, emptyLayout } from "./result";
@@ -17,12 +18,19 @@ import type { LayoutEdge, LayoutNode, LayoutResult } from "./types";
  */
 export function layoutHourglass(
   doc: TreeDocument,
-  opts: { focusId: string; collapsed?: ReadonlySet<string> },
+  opts: {
+    focusId: string;
+    collapsed?: ReadonlySet<string>;
+    metrics?: CardMetrics;
+    sizes?: SizeOf;
+  },
 ): LayoutResult {
   const { focusId } = opts;
-  if (!Object.hasOwn(doc.persons, focusId)) return emptyLayout(doc);
-  const family = layoutFamily(doc, { rootId: focusId, collapsed: opts.collapsed });
-  const pedigree = layoutPedigree(doc, { focusId, collapsed: opts.collapsed });
+  const metrics = opts.metrics ?? DEFAULT_METRICS;
+  if (!Object.hasOwn(doc.persons, focusId)) return emptyLayout(doc, metrics);
+  const { collapsed, sizes } = opts;
+  const family = layoutFamily(doc, { rootId: focusId, collapsed, metrics, sizes });
+  const pedigree = layoutPedigree(doc, { focusId, collapsed, metrics, sizes });
   const familyFocus = family.nodes.find((n) => n.nodeId === focusId)!;
   const pedigreeFocus = pedigree.nodes.find((n) => n.nodeId === focusId)!;
   const dx = familyFocus.x - pedigreeFocus.x;
@@ -91,9 +99,10 @@ export function layoutHourglass(
   return {
     nodes,
     edges,
-    bounds: boundsOf(nodes, edges),
+    bounds: boundsOf(nodes, edges, metrics),
     generationCount: pedigree.generationCount + family.generationCount - 1,
     primaryNode: { ...family.primaryNode, ...pedigree.primaryNode },
     unreachable: family.unreachable.filter((id) => outsidePedigree.has(id)),
+    metrics,
   };
 }

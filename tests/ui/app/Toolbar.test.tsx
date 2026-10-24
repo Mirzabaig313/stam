@@ -186,6 +186,7 @@ describe("accessibility", () => {
       "Save to my account",
       "Download backup (.json)",
       "Download backup with photos",
+      "Look",
       "Settings",
       "Sign in with Google",
     ]);

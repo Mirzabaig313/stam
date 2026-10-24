@@ -1,26 +1,30 @@
 import "./toolbar.css";
 
-import { type FormEvent, type Ref, useRef, useState } from "react";
+import { type FormEvent, lazy, type Ref, Suspense, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
 import { SettingsDialog } from "@/ui/settings/SettingsDialog";
+import { PresenceAvatars } from "@/ui/share/Presence";
 import { ShareDialog } from "@/ui/share/ShareDialog";
 import { SyncButton } from "@/ui/share/SyncButton";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
 import { AddPersonButton } from "./AddPerson";
-import { PresenceAvatars } from "@/ui/share/Presence";
-
 import { CloudStatus } from "./CloudStatus";
 import { Icon, type IconName } from "./Icon";
 import { MoreMenu } from "./MoreMenu";
 import { SaveStatus } from "./SaveStatus";
 import { shortcutLabel, Tip } from "./Tip";
 import { FanGenerations, FocusControl, ViewSwitcher } from "./ViewSwitcher";
+
+/** The Look dialog draws six template previews: it loads when first opened. */
+const LookDialog = lazy(() =>
+  import("@/ui/look/LookDialog").then((m) => ({ default: m.LookDialog })),
+);
 
 export type ToolbarProps = {
   autosaver: Autosaver;
@@ -173,6 +177,7 @@ export function Toolbar({
   const { t } = useTranslation();
   const store = useEditorStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [lookOpen, setLookOpen] = useState(false);
   // Back from Google sign-in with `?share=1`: the share dialog opens again where it was.
   const [sharing, setSharing] = useState<"share" | "account" | null>(() => {
     if (typeof location === "undefined") return null;
@@ -302,6 +307,7 @@ export function Toolbar({
           onSaveToAccount={canShare ? () => setSharing("account") : undefined}
           onOpenExport={onOpenExport}
           onOpenSettings={() => setSettingsOpen(true)}
+          onOpenLook={() => setLookOpen(true)}
           onToggleRelation={onToggleRelation}
           onShowPerson={onShowPerson}
           today={today}
@@ -322,6 +328,11 @@ export function Toolbar({
         <FanGenerations />
       </div>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {lookOpen && (
+        <Suspense fallback={null}>
+          <LookDialog onClose={() => setLookOpen(false)} />
+        </Suspense>
+      )}
       {sharing && <ShareDialog mode={sharing} onClose={() => setSharing(null)} />}
     </header>
   );

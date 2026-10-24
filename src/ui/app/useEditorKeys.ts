@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import { parentUnionOf } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
+import { TEMPLATES } from "@/templates";
 import { focusCard, nodeIdOf } from "@/ui/keyboard/focusCard";
 import { type ArrowKey, nextFocus } from "@/ui/keyboard/navigation";
 import type { EditorStore } from "@/ui/store/editorStore";
@@ -105,7 +106,8 @@ export function useEditorKeys(actions: EditorKeyActions): void {
     const moveFocus = (from: string, key: ArrowKey) => {
       const { doc, layout } = store.getState();
       if (!doc || !layout) return;
-      const to = nextFocus(layout, doc, from, key, latest.current.dir);
+      const growth = TEMPLATES[store.getState().look.template].growth;
+      const to = nextFocus(layout, doc, from, key, latest.current.dir, growth);
       if (to === null || focusCard(to)) return;
       // Off screen, so not drawn: bring it in, then focus it.
       const personId = layout.nodes.find((n) => n.nodeId === to)?.personId;

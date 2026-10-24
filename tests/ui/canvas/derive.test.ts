@@ -77,7 +77,7 @@ describe("mirrorFrame", () => {
   test("flips x around 0 so the tree reads right to left", () => {
     const layout = layoutFamily(cardFamily(), { rootId: "ahmed" });
     const frame = settledFrame(layout);
-    const mirrored = mirrorFrame(frame);
+    const mirrored = mirrorFrame(frame, CARD_W);
     const before = frame.nodes.find((n) => n.nodeId === "ali")!;
     const after = mirrored.nodes.find((n) => n.nodeId === "ali")!;
     expect(after.x).toBe(-(before.x + CARD_W));

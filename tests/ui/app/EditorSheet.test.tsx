@@ -5,13 +5,17 @@ import { act, cleanup, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes } from "react-router";
 
-import { CARD_H, CARD_W } from "@/core/layout/constants";
+import { DEFAULT_LOOK } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 import { EditorPage } from "@/ui/app/EditorPage";
 
 import { makeEditorEnv } from "../../fixtures/editorEnv";
 import { famSimple } from "../../fixtures/families";
 import { renderApp } from "../../fixtures/renderApp";
 import { reduceMotion } from "../i18n";
+
+/** The editor lays the tree out for its look: the default one in these tests. */
+const CARD = metricsFor(DEFAULT_LOOK);
 
 // A phone: the canvas fills the screen below the toolbar and the panel is a bottom sheet over it.
 const CANVAS = { x: 0, y: 60, width: 390, height: 700 };
@@ -33,7 +37,10 @@ let env: Awaited<ReturnType<typeof makeEditorEnv>>;
 beforeEach(async () => {
   reduceMotion(true);
   env = await makeEditorEnv();
-  Object.defineProperty(navigator, "storage", { value: {}, configurable: true });
+  Object.defineProperty(navigator, "storage", {
+    value: {},
+    configurable: true,
+  });
 });
 afterEach(() => {
   cleanup();
@@ -62,8 +69,8 @@ function centreOf(container: HTMLElement, personId: string): [number, number] {
   )!;
   const k = Number(cam[3]);
   return [
-    Number(cam[1]) + k * (Number(at[1]) + CARD_W / 2),
-    Number(cam[2]) + k * (Number(at[2]) + CARD_H / 2),
+    Number(cam[1]) + k * (Number(at[1]) + CARD.cardW / 2),
+    Number(cam[2]) + k * (Number(at[2]) + CARD.cardH / 2),
   ];
 }
 

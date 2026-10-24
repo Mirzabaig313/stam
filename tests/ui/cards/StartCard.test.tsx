@@ -17,16 +17,13 @@ describe("empty tree", () => {
     expect(start()).toBeTruthy();
   });
 
-  test("the card opens the inline editor; the gender must be chosen; Enter creates the root", async () => {
+  test("the card opens the inline editor; Enter creates the root, its gender from the name", async () => {
     const { store, user } = await renderEditorCanvas(createTree("Empty"));
     await user.click(start());
     expect(document.activeElement).toBe(nameInput());
     expect(store.getState().editing?.role).toBe("first");
 
     await user.type(nameInput(), "Ahmed Khan{Enter}");
-    expect(screen.getByRole("alert").textContent).toBe("Choose ♂ or ♀");
-    await user.click(screen.getByRole("button", { name: "Male" }));
-    await user.keyboard("{Enter}");
 
     const doc = store.getState().doc!;
     const [id] = Object.keys(doc.persons);

@@ -5,14 +5,18 @@ import userEvent from "@testing-library/user-event";
 import { createRef } from "react";
 import { Route, Routes } from "react-router";
 
-import { CARD_H, CARD_W } from "@/core/layout/constants";
 import type { TreeDocument } from "@/core/model/types";
+import { DEFAULT_LOOK } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 import { EditorPage } from "@/ui/app/EditorPage";
 
 import { makeEditorEnv } from "../../fixtures/editorEnv";
 import { docOf, famSimple, person, union } from "../../fixtures/families";
 import { renderApp } from "../../fixtures/renderApp";
 import { reduceMotion } from "../i18n";
+
+/** The editor lays the tree out for its look: the default one in these tests. */
+const CARD = metricsFor(DEFAULT_LOOK);
 
 const SCREEN = { width: 800, height: 600 };
 const originalRect = HTMLElement.prototype.getBoundingClientRect;
@@ -36,7 +40,10 @@ let env: Env;
 beforeEach(async () => {
   reduceMotion(true);
   env = await makeEditorEnv();
-  Object.defineProperty(navigator, "storage", { value: {}, configurable: true });
+  Object.defineProperty(navigator, "storage", {
+    value: {},
+    configurable: true,
+  });
 });
 afterEach(() => {
   cleanup();
@@ -75,7 +82,10 @@ function screenCentreOf(container: HTMLElement, name: RegExp): [number, number] 
   const node = card(name).closest("[data-node-id]")!;
   const m = /translate\(([-\d.e]+) ([-\d.e]+)\)/.exec(node.getAttribute("transform") ?? "")!;
   const cam = camera(container);
-  return [cam.x + cam.k * (Number(m[1]) + CARD_W / 2), cam.y + cam.k * (Number(m[2]) + CARD_H / 2)];
+  return [
+    cam.x + cam.k * (Number(m[1]) + CARD.cardW / 2),
+    cam.y + cam.k * (Number(m[2]) + CARD.cardH / 2),
+  ];
 }
 
 async function pick(user: ReturnType<typeof userEvent.setup>, query: string) {
@@ -104,7 +114,11 @@ describe("EditorPage canvas", () => {
   });
 
   test("an empty tree shows no canvas and does not crash", async () => {
-    await env.repo.saveTree({ ...docOf([], [], undefined), id: "t1", name: "Empty" });
+    await env.repo.saveTree({
+      ...docOf([], [], undefined),
+      id: "t1",
+      name: "Empty",
+    });
     renderApp(
       <Routes>
         <Route path="/app/t/:treeId" element={<EditorPage />} />
@@ -170,7 +184,11 @@ describe("EditorPage canvas", () => {
 
   test("collapsing a person hides their descendants and the chevron brings them back", async () => {
     const { container, user } = await renderEditor();
-    await user.click(screen.getByRole("button", { name: /^Collapse the branch of Ahmed Khan/ }));
+    await user.click(
+      screen.getByRole("button", {
+        name: /^Collapse the branch of Ahmed Khan/,
+      }),
+    );
     await waitFor(() => expect(container.querySelectorAll("[data-node-id]").length).toBe(2));
     await user.click(screen.getByRole("button", { name: /^Expand the branch of Ahmed Khan/ }));
     await waitFor(() => expect(container.querySelectorAll("[data-node-id]").length).toBe(5));
@@ -186,7 +204,10 @@ describe("EditorPage canvas", () => {
       const doc = famSimple();
       const withPhoto = {
         ...doc,
-        persons: { ...doc.persons, dad: { ...doc.persons.dad!, photoId: "ph1" } },
+        persons: {
+          ...doc.persons,
+          dad: { ...doc.persons.dad!, photoId: "ph1" },
+        },
       };
       const { container } = await renderEditor(withPhoto);
       await waitFor(() => {

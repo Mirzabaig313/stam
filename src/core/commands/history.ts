@@ -15,6 +15,11 @@ export type HistoryEntry = {
    * `src/sync/revert`). Patches cannot be used there: others' edits come in between.
    */
   entities?: EntityChange[];
+  /**
+   * A change to how cards look rather than to the tree (card styles, kept beside the document):
+   * the styles before and after. Such an entry has no patches; the store swaps the styles.
+   */
+  styles?: { before: unknown; after: unknown };
 };
 
 /** Two edits as one: each entity's value before the first and after the last. */

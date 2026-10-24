@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, test } from "bun:test";
 
 import { layoutFamily } from "@/core/layout/family";
 import type { FanLayout, TimelineLayout } from "@/core/views/types";
+import { DEFAULT_LOOK } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 import { createEditorStore } from "@/ui/store/editorStore";
 import { isFocusView, isReadOnlyView, type ViewLayoutFns } from "@/ui/store/viewLayouts";
 
 import { makeEditorEnv } from "../../fixtures/editorEnv";
 import { famSimple } from "../../fixtures/families";
+
+/** Every layout is built with the tree's look; these trees keep the default one. */
+const metrics = metricsFor(DEFAULT_LOOK);
 
 type Env = Awaited<ReturnType<typeof makeEditorEnv>>;
 let env: Env;
@@ -94,7 +99,9 @@ describe("viewMode and focus", () => {
     store.getState().select("c2");
     store.getState().setViewMode("pedigree");
     expect(store.getState().focusId).toBe("c2");
-    expect(calls).toEqual([{ name: "pedigree", args: { focusId: "c2", collapsed: new Set() } }]);
+    expect(calls).toEqual([
+      { name: "pedigree", args: { focusId: "c2", collapsed: new Set(), metrics } },
+    ]);
     expect(store.getState().layout?.primaryNode.c2).toBeDefined();
   });
 
@@ -102,7 +109,10 @@ describe("viewMode and focus", () => {
     const store = await open();
     store.getState().setViewMode("hourglass");
     expect(store.getState().focusId).toBeNull();
-    expect(calls[0]).toEqual({ name: "hourglass", args: { focusId: "dad", collapsed: new Set() } });
+    expect(calls[0]).toEqual({
+      name: "hourglass",
+      args: { focusId: "dad", collapsed: new Set(), metrics },
+    });
   });
 
   test("descendants are drawn from the focus", async () => {
@@ -111,7 +121,7 @@ describe("viewMode and focus", () => {
     store.getState().setViewMode("descendants");
     expect(calls[0]).toEqual({
       name: "descendants",
-      args: { rootId: "mom", collapsed: new Set() },
+      args: { rootId: "mom", collapsed: new Set(), metrics },
     });
   });
 

@@ -356,6 +356,7 @@
     "start": "Start with a person",
     "startHint": "Type a name, choose ♂ or ♀, press Enter.",
     "name": "Name",
+    "namePlaceholder": "Full name",
     "male": "Male",
     "female": "Female",
     "chooseGender": "Choose ♂ or ♀",
@@ -496,7 +497,37 @@
       "died": "Died",
       "notes": "Notes"
     },
-    "viewFallback": "Fan and timeline can't be exported yet. The family view is exported instead."
+    "viewFallback": "Fan and timeline can't be exported yet. The family view is exported instead.",
+    "frameText": {
+      "subtitle_one": "{{count}} generation, {{year}} to today",
+      "subtitle_other": "{{count}} generations, {{year}} to today",
+      "subtitleNoYear_one": "{{count}} generation",
+      "subtitleNoYear_other": "{{count}} generations",
+      "madeWith": "Made with Stam",
+      "familyLine": "The family line",
+      "stats": {
+        "generations": "generations",
+        "people": "people",
+        "earliest": "earliest year"
+      },
+      "legend": {
+        "deceased": "deceased",
+        "divorced": "divorced",
+        "adopted": "adopted, step or foster",
+        "unknown": "not yet known",
+        "folded": "branch folded",
+        "marriedIn": "married in",
+        "eldest": "eldest generation",
+        "male": "male",
+        "female": "female"
+      }
+    },
+    "template": "Template",
+    "templateNote": "For this export only; the tree keeps its own.",
+    "frame": "Frame, title and legend",
+    "madeWith": "“Made with Stam” line",
+    "smallText": "At this paper size the smallest text prints at {{pt}} pt. Choose a bigger paper or the tiled PDF.",
+    "templateOwn": "{{name}}, this tree's own"
   },
   "kinship": {
     "sentence": "{{a}} is {{b}}'s {{relation}}",
@@ -783,6 +814,39 @@
     "offline": "Connect to the internet to open this link.",
     "back": "Go to your trees"
   },
+  "look": {
+    "button": "Look",
+    "title": "Look",
+    "intro": "How the tree is drawn here and when you print it.",
+    "template": "Template",
+    "templates": {
+      "album": "Warm album",
+      "heritage": "Heritage manuscript",
+      "botanical": "Botanical tree",
+      "gallery": "Modern gallery",
+      "shajara": "Shajara",
+      "swiss": "Swiss minimal"
+    },
+    "hints": {
+      "album": "Photo prints on a linen page.",
+      "heritage": "Ink and gold, like a family register.",
+      "botanical": "A tree that grows up from its roots.",
+      "gallery": "Bold type and round portraits.",
+      "shajara": "Names in Nastaliq, right to left.",
+      "swiss": "Black on white. Clearest for big trees."
+    },
+    "cardSize": "Card size",
+    "textSize": "Text size",
+    "spacing": "Spacing",
+    "spacings": {
+      "tight": "Tight",
+      "normal": "Normal",
+      "airy": "Airy"
+    },
+    "percent": "{{value}} %",
+    "reset": "Reset sizes",
+    "savedHere": "Kept for this tree on this device."
+  },
   "presence": {
     "label": "Also here: {{names}}",
     "more": "+{{count}}",
@@ -795,6 +859,55 @@
     "hint": "Others see it next to your changes and on your avatar.",
     "save": "Save",
     "skip": "Not now"
+  },
+  "cardEdit": {
+    "cardToolbar": "Card style",
+    "textToolbar": "Text style",
+    "resize": {
+      "topLeft": "Resize from the top left corner",
+      "topRight": "Resize from the top right corner",
+      "bottomLeft": "Resize from the bottom left corner",
+      "bottomRight": "Resize from the bottom right corner"
+    },
+    "resizeHint": "Drag to resize this card. Shift keeps its shape. Double-click puts it back.",
+    "sizeNow": "Card size {{w}} % by {{h}} %",
+    "fill": "Fill",
+    "border": "Border",
+    "borderWidth": "Border width",
+    "radius": "Corner radius",
+    "padding": "Padding",
+    "more": "More card options",
+    "template": "The template's own",
+    "custom": "Custom colour",
+    "none": "None",
+    "copy": "Copy style",
+    "paste": "Paste style",
+    "applyBranch": "Apply to this branch",
+    "applyGeneration": "Apply to this generation",
+    "reset": "Reset to template",
+    "editLine": {
+      "name": "Style the name",
+      "years": "Style the years"
+    },
+    "style": "Text style",
+    "presets": {
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "body": "Body",
+      "small": "Small"
+    },
+    "colour": "Text colour",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "align": "Alignment: {{value}}",
+    "aligns": {
+      "start": "start",
+      "center": "centre",
+      "end": "end"
+    },
+    "backToCard": "Back to the card"
   },
   "sync": {
     "save": "Save to my account",

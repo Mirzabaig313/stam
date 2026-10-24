@@ -99,6 +99,13 @@ exports[`layoutFamily famSimple snapshot 1`] = `
     },
   ],
   "generationCount": 2,
+  "metrics": {
+    "cardH": 72,
+    "cardW": 180,
+    "coupleGap": 32,
+    "gap": 40,
+    "rowH": 136,
+  },
   "nodes": [
     {
       "generation": 0,
@@ -272,6 +279,13 @@ exports[`layoutFamily famRemarriage snapshot 1`] = `
     },
   ],
   "generationCount": 2,
+  "metrics": {
+    "cardH": 72,
+    "cardW": 180,
+    "coupleGap": 32,
+    "gap": 40,
+    "rowH": 136,
+  },
   "nodes": [
     {
       "generation": 0,
@@ -455,6 +469,13 @@ exports[`layoutFamily famHalfSiblings snapshot 1`] = `
     },
   ],
   "generationCount": 2,
+  "metrics": {
+    "cardH": 72,
+    "cardW": 180,
+    "coupleGap": 32,
+    "gap": 40,
+    "rowH": 136,
+  },
   "nodes": [
     {
       "generation": 0,
@@ -718,6 +739,13 @@ exports[`layoutFamily famCousinMarriage snapshot 1`] = `
     },
   ],
   "generationCount": 4,
+  "metrics": {
+    "cardH": 72,
+    "cardW": 180,
+    "coupleGap": 32,
+    "gap": 40,
+    "rowH": 136,
+  },
   "nodes": [
     {
       "generation": 0,
@@ -900,6 +928,13 @@ exports[`layoutFamily famAdoption snapshot 1`] = `
     },
   ],
   "generationCount": 2,
+  "metrics": {
+    "cardH": 72,
+    "cardW": 180,
+    "coupleGap": 32,
+    "gap": 40,
+    "rowH": 136,
+  },
   "nodes": [
     {
       "generation": 0,

@@ -26,6 +26,19 @@ const PATHS = {
   trash: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.75 9h6.5l.75-9M6.75 7v4M9.25 7v4",
   settings:
     "M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
+  // Three swatches fanned out: the tree's look (template and sizes).
+  look: "M2.5 2.5h4v11h-4zM6.5 5.2l3.4-2 4 6.9-7.4 4.3M6.5 13.5h7v-4h-2.4M4.5 11.5h.01",
+  // Card and text toolbars.
+  fill: "M8 2.5c2.5 3 4 5.1 4 7a4 4 0 0 1-8 0c0-1.9 1.5-4 4-7Z",
+  border: "M2.5 2.5h11v11h-11zM5 5h6v6H5z",
+  radius: "M3 13.5V8.5A5.5 5.5 0 0 1 8.5 3h5",
+  padding: "M2.5 2.5h11v11h-11zM5.5 5.5h5v5h-5z",
+  bold: "M4.5 3h4.25a2.5 2.5 0 0 1 0 5H4.5zM4.5 8h5a2.5 2.5 0 0 1 0 5h-5z",
+  italic: "M7 3h5M4 13h5M10 3 6.5 13",
+  underline: "M4.5 2.5V8a3.5 3.5 0 0 0 7 0V2.5M3.5 14h9",
+  alignStart: "M2.5 4h11M2.5 7h7M2.5 10h11M2.5 13h7",
+  alignCenter: "M2.5 4h11M4.5 7h7M2.5 10h11M4.5 13h7",
+  alignEnd: "M2.5 4h11M6.5 7h7M2.5 10h11M6.5 13h7",
   photo: "M2 4h12v9H2zM2 11l3.5-3.5 3 3 2-2L14 12M10.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z",
   more: "M3.5 8h.01M8 8h.01M12.5 8h.01",
   export: "M8 2.5v7.5M4.75 7 8 10.25 11.25 7M2.5 11v2.5h11V11",
@@ -53,6 +66,8 @@ export type IconName = keyof typeof PATHS;
  * the descendants and timeline views run from the right). Zoom, fit, search and the rest don't.
  */
 const MIRRORED: ReadonlySet<IconName> = new Set([
+  "alignStart",
+  "alignEnd",
   "undo",
   "redo",
   "viewDescendants",

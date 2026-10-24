@@ -4,6 +4,8 @@ import { isLivingPerson } from "@/export/render/privacy";
 import { selectScope } from "@/export/render/scope";
 import type { ExportInput, ExportOptions, ExportScope } from "@/export/types";
 import type { TreeRepo } from "@/storage/treeRepo";
+import type { CardStyles } from "@/templates/cardStyle";
+import type { Look } from "@/templates/look";
 import type { CanvasHandle } from "@/ui/canvas/Canvas";
 
 type Rect = NonNullable<ExportInput["visibleRect"]>;
@@ -45,6 +47,10 @@ export type GatherArgs = {
   includePhotos: boolean;
   /** With privacy on, photos of living people are not read at all. */
   privacy: boolean;
+  /** The tree's look: `layout` was built with it. */
+  look?: Look;
+  /** Cards styled on their own, by person. */
+  cardStyles?: CardStyles;
 };
 
 /** Builds the exporters' input from the editor's state; photos become data URLs. */
@@ -80,5 +86,7 @@ export async function gatherInput(args: GatherArgs): Promise<ExportInput> {
     selectedId: args.selectedId,
     ...(args.visibleRect ? { visibleRect: args.visibleRect } : {}),
     photos,
+    ...(args.look ? { look: args.look } : {}),
+    ...(args.cardStyles ? { cardStyles: args.cardStyles } : {}),
   };
 }

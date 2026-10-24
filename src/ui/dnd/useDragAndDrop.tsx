@@ -11,7 +11,8 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CARD_W } from "@/core/layout/constants";
+import { DEFAULT_METRICS } from "@/core/layout/constants";
+import { nodeWidth } from "@/core/layout/result";
 import type { LayoutNode } from "@/core/layout/types";
 import { descendantsOf } from "@/core/model/tree";
 import type { CanvasHandle, CanvasProps } from "@/ui/canvas/Canvas";
@@ -85,7 +86,8 @@ export function useDragAndDrop({
       if (!canvas) return null;
       // In RTL the drawing is mirrored: the card's left edge is the screen x of its far end.
       const [ax, top] = canvas.worldToScreen([node.x, node.y]);
-      const [bx] = canvas.worldToScreen([node.x + CARD_W, node.y]);
+      const metrics = store.getState().layout?.metrics ?? DEFAULT_METRICS;
+      const [bx] = canvas.worldToScreen([node.x + nodeWidth(node, metrics), node.y]);
       const [ox, oy] = origin();
       return [Math.min(ax, bx) + ox, top + oy];
     },

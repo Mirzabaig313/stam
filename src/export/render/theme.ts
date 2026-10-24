@@ -57,7 +57,8 @@ export function themeCss(theme: ExportTheme): string {
   const print = theme === "print";
   const line = `${p.ink};stroke-opacity:${p.lineOpacity}`;
   const rules: [string, string][] = [
-    ["text", `font-family:"${EXPORT_FONT_FAMILY}",system-ui,sans-serif`],
+    // On the root, inherited: a template's own font-family attribute on its text wins over it.
+    [".stam-export", `font-family:"${EXPORT_FONT_FAMILY}",system-ui,sans-serif`],
     [
       ".stam-edges",
       `stroke:${p.ink};opacity:${p.edgeOpacity};stroke-linecap:butt;stroke-linejoin:miter`,

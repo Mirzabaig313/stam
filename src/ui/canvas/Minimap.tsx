@@ -1,6 +1,6 @@
 import { memo, type PointerEvent, useMemo, useRef } from "react";
 
-import { CARD_H, CARD_W } from "@/core/layout/constants";
+import { DEFAULT_METRICS } from "@/core/layout/constants";
 
 import type { Rect, Viewport } from "./viewport";
 
@@ -27,23 +27,39 @@ export function minimapTransform(
   };
 }
 
-type Dot = { nodeId: string; x: number; y: number };
+/** A card's spot; `width` and `height` when it was resized on its own. */
+type Dot = { nodeId: string; x: number; y: number; width?: number; height?: number };
 
 /** All nodes as one path of small squares: one element, however big the tree. */
-const Dots = memo(function Dots({ nodes, bounds }: { nodes: readonly Dot[]; bounds: Rect }) {
+const Dots = memo(function Dots({
+  nodes,
+  bounds,
+  card,
+}: {
+  nodes: readonly Dot[];
+  bounds: Rect;
+  card: CardSize;
+}) {
   const d = useMemo(() => {
     const m = minimapTransform(bounds);
-    const w = Math.max(MIN_DOT, CARD_W * m.scale);
-    const h = Math.max(MIN_DOT, CARD_H * m.scale);
     const r = (n: number) => Math.round(n * 10) / 10;
     return nodes
-      .map((n) => `M${r(n.x * m.scale + m.x)} ${r(n.y * m.scale + m.y)}h${r(w)}v${r(h)}h${r(-w)}z`)
+      .map((n) => {
+        const w = Math.max(MIN_DOT, (n.width ?? card.width) * m.scale);
+        const h = Math.max(MIN_DOT, (n.height ?? card.height) * m.scale);
+        return `M${r(n.x * m.scale + m.x)} ${r(n.y * m.scale + m.y)}h${r(w)}v${r(h)}h${r(-w)}z`;
+      })
       .join("");
-  }, [nodes, bounds]);
+  }, [nodes, bounds, card]);
   return <path className="stam-minimap__dots" d={d} />;
 });
 
+type CardSize = { width: number; height: number };
+const DEFAULT_CARD: CardSize = { width: DEFAULT_METRICS.cardW, height: DEFAULT_METRICS.cardH };
+
 export type MinimapProps = {
+  /** The layout's card size; the default metrics when left out. */
+  card?: CardSize;
   /** Node positions in the canvas's (display) world coordinates. */
   nodes: readonly Dot[];
   bounds: Rect;
@@ -57,7 +73,15 @@ export type MinimapProps = {
 };
 
 /** An overview of the whole tree, bottom inline-end, with the visible area as a rectangle. */
-export function Minimap({ nodes, bounds, viewport, screen, selected, onCenter }: MinimapProps) {
+export function Minimap({
+  nodes,
+  bounds,
+  viewport,
+  screen,
+  selected,
+  onCenter,
+  card = DEFAULT_CARD,
+}: MinimapProps) {
   const m = minimapTransform(bounds);
   const dragging = useRef<number | null>(null);
 
@@ -98,15 +122,15 @@ export function Minimap({ nodes, bounds, viewport, screen, selected, onCenter }:
           dragging.current = null;
         }}
       >
-        <Dots nodes={nodes} bounds={bounds} />
+        <Dots nodes={nodes} bounds={bounds} card={card} />
         {selected?.map((s, i) => (
           <rect
             key={i}
             className="stam-minimap__selected"
             x={s.x * m.scale + m.x - 1}
             y={s.y * m.scale + m.y - 1}
-            width={Math.max(MIN_DOT, CARD_W * m.scale) + 2}
-            height={Math.max(MIN_DOT, CARD_H * m.scale) + 2}
+            width={Math.max(MIN_DOT, card.width * m.scale) + 2}
+            height={Math.max(MIN_DOT, card.height * m.scale) + 2}
           />
         ))}
         <rect className="stam-minimap__view" {...view} />

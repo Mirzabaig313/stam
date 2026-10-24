@@ -1,4 +1,14 @@
-import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  type RefObject,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useParams } from "react-router";
 
@@ -11,14 +21,17 @@ import { createTabSync } from "@/storage/multitab";
 import { createSaveGuard } from "@/storage/saveGuard";
 import { StaleWriteError } from "@/storage/treeRepo";
 import { CloudNotice } from "@/ui/app/CloudStatus";
-import { DisplayNamePrompt, PresenceRings } from "@/ui/share/Presence";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
 import { useTreeDir } from "@/ui/canvas/treeDirection";
-import { ExportDialog } from "@/ui/export/ExportDialog";
+import { useCardEditing } from "@/ui/cardEdit/useCardEditing";
 import { visibleWorldRect } from "@/ui/export/gatherInput";
 import { usePrintFit } from "@/ui/export/usePrintFit";
 import { CloudPhotoContext } from "@/ui/photos/usePhotoUrl";
+import { useSettings } from "@/ui/settings/settings";
+import { DisplayNamePrompt, PresenceRings } from "@/ui/share/Presence";
 import "@/ui/export/export.css";
+import type { LayoutNode } from "@/core/layout/types";
+import type { Rect } from "@/ui/canvas/viewport";
 import { StartCard } from "@/ui/cards/StartCard";
 import { UnionChooser } from "@/ui/cards/UnionChooser";
 import { useQuickAdd } from "@/ui/cards/useQuickAdd";
@@ -45,6 +58,11 @@ import { useCenterAfterLayout } from "./useCenterAfterLayout";
 import { useEditorKeys } from "./useEditorKeys";
 import { panelCoverage, useSelectedAboveSheet } from "./useSelectedAboveSheet";
 import { useSkippedPhotosNotice } from "./useSkippedPhotosNotice";
+
+/** The export dialog loads when it is first opened, not with the editor. */
+const ExportDialog = lazy(() =>
+  import("@/ui/export/ExportDialog").then((m) => ({ default: m.ExportDialog })),
+);
 
 /** The editor fills this with `centerOn`: centring that runs once the layout has been drawn. */
 export type CenterOnRef = RefObject<((personId: string) => void) | null>;
@@ -214,6 +232,9 @@ function EditorFrame({
   const relation = useRelation(kinship);
   const focusMode = useEditor((s) => s.focusMode);
   const collapsed = useEditor((s) => s.collapsed);
+  const look = useEditor((s) => s.look);
+  const cardStyles = useEditor((s) => s.cardStyles);
+  const [{ theme }] = useSettings();
   const photoUrl = usePhotoUrls(doc);
   /** Centres a person's card in the part of the canvas the panel does not cover. */
   const centerVisible = (id: string) =>
@@ -288,12 +309,23 @@ function EditorFrame({
   const dnd = useDragAndDrop({ canvasRef, renderUnionChoice });
   // Quick add: "+" handles and the inline editor on the canvas; a new card off screen is
   // brought into view, and so is a card the arrow keys move to.
-  const { renderNodeExtras } = useQuickAdd({
+  const { renderNodeExtras: quickAddExtras } = useQuickAdd({
     reveal: centerVisible,
     coveredBottom: panelCoverage,
     isOnScreen: (id) =>
       canvasRef.current?.isPersonInView(id, { bottomInset: panelCoverage() }) ?? true,
   });
+  // The selected card's corner handles and toolbars, beside quick add's handles.
+  const { renderNodeExtras: cardEditExtras } = useCardEditing();
+  const renderNodeExtras = useCallback(
+    (node: LayoutNode, rect: Rect) => (
+      <>
+        {quickAddExtras(node, rect)}
+        {cardEditExtras(node, rect)}
+      </>
+    ),
+    [quickAddExtras, cardEditExtras],
+  );
   const dir = useTreeDir();
 
   /**
@@ -453,6 +485,9 @@ function EditorFrame({
               focusMode={focusMode}
               dir={dir}
               collapsed={collapsed}
+              look={look}
+              theme={theme}
+              cardStyles={cardStyles}
               onSelect={store.getState().select}
               onToggleCollapse={store.getState().toggleCollapse}
               onViewFamily={viewFamily}
@@ -481,17 +516,19 @@ function EditorFrame({
       {searchOpen && <SearchBox onPick={showPerson} onClose={() => setSearchOpen(false)} />}
       {unconnectedOpen && <UnconnectedList onClose={() => setUnconnectedOpen(false)} />}
       {exportOpen && (
-        <ExportDialog
-          onClose={() => setExportOpen(false)}
-          getVisibleRect={() => {
-            const slot = document.querySelector('[data-slot="canvas"]');
-            const box = slot?.getBoundingClientRect();
-            return visibleWorldRect(
-              canvasRef.current,
-              box ? { width: box.width, height: box.height } : null,
-            );
-          }}
-        />
+        <Suspense fallback={null}>
+          <ExportDialog
+            onClose={() => setExportOpen(false)}
+            getVisibleRect={() => {
+              const slot = document.querySelector('[data-slot="canvas"]');
+              const box = slot?.getBoundingClientRect();
+              return visibleWorldRect(
+                canvasRef.current,
+                box ? { width: box.width, height: box.height } : null,
+              );
+            }}
+          />
+        </Suspense>
       )}
       {dialog}
       {dnd.layer}

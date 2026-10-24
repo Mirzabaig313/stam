@@ -1,7 +1,8 @@
 import { layoutFamily } from "@/core/layout/family";
 import type { TreeDocument } from "@/core/model/types";
-import { type PageSpec, tileLayout } from "@/export/pdf/geometry";
+import { type PageSpec, posterLayout, tileLayout } from "@/export/pdf/geometry";
 import type { ExportInput, ExportOptions, ExportScope, ExportTheme } from "@/export/types";
+import { DEFAULT_LOOK, type Look, type TemplateId } from "@/templates/look";
 
 export type ExportFormat =
   "svg" | "png" | "jpeg" | "pdf-poster" | "pdf-tiled" | "html" | "gedcom" | "json";
@@ -62,6 +63,12 @@ export type ExportSettings = {
   marginMm: number;
   tiledPage: TiledPage;
   tiledScale: number;
+  /** "tree": the tree's own template; otherwise one for this export only. */
+  template: TemplateId | "tree";
+  /** The template's page around the tree: border, title block, numerals and legend. */
+  frame: boolean;
+  /** The "Made with Stam" line in the legend band. */
+  madeWith: boolean;
 };
 
 export function clampPageMm(v: number): number {
@@ -109,8 +116,22 @@ export function defaultSettings(): ExportSettings {
     marginMm: 10,
     tiledPage: "A4",
     tiledScale: 1,
+    template: "tree",
+    frame: true,
+    madeWith: true,
   };
 }
+
+/** The look an export draws with: the tree's, with the dialog's template when one is picked. */
+export function exportLook(
+  s: Pick<ExportSettings, "template">,
+  treeLook: Look = DEFAULT_LOOK,
+): Look {
+  return s.template === "tree" ? treeLook : { ...treeLook, template: s.template };
+}
+
+/** Whether a format draws the template's page: the web page has its own viewer around the tree. */
+export const framesFormat = (format: ExportFormat) => format !== "html";
 
 /** Changes the format; the privacy box follows the new format's default unless the user chose. */
 export function switchFormat(s: ExportSettings, format: ExportFormat): ExportSettings {
@@ -156,10 +177,13 @@ export function allowsTransparent(format: ExportFormat): boolean {
   return format === "svg" || format === "png";
 }
 
-export function toExportOptions(s: ExportSettings): ExportOptions {
+export function toExportOptions(s: ExportSettings, treeLook: Look = DEFAULT_LOOK): ExportOptions {
   const title = s.title.trim();
   const subtitle = s.subtitle.trim();
   return {
+    look: exportLook(s, treeLook),
+    frame: s.frame && framesFormat(s.format),
+    madeWith: s.madeWith,
     scope: s.scope,
     theme: s.theme,
     ...(title ? { title } : {}),
@@ -184,13 +208,46 @@ type Size = { width: number; height: number };
 function scopeSize(scope: ExportScope, input: Omit<ExportInput, "photos">): Size {
   if (scope === "visible" && input.visibleRect) return input.visibleRect;
   const { doc } = input;
+  const { metrics } = input.layout;
   if (scope === "whole" && doc.rootPersonId) {
-    return layoutFamily(doc, { rootId: doc.rootPersonId }).bounds;
+    return layoutFamily(doc, { rootId: doc.rootPersonId, metrics }).bounds;
   }
   if (scope === "branch" && input.selectedId && doc.persons[input.selectedId]) {
-    return layoutFamily(doc, { rootId: input.selectedId }).bounds;
+    return layoutFamily(doc, { rootId: input.selectedId, metrics }).bounds;
   }
   return input.layout.bounds;
+}
+
+/** The template page's margins, title and legend bands and numeral gutter, in px (frame.tsx). */
+const FRAME_W = 2 * 40 + 56 + 64;
+const FRAME_H = 2 * 40 + 128 + 60 + 64;
+/** The smallest text on a card at 100 %, in px: the native-name and years lines. */
+const SMALLEST_TEXT_PX = 14;
+/** Below this, years and native names are hard to read on paper (spec §6). */
+export const MIN_PRINT_PT = 7;
+
+/**
+ * How big the smallest card text prints on the poster, in pt: the drawing scaled onto the page
+ * as `toPosterPdf` will, the frame included. Null for other formats.
+ */
+export function smallestPosterTextPt(
+  s: ExportSettings,
+  input: Omit<ExportInput, "photos">,
+  look: Look,
+): number | null {
+  if (s.format !== "pdf-poster") return null;
+  const size = scopeSize(s.scope, input);
+  const frame = s.frame && framesFormat(s.format);
+  const width = size.width + (frame ? FRAME_W : PADDING_PX);
+  const height = size.height + (frame ? FRAME_H : PADDING_PX);
+  const fit = posterLayout(width, height, {
+    page: posterPageSpec(s),
+    orientation: s.orientation,
+    marginMm: s.marginMm,
+  });
+  const px = SMALLEST_TEXT_PX * (look.cardSize / 100) * (look.textSize / 100);
+  // 1 CSS px is 0.75 pt at natural size.
+  return Math.round(px * 0.75 * fit.scale * 10) / 10;
 }
 
 /** What the file will roughly be: pixels for images, SVG and HTML, a page count for PDF. */

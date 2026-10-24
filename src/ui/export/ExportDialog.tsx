@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { ExportInput, ExportScope } from "@/export/types";
+import { TEMPLATE_IDS } from "@/templates/look";
 import { Dialog } from "@/ui/app/Dialog";
 import { downloadBackup } from "@/ui/app/downloadBackup";
 import { useRepo } from "@/ui/app/RepoContext";
@@ -28,11 +29,15 @@ import {
   EXPORT_THEMES,
   exportFileName,
   type ExportFormat,
+  exportLook,
   type ExportSettings,
   exportThemeFor,
   FORMATS,
+  framesFormat,
+  MIN_PRINT_PT,
   POSTER_PAGES,
   SCOPES,
+  smallestPosterTextPt,
   switchFormat,
   TILED_PAGES,
   TILED_SCALES,
@@ -186,6 +191,7 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
 
   const doc = useEditor((e) => e.doc);
   const layout = useEditor((e) => e.layout);
+  const treeLook = useEditor((e) => e.look);
   const viewRootId = useEditor((e) => e.viewRootId);
   const selectedId = useEditor((e) => e.selectedId);
   // Fan and timeline have no export of their own yet: the family view goes out instead.
@@ -225,6 +231,31 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
   const isGedcom = s.format === "gedcom";
   const isData = isJson || isGedcom;
   const isImage = s.format === "png" || s.format === "jpeg";
+  const { page: pg, customW: cw, customH: ch, orientation: ori, marginMm: mm, frame: frm } = s;
+  const smallestPt = useMemo(() => {
+    if (!doc || !layout) return null;
+    try {
+      return smallestPosterTextPt(
+        {
+          ...defaultSettings(),
+          format: fmt,
+          scope: scp,
+          page: pg,
+          customW: cw,
+          customH: ch,
+          orientation: ori,
+          marginMm: mm,
+          frame: frm,
+        },
+        { doc, layout, viewRootId, selectedId },
+        exportLook(s, treeLook),
+      );
+    } catch {
+      return null; // Margins that leave no room: the poster itself says so.
+    }
+    // The look's template does not change the estimate, only its sizes.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, layout, viewRootId, selectedId, fmt, scp, pg, cw, ch, ori, mm, frm, treeLook]);
 
   async function run() {
     const current = store.getState();
@@ -267,6 +298,8 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
         repo,
         includePhotos: s.includePhotos && !isGedcom,
         privacy: s.privacy,
+        look: current.look,
+        cardStyles: current.cardStyles,
       });
       const result = await exporter({
         input,
@@ -371,6 +404,40 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
                 checked={s.showRuler}
                 onChange={(showRuler) => set({ showRuler })}
               />
+              <Select
+                label={t("export.template")}
+                value={s.template}
+                options={[
+                  {
+                    value: "tree" as const,
+                    label: t("export.templateOwn", {
+                      name: t(`look.templates.${treeLook.template}`),
+                    }),
+                  },
+                  ...TEMPLATE_IDS.filter((id) => id !== treeLook.template).map((id) => ({
+                    value: id,
+                    label: t(`look.templates.${id}`),
+                  })),
+                ]}
+                onChange={(template) => set({ template })}
+              />
+              {s.template !== "tree" && <p className="export-hint">{t("export.templateNote")}</p>}
+              {framesFormat(s.format) && (
+                <>
+                  <Check
+                    label={t("export.frame")}
+                    checked={s.frame}
+                    onChange={(frame) => set({ frame })}
+                  />
+                  {s.frame && (
+                    <Check
+                      label={t("export.madeWith")}
+                      checked={s.madeWith}
+                      onChange={(madeWith) => set({ madeWith })}
+                    />
+                  )}
+                </>
+              )}
               <Select
                 label={t("export.theme")}
                 value={s.theme}
@@ -490,6 +557,9 @@ export function ExportDialog({ onClose, getVisibleRect, exporter = runExport }: 
                 />
               </label>
             </div>
+            {smallestPt !== null && smallestPt < MIN_PRINT_PT && (
+              <output className="notice">{t("export.smallText", { pt: smallestPt })}</output>
+            )}
           </fieldset>
         )}
 

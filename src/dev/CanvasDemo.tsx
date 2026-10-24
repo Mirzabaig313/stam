@@ -2,6 +2,8 @@
 // culling, level of detail and re-layout tweens by hand. Not part of the production build.
 // Strings here are dev tooling, not product UI, so they are not translated.
 import "@fontsource-variable/archivo/wdth.css";
+import "@/i18n/fonts.css";
+import "@/templates/fonts.css";
 
 import i18next from "i18next";
 import { StrictMode, useMemo, useRef, useState } from "react";
@@ -9,8 +11,13 @@ import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 
 import { layoutFamily } from "@/core/layout/family";
+import { growUpward } from "@/core/layout/flip";
 import { displayName } from "@/core/model/tree";
 import en from "@/i18n/locales/en.json";
+import { loadFace, TEMPLATES } from "@/templates";
+import { DEFAULT_LOOK, type Look, normalizeLook, TEMPLATE_IDS } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
+import { stressFamily } from "@/templates/samples";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
 
 import { bigFamily } from "./bigFamily";
@@ -30,7 +37,20 @@ function peopleFromQuery(): number {
 
 function CanvasDemo() {
   const people = useMemo(() => peopleFromQuery(), []);
-  const doc = useMemo(() => bigFamily(people), [people]);
+  const query = useMemo(() => new URLSearchParams(location.search), []);
+  // ?doc=stress draws the templates' stress family; ?template=, ?theme= and ?card= set the look.
+  const doc = useMemo(
+    () => (query.get("doc") === "stress" ? stressFamily() : bigFamily(people)),
+    [people, query],
+  );
+  const [look, setLook] = useState<Look>(() =>
+    normalizeLook({
+      ...DEFAULT_LOOK,
+      template: query.get("template") ?? DEFAULT_LOOK.template,
+      cardSize: Number(query.get("card") ?? 100),
+    }),
+  );
+  const [theme, setTheme] = useState(query.get("theme") ?? "light");
   const canvas = useRef<CanvasHandle>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
@@ -39,7 +59,10 @@ function CanvasDemo() {
   const [viewRootId, setViewRootId] = useState<string | null>(null);
 
   const rootId = viewRootId ?? doc.rootPersonId ?? "";
-  const layout = useMemo(() => layoutFamily(doc, { rootId, collapsed }), [doc, rootId, collapsed]);
+  const layout = useMemo(() => {
+    const laid = layoutFamily(doc, { rootId, collapsed, metrics: metricsFor(look) });
+    return TEMPLATES[look.template].growth === "up" ? growUpward(laid) : laid;
+  }, [doc, rootId, collapsed, look]);
   const selected = selectedId ? doc.persons[selectedId] : undefined;
 
   return (
@@ -64,6 +87,25 @@ function CanvasDemo() {
           onClick={() => setDir(dir === "ltr" ? "rtl" : "ltr")}
         >
           RTL
+        </button>
+        <select
+          aria-label="Template"
+          value={look.template}
+          onChange={(e) => {
+            const next = normalizeLook({ ...look, template: e.target.value });
+            void loadFace(next.template).then(() => setLook(next));
+          }}
+        >
+          {TEMPLATE_IDS.map((id) => (
+            <option key={id}>{id}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          aria-pressed={theme === "dark"}
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+        >
+          Dark
         </button>
         {viewRootId && (
           <button type="button" onClick={() => setViewRootId(null)}>
@@ -93,6 +135,8 @@ function CanvasDemo() {
           }
           onViewFamily={setViewRootId}
           photoUrl={() => undefined}
+          look={look}
+          theme={theme}
         />
       </div>
     </div>

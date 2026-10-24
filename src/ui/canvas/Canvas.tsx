@@ -2,6 +2,7 @@ import "@fontsource-variable/archivo/wdth-italic.css";
 import "./canvas.css";
 
 import {
+  type CSSProperties,
   type FocusEvent,
   forwardRef,
   Fragment,
@@ -16,9 +17,13 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CARD_H, CARD_W } from "@/core/layout/constants";
 import type { LayoutNode, LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
+import { paletteFor, TEMPLATES } from "@/templates";
+import type { CardStyles } from "@/templates/cardStyle";
+import { edgeLookFor, eldestGeneration } from "@/templates/edgeLook";
+import { DEFAULT_LOOK, type Look } from "@/templates/look";
+import { faceScale } from "@/templates/metrics";
 import { type CardNode, type DragRole, PersonCard } from "@/ui/cards/PersonCard";
 import type { DropTarget } from "@/ui/dnd/resolveDrop";
 import { branchOf } from "@/ui/settings/colorModes";
@@ -107,6 +112,12 @@ export type CanvasProps = {
   onTouchTakeover?: () => void;
   /** Touch: a card is picked up, so its finger moves the card rather than the canvas. */
   isCardHeld?: () => boolean;
+  /** The tree's template and size controls; the default look when left out. */
+  look?: Look;
+  /** The app's theme: the template is drawn in its light, dark or paper palette. */
+  theme?: string;
+  /** Cards styled on their own, by person. */
+  cardStyles?: CardStyles;
 };
 
 /**
@@ -163,8 +174,19 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
   /** Layout x to drawing x (and back: the mirror is its own inverse). */
   const flipX = (x: number) => (rtl ? -x : x);
 
+  const { cardW, cardH } = layout.metrics;
+  const look = props.look ?? DEFAULT_LOOK;
+  const template = TEMPLATES[look.template];
+  const palette = paletteFor(template, props.theme ?? "light");
+  const scale = useMemo(() => faceScale(look), [look]);
+  const edgeLook = useMemo(
+    () => edgeLookFor(template, palette, scale, layout),
+    [template, palette, scale, layout],
+  );
+  const eldest = useMemo(() => eldestGeneration(layout), [layout]);
+  const cardSize = useMemo(() => ({ width: cardW, height: cardH }), [cardW, cardH]);
   const frame = useLayoutTween(layout);
-  const display = useMemo(() => (rtl ? mirrorFrame(frame) : frame), [frame, rtl]);
+  const display = useMemo(() => (rtl ? mirrorFrame(frame, cardW) : frame), [frame, rtl, cardW]);
   const nodeById = useMemo(() => new Map(layout.nodes.map((n) => [n.nodeId, n])), [layout]);
   const bounds = useMemo((): Rect => {
     const b = layout.bounds;
@@ -226,13 +248,16 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
   const shownNodes = display.nodes.filter(
     (n) =>
       n.nodeId === tabStop ||
-      intersects({ x: n.x, y: n.y, width: CARD_W, height: CARD_H }, visible),
+      intersects({ x: n.x, y: n.y, width: n.width ?? cardW, height: n.height ?? cardH }, visible),
   );
   const shownEdges = display.edges.filter((_, i) => intersects(edgeBoxes[i]!, visible));
   const level = lod(viewport.k);
 
   // ---- Camera -----------------------------------------------------------------------------
-  const centreOf = (node: LayoutNode): Point => [flipX(node.x + CARD_W / 2), node.y + CARD_H / 2];
+  const centreOf = (node: LayoutNode): Point => [
+    flipX(node.x + (node.width ?? cardW) / 2),
+    node.y + (node.height ?? cardH) / 2,
+  ];
 
   /**
    * The canvas's size right now. A side panel that opens in the same commit as a "show this
@@ -258,9 +283,10 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     const node = nodeId === undefined ? undefined : current.nodes.find((n) => n.nodeId === nodeId);
     if (!node) return false;
     const v = goal();
-    const xs = [flipX(node.x), flipX(node.x + CARD_W)].map((x) => x * v.k + v.x);
+    const m = current.metrics;
+    const xs = [flipX(node.x), flipX(node.x + (node.width ?? m.cardW))].map((x) => x * v.k + v.x);
     const top = node.y * v.k + v.y;
-    const bottom = (node.y + CARD_H) * v.k + v.y;
+    const bottom = (node.y + (node.height ?? m.cardH)) * v.k + v.y;
     const now = liveSize();
     const inset = Math.min(Math.max(options.bottomInset ?? 0, 0), now.height);
     return (
@@ -383,9 +409,15 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     const inside =
       left >= FOCUS_MARGIN &&
       top >= FOCUS_MARGIN &&
-      left + CARD_W * v.k <= size.width - FOCUS_MARGIN &&
-      top + CARD_H * v.k <= size.height - FOCUS_MARGIN;
-    if (!inside) setViewport(centerOn(v, [node.x + CARD_W / 2, node.y + CARD_H / 2], size), true);
+      left + (node.width ?? cardW) * v.k <= size.width - FOCUS_MARGIN &&
+      top + (node.height ?? cardH) * v.k <= size.height - FOCUS_MARGIN;
+    if (!inside) {
+      const centre: Point = [
+        node.x + (node.width ?? cardW) / 2,
+        node.y + (node.height ?? cardH) / 2,
+      ];
+      setViewport(centerOn(v, centre, size), true);
+    }
   };
 
   const photoOf = (personId: string) => {
@@ -403,6 +435,9 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
     <section
       ref={containerRef}
       className="stam-canvas"
+      data-template={template.id}
+      // The page the tree is drawn on is the template's own ground.
+      style={{ "--_ground": palette.ground, background: palette.ground } as CSSProperties}
       dir={dir}
       aria-label={t("canvas.region")}
       data-lod={level}
@@ -417,13 +452,25 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
         onClickCapture={onClickCapture}
       >
         <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.k})`}>
-          <Edges edges={shownEdges} lod={level} dimmedIds={dimmedEdges} highlightIds={pathEdges} />
+          <Edges
+            edges={shownEdges}
+            lod={level}
+            dimmedIds={dimmedEdges}
+            highlightIds={pathEdges}
+            look={edgeLook}
+          />
           <g className="stam-canvas__nodes">
             {shownNodes.map((node) => (
               <PersonCard
                 key={node.nodeId}
                 doc={doc}
                 node={node}
+                metrics={layout.metrics}
+                template={template}
+                palette={palette}
+                scale={scale}
+                eldest={node.generation === eldest}
+                cardStyle={props.cardStyles?.[node.personId]}
                 lod={level}
                 selected={node.personId === selectedId}
                 dimmed={
@@ -448,7 +495,7 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
               x1={flipX(dropLine.indicatorX)}
               x2={flipX(dropLine.indicatorX)}
               y1={dropLine.rowY - DROP_LINE_OVERHANG}
-              y2={dropLine.rowY + CARD_H + DROP_LINE_OVERHANG}
+              y2={dropLine.rowY + cardH + DROP_LINE_OVERHANG}
             />
           )}
         </g>
@@ -461,8 +508,8 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
               {renderNodeExtras(nodeById.get(node.nodeId) ?? node, {
                 x: node.x * viewport.k + viewport.x,
                 y: node.y * viewport.k + viewport.y,
-                width: CARD_W * viewport.k,
-                height: CARD_H * viewport.k,
+                width: (node.width ?? cardW) * viewport.k,
+                height: (node.height ?? cardH) * viewport.k,
               })}
             </Fragment>
           ))}
@@ -477,9 +524,11 @@ export const Canvas = forwardRef<CanvasHandle, CanvasProps>(function Canvas(prop
           viewport={viewport}
           height={size.height}
           activeGeneration={selectedNodeId ? nodeById.get(selectedNodeId)?.generation : null}
+          cardH={cardH}
         />
         {layout.nodes.length >= MINIMAP_MIN_CARDS && !wholeTreeInView && (
           <Minimap
+            card={cardSize}
             nodes={display.nodes}
             bounds={bounds}
             viewport={viewport}

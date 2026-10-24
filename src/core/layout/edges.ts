@@ -1,6 +1,6 @@
 import type { ChildType, UnionStatus } from "@/core/model/types";
 
-import { CARD_H, CARD_W, ROW_H } from "./constants";
+import { type CardMetrics, DEFAULT_METRICS, unionYOf } from "./constants";
 import type { LayoutEdge } from "./types";
 
 type Point = [number, number];
@@ -12,13 +12,11 @@ const BRACKET_RISE = 12;
 const BRACKET_RISE_MAX = 20;
 const BRACKET_INSET = 8;
 
-// Sibling bars: the first at CARD_H + 24 below the parent row, 8 apart. They always stay in
-// [CARD_H + 12, ROW_H - 24] below the parent row top, which keeps them clear of the next row's
+// Sibling bars: the first at cardH + 24 below the parent row, 8 apart. They always stay in
+// [cardH + 12, rowH - 24] below the parent row top, which keeps them clear of the next row's
 // cards and of its brackets.
 const BAR_DROP = 24;
 const BAR_STEP = 8;
-const BAR_MIN = CARD_H + 12;
-const BAR_MAX = ROW_H - 24;
 
 /** How far bracket `index` of `count` rises above its row. */
 export function bracketRise(index: number, count: number): number {
@@ -27,33 +25,36 @@ export function bracketRise(index: number, count: number): number {
 }
 
 /** Where bracket `index` of `count` leaves the blood person's top edge, from the card's left. */
-export function bracketStart(index: number, count: number): number {
-  const step = count <= 1 ? 0 : Math.min(8, (CARD_W / 2 - 2 * BRACKET_INSET) / (count - 1));
-  return CARD_W / 2 + BRACKET_INSET + (count - 1 - index) * step;
+export function bracketStart(index: number, count: number, m = DEFAULT_METRICS): number {
+  const step = count <= 1 ? 0 : Math.min(8, (m.cardW / 2 - 2 * BRACKET_INSET) / (count - 1));
+  return m.cardW / 2 + BRACKET_INSET + (count - 1 - index) * step;
 }
 
 /**
  * Sibling bar offset below the parent row top. Level 0 is the lowest bar; with `levels` bars
  * in a block, they are BAR_STEP apart, or squeezed evenly into the allowed band.
  */
-export function barOffset(level: number, levels: number): number {
+export function barOffset(level: number, levels: number, m: CardMetrics = DEFAULT_METRICS): number {
   const top = levels - 1;
-  const first = CARD_H + BAR_DROP;
-  if (first + BAR_STEP * top <= BAR_MAX) return first + BAR_STEP * (top - level);
-  return BAR_MIN + ((BAR_MAX - BAR_MIN) / top) * (top - level);
+  const first = m.cardH + BAR_DROP;
+  const min = m.cardH + 12;
+  const max = m.rowH - 24;
+  if (first + BAR_STEP * top <= max) return first + BAR_STEP * (top - level);
+  return min + ((max - min) / top) * (top - level);
 }
 
-/** A line at mid-height across the gap between two neighbouring cards. */
+/** A line across the gap between two neighbouring cards, at the couple line height. */
 export function unionLine(
   unionId: string,
   status: UnionStatus,
   rowTop: number,
   leftX: number,
   rightX: number,
+  m: CardMetrics = DEFAULT_METRICS,
 ): LayoutEdge {
-  const y = rowTop + CARD_H / 2;
+  const y = rowTop + unionYOf(m);
   const points: Point[] = [
-    [leftX + CARD_W, y],
+    [leftX + m.cardW, y],
     [rightX, y],
   ];
   return { id: `union:${unionId}`, kind: "union", unionId, status, points };
@@ -67,8 +68,9 @@ export function unionBracket(
   fromX: number,
   spouseX: number,
   rise: number,
+  m: CardMetrics = DEFAULT_METRICS,
 ): LayoutEdge {
-  const to = spouseX + CARD_W / 2;
+  const to = spouseX + m.cardW / 2;
   const top = rowTop - rise;
   const points: Point[] = [
     [fromX, rowTop],
@@ -88,8 +90,9 @@ export function childEdge(
   childNodeId: string,
   childX: number,
   childY: number,
+  m: CardMetrics = DEFAULT_METRICS,
 ): LayoutEdge {
-  const childCentre = childX + CARD_W / 2;
+  const childCentre = childX + m.cardW / 2;
   return {
     id: `child:${unionId}:${childNodeId}`,
     kind: "child",

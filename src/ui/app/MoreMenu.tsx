@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BirthdaysPanel, useBirthdays } from "@/ui/birthdays/Birthdays";
-import { AccountMenuSection } from "@/ui/share/AccountMenuSection";
 import { Menu, MenuItem, MenuSeparator } from "@/ui/design/Menu";
+import { AccountMenuSection } from "@/ui/share/AccountMenuSection";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 
 import { downloadBackup } from "./downloadBackup";
@@ -16,6 +16,8 @@ export type MoreMenuProps = {
   /** Saves the tree to the signed-in account (spec D13); absent where it does not apply. */
   onSaveToAccount?: () => void;
   onOpenSettings: () => void;
+  /** Opens the tree's look: template and sizes. */
+  onOpenLook?: () => void;
   /** Opens (or closes) the "How are we related?" panel; without it there is no item. */
   onToggleRelation?: () => void;
   /** Selects and centres a person picked from the birthdays panel; without it there is no item. */
@@ -35,6 +37,7 @@ export function MoreMenu({
   onOpenExport,
   onSaveToAccount,
   onOpenSettings,
+  onOpenLook,
   onToggleRelation,
   onShowPerson,
   today,
@@ -178,6 +181,11 @@ export function MoreMenu({
             <span className="menu-item__label">{t("toolbar.downloadBackupPhotos")}</span>
           </MenuItem>
           <MenuSeparator />
+          {onOpenLook && (
+            <MenuItem icon="look" onClick={run(onOpenLook)}>
+              <span className="menu-item__label">{t("look.button")}</span>
+            </MenuItem>
+          )}
           <MenuItem icon="settings" onClick={run(onOpenSettings)}>
             <span className="menu-item__label">{t("settings.open")}</span>
           </MenuItem>

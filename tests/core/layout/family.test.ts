@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { buildBlockTree } from "@/core/layout/blocks";
-import { CARD_H, CARD_W, COUPLE_GAP, GAP, ROW_H } from "@/core/layout/constants";
+import { CARD_H, CARD_W, COUPLE_GAP, DEFAULT_METRICS, GAP, ROW_H } from "@/core/layout/constants";
 import { layoutFamily } from "@/core/layout/family";
 import type { LayoutResult } from "@/core/layout/types";
 
@@ -334,6 +334,7 @@ describe("layoutFamily", () => {
       generationCount: 0,
       primaryNode: {},
       unreachable: ["dad", "mom", "c1", "c2", "c3"],
+      metrics: DEFAULT_METRICS,
     });
   });
 });

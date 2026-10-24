@@ -1,14 +1,13 @@
 import type { TreeDocument, Union } from "@/core/model/types";
 
 import { ancestorSet, parentSlots, viewParentUnions } from "./ancestry";
-import { CARD_H, CARD_W, COUPLE_GAP, GAP, ROW_H } from "./constants";
+import { type CardMetrics, DEFAULT_METRICS, type SizeOf, sizerFor } from "./constants";
 import { type Contour, leafContour, packSubtrees, stackUnder } from "./contour";
 import { barOffset, childEdge, unionLine } from "./edges";
 import { boundsOf, emptyLayout, notIn } from "./result";
 import type { BlockMember, LayoutEdge, LayoutNode, LayoutResult } from "./types";
 
 const NONE: ReadonlySet<string> = new Set();
-const STEP = CARD_W + COUPLE_GAP;
 
 /**
  * One row's couple: the parents of the card below (`below`, `belowMember`), father left. The
@@ -31,11 +30,6 @@ type ParentBlock = {
   hidden: number[];
 };
 
-const widthOf = (block: ParentBlock) => block.members.length * STEP - COUPLE_GAP;
-/** Where the child line leaves the block: the couple's gap, or a lone card's centre. */
-const anchorOf = (block: ParentBlock) =>
-  block.members.length === 2 ? CARD_W + COUPLE_GAP / 2 : CARD_W / 2;
-
 /**
  * The pedigree view: the focus on the bottom row and, recursively, each person's two
  * biological parents (adoptive ones when there are none) as a couple on the row above (father
@@ -49,10 +43,27 @@ const anchorOf = (block: ParentBlock) =>
  */
 export function layoutPedigree(
   doc: TreeDocument,
-  opts: { focusId: string; collapsed?: ReadonlySet<string> },
+  opts: {
+    focusId: string;
+    collapsed?: ReadonlySet<string>;
+    metrics?: CardMetrics;
+    sizes?: SizeOf;
+  },
 ): LayoutResult {
   const { focusId } = opts;
-  if (!Object.hasOwn(doc.persons, focusId)) return emptyLayout(doc);
+  const m = opts.metrics ?? DEFAULT_METRICS;
+  const size = sizerFor(m, opts.sizes);
+  const w = (member: BlockMember) => size(member.personId).w;
+  const h = (member: BlockMember) => size(member.personId).h;
+  /** A member's left edge in its block: the father's card, then the couple gap. */
+  const offsetIn = (block: ParentBlock, k: number) =>
+    k === 0 ? 0 : w(block.members[0]!) + m.coupleGap;
+  const widthOf = (block: ParentBlock) =>
+    offsetIn(block, block.members.length - 1) + w(block.members.at(-1)!);
+  /** Where the child line leaves the block: the couple's gap, or a lone card's centre. */
+  const anchorOf = (block: ParentBlock) =>
+    block.members.length === 2 ? w(block.members[0]!) + m.coupleGap / 2 : w(block.members[0]!) / 2;
+  if (!Object.hasOwn(doc.persons, focusId)) return emptyLayout(doc, m);
   const collapsed = opts.collapsed ?? NONE;
   const parents = viewParentUnions(doc);
 
@@ -139,13 +150,13 @@ export function layoutPedigree(
     }
     const { offsets, merged } = packSubtrees(
       subs.map(([u]) => contours[u]!),
-      GAP,
+      m.gap,
     );
     const anchors = subs.map(([u], j) => offsets[j]! + anchorOf(blocks[u]!));
     const dx =
       subs.length === 2
         ? anchorOf(block) - (anchors[0]! + anchors[1]!) / 2
-        : subs[0]![1] * STEP + CARD_W / 2 - anchors[0]!;
+        : offsetIn(block, subs[0]![1]) + w(block.members[subs[0]![1]]!) / 2 - anchors[0]!;
     subs.forEach(([u], j) => (offsetOf[u] = dx + offsets[j]!));
     contours[i] = stackUnder(widthOf(block), merged, dx);
   }
@@ -160,45 +171,64 @@ export function layoutPedigree(
     minGeneration = Math.min(minGeneration, block.generation);
   }
 
+  // Rows, eldest first: each as tall as its tallest card, the template's row gap between them.
+  const rowGap = m.rowH - m.cardH;
+  const rowHeight: number[] = [];
+  for (const block of blocks) {
+    const r = block.generation - minGeneration;
+    rowHeight[r] = Math.max(rowHeight[r] ?? 0, ...block.members.map(h));
+  }
+  const rowTop: number[] = [0];
+  for (let r = 1; r < rowHeight.length; r++)
+    rowTop[r] = rowTop[r - 1]! + rowHeight[r - 1]! + rowGap;
+  const sized = opts.sizes !== undefined;
+
   const nodes: LayoutNode[] = [];
   const edges: LayoutEdge[] = [];
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
     const left = lefts[i]! - minLeft;
-    const rowTop = (block.generation - minGeneration) * ROW_H;
-    block.members.forEach((member, m) => {
+    const row = block.generation - minGeneration;
+    const top = rowTop[row]!;
+    block.members.forEach((member, k) => {
       nodes.push({
         nodeId: member.nodeId,
         personId: member.personId,
         kind: member.kind,
-        x: left + m * STEP,
-        y: rowTop,
+        x: left + offsetIn(block, k),
+        y: top,
         generation: block.generation,
-        hiddenCount: block.hidden[m]!,
+        hiddenCount: block.hidden[k]!,
+        ...(sized ? { width: w(member), height: h(member) } : {}),
       });
     });
     const union = block.union;
     if (!union) continue;
-    if (block.members.length === 2) {
+    const [father, mother] = block.members;
+    const lineY = mother ? (m.unionY ?? Math.min(h(father!), h(mother)) / 2) : h(father!);
+    if (mother) {
       edges.push({
-        ...unionLine(union.id, union.status, rowTop, left, left + STEP),
+        ...unionLine(union.id, union.status, top, left, left + offsetIn(block, 1), {
+          ...m,
+          cardW: w(father!),
+          unionY: lineY,
+        }),
         id: block.unionEdgeId!,
       });
     }
-    const anchor: [number, number] = [
-      left + anchorOf(block),
-      rowTop + (block.members.length === 2 ? CARD_H / 2 : CARD_H),
-    ];
-    const child = blocks[block.below]!.members[block.belowMember]!;
+    const anchor: [number, number] = [left + anchorOf(block), top + lineY];
+    const below = blocks[block.below]!;
+    const child = below.members[block.belowMember]!;
     edges.push(
       childEdge(
         union.id,
         block.childType ?? "biological",
         anchor,
-        rowTop + barOffset(0, 1),
+        top + barOffset(0, 1, { ...m, cardH: rowHeight[row]!, rowH: rowHeight[row]! + rowGap }),
         child.nodeId,
-        lefts[block.below]! - minLeft + block.belowMember * STEP,
-        rowTop + ROW_H,
+        lefts[block.below]! - minLeft + offsetIn(below, block.belowMember),
+        rowTop[row + 1]!,
+        { ...m, cardW: w(child) },
       ),
     );
   }
@@ -208,9 +238,10 @@ export function layoutPedigree(
   return {
     nodes,
     edges,
-    bounds: boundsOf(nodes, edges),
+    bounds: boundsOf(nodes, edges, m),
     generationCount: 1 - minGeneration,
     primaryNode,
     unreachable: notIn(doc, ancestorSet(focusId, parents)),
+    metrics: m,
   };
 }

@@ -1,7 +1,12 @@
 import { displayName } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
+import type { TemplateId } from "@/templates/look";
 
-import { archivoBase64, notoBase64 } from "./fontData.macro.ts" with { type: "macro" };
+import {
+  archivoBase64,
+  notoBase64,
+  templateFontBase64,
+} from "./fontData.macro.ts" with { type: "macro" };
 
 /** A font embedded in an exported SVG as an `@font-face` with base64 woff2 data. */
 export type EmbeddedFont = {
@@ -113,17 +118,83 @@ export function scriptFontsFor(texts: readonly (string | undefined)[]): Embedded
   return arabic.some(hasUrduLetters) ? [NASKH, NASTALIQ] : [NASKH];
 }
 
+// The templates' own families, as in the app (src/templates/fonts.css). Latin only: names in
+// other Latin-extended letters fall through to Archivo, Arabic-script ones to Naskh.
+const templateFace = (
+  family: string,
+  style: "normal" | "italic",
+  weight: string,
+  base64: string,
+): EmbeddedFont => ({ family, style, weight, subset: "latin", unicodeRange: LATIN, base64 });
+
+const CORMORANT = [
+  templateFace(
+    "Cormorant Garamond Variable",
+    "normal",
+    "300 700",
+    templateFontBase64("cormorant-garamond-latin-wght-normal.woff2"),
+  ),
+  templateFace(
+    "Cormorant Garamond Variable",
+    "italic",
+    "300 700",
+    templateFontBase64("cormorant-garamond-latin-wght-italic.woff2"),
+  ),
+];
+const FRAUNCES = [
+  templateFace(
+    "Fraunces Variable",
+    "normal",
+    "100 900",
+    templateFontBase64("fraunces-latin-wght-normal.woff2"),
+  ),
+  templateFace(
+    "Fraunces Variable",
+    "italic",
+    "100 900",
+    templateFontBase64("fraunces-latin-wght-italic.woff2"),
+  ),
+];
+const CAVEAT = [
+  templateFace(
+    "Caveat Variable",
+    "normal",
+    "400 700",
+    templateFontBase64("caveat-latin-wght-normal.woff2"),
+  ),
+];
+
+/** The families each template draws in, besides Archivo and the Arabic-script fonts. */
+const TEMPLATE_FONTS: Record<TemplateId, EmbeddedFont[]> = {
+  album: CAVEAT,
+  heritage: CORMORANT,
+  botanical: FRAUNCES,
+  gallery: [],
+  shajara: CORMORANT,
+  swiss: [],
+};
+
 /**
  * The fonts an export of `doc` needs: Archivo (latin and latin-ext) always, its italic only when
- * an unnamed placeholder is drawn (the "Unknown father" label is italic), and the Arabic-script
- * fonts its names and `texts` (the title and subtitle) need.
+ * an unnamed placeholder is drawn (the "Unknown father" label is italic), the template's own
+ * families, and the Arabic-script fonts its names and `texts` (the title and subtitle) need.
+ * Shajara draws names and its title in Nastaliq, so it always takes Nastaliq with Naskh.
  */
-export function fontsFor(doc: TreeDocument, texts: readonly string[] = []): EmbeddedFont[] {
+export function fontsFor(
+  doc: TreeDocument,
+  texts: readonly string[] = [],
+  template?: TemplateId,
+): EmbeddedFont[] {
   const italic = Object.values(doc.persons).some((p) => p.isPlaceholder && !displayName(p));
+  const script = scriptFontsFor([...namesOf(doc), ...texts]);
+  const shajara =
+    template === "shajara" ? [NASKH, NASTALIQ].filter((f) => !script.includes(f)) : [];
   return [
     ...ARCHIVO_NORMAL,
     ...(italic ? ARCHIVO_ITALIC : []),
-    ...scriptFontsFor([...namesOf(doc), ...texts]),
+    ...(template ? TEMPLATE_FONTS[template] : []),
+    ...script,
+    ...shajara,
   ];
 }
 

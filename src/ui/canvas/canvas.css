@@ -128,12 +128,10 @@
   stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
 }
 
-/* Selection (accent edge) and keyboard focus (ink ring) already mark the card: no third edge. */
-.stam-card--selected .stam-card__lift,
-.stam-card--selected:hover .stam-card__lift,
-.stam-card:focus-visible .stam-card__lift,
-.stam-card:focus-visible:hover .stam-card__lift {
-  opacity: 0;
+/* Selected, the card is picked up: its contact shadow deepens under the accent ring. */
+.stam-card--selected .stam-card__lift {
+  opacity: 1;
+  translate: 0 2px;
 }
 
 .stam-card--deceased .stam-card__bg {
@@ -150,20 +148,31 @@
   stroke-dasharray: 6 4;
 }
 
-.stam-card--selected .stam-card__bg {
+/* The selection: an accent ring set 4 px outside the card, so the card keeps its own quiet edge
+   and colour key. At name detail (zoomed out) the card's own edge turns accent instead. */
+.stam-card__ring {
+  rx: calc(var(--_radius) + 4px);
+  fill: none;
+  stroke: var(--_accent);
+  stroke-width: 2;
+  opacity: 0;
+  transition: opacity 140ms var(--_ease);
+}
+
+.stam-card--selected.stam-card--full .stam-card__ring {
+  opacity: 1;
+}
+
+.stam-card--selected.stam-card--name .stam-card__bg {
   stroke: var(--_accent);
   stroke-width: 2;
   stroke-dasharray: none;
 }
 
 /*
- * The spine: a coloured edge down the card's inline start, the album's colour key. By gender it
- * is sky or rose; by branch or generation it is that hue, deep (tokens.css). The clip follows
- * the card's corners.
+ * The spine: a rounded bar inset at the card's inline start, the album's colour key. By gender
+ * it is sky or rose; by branch or generation it is that hue, deep (tokens.css).
  */
-.stam-card__clip {
-  rx: var(--_radius);
-}
 
 .stam-card {
   --_mark: var(--ink-3, #8f7d85);
@@ -202,7 +211,7 @@
 }
 
 .stam-card__focus {
-  rx: calc(var(--_radius) + 3px);
+  rx: calc(var(--_radius) + 7px);
   fill: none;
   stroke: var(--_ink);
   stroke-width: 2;
@@ -286,17 +295,17 @@
   fill: var(--_muted);
 }
 
-/* Big enough to read at a glance (16 px over the old 12). */
+/* The ♂/♀ sign right after the name, on its line. */
 .stam-card__gender {
   fill: var(--_muted);
-  font-size: 16px;
+  font-size: 13px;
 }
 
-/* "+N" on a collapsed card: a raised pill on its bottom edge, the expand control. */
+/* "+N" on a collapsed card: a pill in its bottom inline-end corner, the expand control. */
 .stam-card__badge rect {
   rx: 10px;
-  fill: var(--surface-raised, #fffcfa);
-  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
+  fill: var(--surface-sunken, #ebe3de);
+  stroke: transparent;
   transition: stroke 140ms var(--_ease);
 }
 
@@ -346,6 +355,37 @@
   stroke-dasharray: none;
 }
 
+/*
+ * Template faces (src/templates/faces) draw their own colours as inline styles, so the canvas and
+ * every export look the same. The canvas only adds its states on top, which have to win over
+ * those styles: hover lifts the card, a drop target is outlined, a refused drop is struck.
+ */
+.stam-face__outline {
+  transition: filter 250ms var(--_ease);
+}
+
+.stam-card:hover:not(.stam-card--selected, .stam-card--placeholder) .stam-face__outline {
+  filter: drop-shadow(0 3px 6px rgb(0 0 0 / 0.14));
+}
+
+.stam-card--drop-target .stam-face__outline {
+  stroke: var(--_accent) !important;
+  stroke-width: 3px !important;
+  stroke-dasharray: 6 3 !important;
+}
+
+.stam-card--drop-blocked .stam-face__outline {
+  stroke: var(--_muted) !important;
+  stroke-dasharray: none !important;
+}
+
+/* Zoomed out to names only, the card's own edge carries the selection. */
+.stam-card--selected.stam-card--name .stam-face__outline {
+  stroke: var(--_accent) !important;
+  stroke-width: 2.5px !important;
+  stroke-dasharray: none !important;
+}
+
 .stam-card__strike {
   stroke: var(--_muted);
   stroke-width: 1.5;
@@ -391,15 +431,17 @@
   opacity: 1;
 }
 
-/* A small raised disc on the bottom edge, like the "+N" pill it becomes when collapsed. */
+/* A quiet sunken disc in the bottom inline-end corner, like the "+N" pill it becomes. */
 .stam-card__chevron-disc {
-  fill: var(--surface-raised, #fffcfa);
-  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
-  transition: stroke 140ms var(--_ease);
+  fill: var(--surface-sunken, #ebe3de);
+  stroke: transparent;
+  transition:
+    fill 140ms var(--_ease),
+    stroke 140ms var(--_ease);
 }
 
 .stam-card__chevron:hover .stam-card__chevron-disc {
-  stroke: var(--_ink);
+  stroke: var(--line-strong, rgba(42, 30, 36, 0.3));
 }
 
 .stam-card__chevron path {

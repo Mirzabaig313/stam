@@ -1,4 +1,4 @@
-import { CARD_H } from "@/core/layout/constants";
+import { DEFAULT_METRICS } from "@/core/layout/constants";
 
 import type { Viewport } from "./viewport";
 
@@ -61,6 +61,8 @@ export type GenerationRulerProps = {
   height: number;
   /** Generation of the selected person, drawn in ink instead of muted. */
   activeGeneration?: number | null;
+  /** The layout's card height: labels sit level with the cards' centres. */
+  cardH?: number;
 };
 
 /** Labels closer than this to the screen edge are left out (half a label's height). */
@@ -75,11 +77,12 @@ export function GenerationRuler({
   viewport,
   height,
   activeGeneration,
+  cardH = DEFAULT_METRICS.cardH,
 }: GenerationRulerProps) {
   return (
     <div className="stam-ruler" aria-hidden="true">
       {rows.map(({ generation, y }) => {
-        const centre = (y + CARD_H / 2) * viewport.k + viewport.y;
+        const centre = (y + cardH / 2) * viewport.k + viewport.y;
         if (centre < EDGE || centre > height - EDGE) return null;
         const active = generation === activeGeneration;
         return (

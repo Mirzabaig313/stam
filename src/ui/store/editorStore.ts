@@ -16,6 +16,15 @@ import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
 import type { PresencePerson } from "@/sync/protocol";
 import type { EntityChange } from "@/sync/revert";
 import type { DroppedEdit, PendingOp } from "@/sync/syncClient";
+import { faceLoaded, loadFace, TEMPLATES } from "@/templates";
+import {
+  type CardStyles,
+  cardStylesKey,
+  normalizeCardStyles,
+  sizesFor,
+} from "@/templates/cardStyle";
+import { DEFAULT_LOOK, type Look, lookKey, normalizeLook } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 
 import {
   clampFanGenerations,
@@ -75,6 +84,10 @@ export type EditorState = {
    * this copy is stale and saving it would overwrite newer work. Only a reload edits again.
    */
   locked: "changed" | "deleted" | null;
+  /** The tree's template and size controls, kept per tree on this device. */
+  look: Look;
+  /** Cards styled on their own (size, colours, corners, padding, text), by person. */
+  cardStyles: CardStyles;
   /** Set for a cloud tree (spec §5.4): who this browser is on it and how the link is. */
   cloud: {
     role: CloudMeta["role"];
@@ -130,6 +143,15 @@ export type EditorActions = {
   /** Null shows the tree from `doc.rootPersonId` again. */
   setViewRoot(id: string | null): void;
   toggleCollapse(personId: string): void;
+  /** Changes the tree's template or size controls: lays the tree out again and saves the look. */
+  setLook(patch: Partial<Look>): void;
+  /**
+   * Shows card styles while a gesture is under way (a corner drag, a slider): lays the tree out
+   * again, but records nothing and saves nothing. `commitCardStyles` ends the gesture.
+   */
+  previewCardStyles(styles: CardStyles): void;
+  /** Card styles as one undo step: from the last committed styles to these. Saved for the tree. */
+  commitCardStyles(styles: CardStyles, label: string): void;
   /**
    * Makes sure the person has a card (a search pick): expands every collapsed ancestor of theirs
    * (and of their partners, for someone shown as a spouse) first, and only if they are still not
@@ -201,6 +223,8 @@ const INITIAL: EditorState = {
   error: null,
   locked: null,
   cloud: null,
+  look: DEFAULT_LOOK,
+  cardStyles: {},
 };
 
 export function createEditorStore({
@@ -217,6 +241,10 @@ export function createEditorStore({
   let session: CloudSession | null = null;
   let lastSnapshotAt = 0;
   let loadSeq = 0;
+  /** The tree `load` last opened: where `setLook` saves. */
+  let treeIdLoaded: string | null = null;
+  /** The card styles as last committed (or loaded): where a gesture's undo step starts. */
+  let committedStyles: CardStyles = {};
   /**
    * True while the newest history entry is an add that an inline edit has not confirmed or
    * cancelled yet. Any other edit, undo, redo or load makes it stale.
@@ -233,8 +261,20 @@ export function createEditorStore({
   }
 
   const store = createStore<EditorState & EditorActions>()((set, get) => {
+    /** What the look and the card styles ask of the layout: card metrics, growth, card sizes. */
+    function lookInputs(look: Look, styles: CardStyles): Partial<ViewInputs> {
+      const metrics = metricsFor(look);
+      const sizes = sizesFor(styles, metrics);
+      return { metrics, growth: TEMPLATES[look.template].growth, ...(sizes ? { sizes } : {}) };
+    }
+
     /** The layouts of `doc` for the current view, with some inputs overridden. */
-    function relayout(doc: TreeDocument | null, over: Partial<ViewInputs> = {}) {
+    function relayout(
+      doc: TreeDocument | null,
+      over: Partial<ViewInputs> = {},
+      look: Look = get().look,
+      styles: CardStyles = get().cardStyles,
+    ) {
       const s = get();
       const input: ViewInputs = {
         viewMode: s.viewMode,
@@ -242,9 +282,17 @@ export function createEditorStore({
         focusId: s.focusId,
         collapsed: s.collapsed,
         fanGenerations: s.fanGenerations,
+        ...lookInputs(look, styles),
         ...over,
       };
       return computeViews(layouts, doc, input, now());
+    }
+
+    /** Installs card styles (and lays the tree out for them); `save` also keeps them for the tree. */
+    function applyStyles(styles: CardStyles, save: boolean): void {
+      set({ cardStyles: styles, ...relayout(get().doc, {}, get().look, styles) });
+      if (save && treeIdLoaded)
+        repo.setSetting(cardStylesKey(treeIdLoaded), styles).catch(() => {});
     }
 
     /** Installs a changed document: drops references to people who are gone, re-lays out, saves. */
@@ -316,6 +364,16 @@ export function createEditorStore({
     function step(move: "undo" | "redo"): void {
       const doc = get().doc;
       if (!doc || get().locked || isReadOnlyView(get().viewMode)) return;
+      // A card style change: swap the styles back (or forward); the tree itself is untouched.
+      const styled = history.peek(move)?.styles;
+      if (styled) {
+        history.shift(move);
+        const styles = normalizeCardStyles(move === "undo" ? styled.before : styled.after);
+        committedStyles = styles;
+        applyStyles(styles, true);
+        set({ canUndo: history.canUndo, canRedo: history.canRedo });
+        return;
+      }
       if (session) {
         cloudStep(session, move);
         return;
@@ -439,6 +497,25 @@ export function createEditorStore({
           set({ status: "failed" });
           return;
         }
+        treeIdLoaded = treeId;
+        const [storedLook, storedStyles] = await Promise.all([
+          repo.getSetting(lookKey(treeId)).catch(() => undefined),
+          repo.getSetting(cardStylesKey(treeId)).catch(() => undefined),
+        ]);
+        if (seq !== loadSeq) return;
+        const look = normalizeLook(storedLook);
+        const cardStyles = normalizeCardStyles(storedStyles);
+        // The tree's template draws with its own face from the first frame.
+        await loadFace(look.template).catch(() => {});
+        if (seq !== loadSeq) return;
+        committedStyles = cardStyles;
+        const firstViews = (doc: TreeDocument) =>
+          computeViews(
+            layouts,
+            doc,
+            { ...INITIAL, collapsed: INITIAL.collapsed, ...lookInputs(look, cardStyles) },
+            now(),
+          );
         const cloud = openCloud
           ? (await repo.getMeta(treeId).catch(() => undefined))?.cloud
           : undefined;
@@ -458,7 +535,9 @@ export function createEditorStore({
             status: "ready",
             doc: base.doc,
             recoveredFromSnapshot: found.recoveredFromSnapshot,
-            ...computeViews(layouts, base.doc, { ...INITIAL, collapsed: INITIAL.collapsed }, now()),
+            look,
+            cardStyles,
+            ...firstViews(base.doc),
           });
           startCloud(treeId, cloud, base.doc, base.version, pending, confirmed?.epoch);
           // startCloud set it; TypeScript still thinks it is the null from the top of load.
@@ -478,7 +557,9 @@ export function createEditorStore({
           status: "ready",
           doc: found.doc,
           recoveredFromSnapshot: found.recoveredFromSnapshot,
-          ...computeViews(layouts, found.doc, { ...INITIAL, collapsed: INITIAL.collapsed }, now()),
+          look,
+          cardStyles,
+          ...firstViews(found.doc),
         });
         lastSnapshotAt = now().getTime();
         repo.takeSnapshot(found.doc, { ifChanged: true }).catch(() => {});
@@ -507,6 +588,30 @@ export function createEditorStore({
 
       setViewRoot(id) {
         set({ viewRootId: id, ...relayout(get().doc, { viewRootId: id }) });
+      },
+
+      setLook(patch) {
+        const look = normalizeLook({ ...get().look, ...patch });
+        const apply = () => {
+          set({ look, ...relayout(get().doc, {}, look) });
+          if (treeIdLoaded) repo.setSetting(lookKey(treeIdLoaded), look).catch(() => {});
+        };
+        // A template not drawn yet this session loads its face first (a few kilobytes).
+        if (faceLoaded(look.template)) apply();
+        else loadFace(look.template).then(apply, apply);
+      },
+
+      previewCardStyles(styles) {
+        applyStyles(styles, false);
+      },
+
+      commitCardStyles(styles, label) {
+        const before = committedStyles;
+        committedStyles = styles;
+        history.push({ label, patches: [], inversePatches: [], styles: { before, after: styles } });
+        pendingAdd = false;
+        applyStyles(styles, true);
+        set({ canUndo: history.canUndo, canRedo: history.canRedo });
       },
 
       toggleCollapse(personId) {

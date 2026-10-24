@@ -1,4 +1,3 @@
-import { CARD_W } from "@/core/layout/constants";
 import type { LayoutEdge, LayoutNode } from "@/core/layout/types";
 import { descendantsOf } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
@@ -92,9 +91,10 @@ export function pathEdgeIds(
 }
 
 /** Flips a frame around x = 0, so the tree reads right to left. */
-export function mirrorFrame(frame: Frame): Frame {
+export function mirrorFrame(frame: Frame, cardW: number): Frame {
   return {
-    nodes: frame.nodes.map((n) => ({ ...n, x: -(n.x + CARD_W) })),
+    // A card resized on its own flips around its own width.
+    nodes: frame.nodes.map((n) => ({ ...n, x: -(n.x + (n.width ?? cardW)) })),
     edges: frame.edges.map((e) => ({
       ...e,
       points: e.points.map(([x, y]): [number, number] => [-x, y]),

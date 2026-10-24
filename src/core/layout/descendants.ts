@@ -1,6 +1,6 @@
 import type { ChildType, TreeDocument } from "@/core/model/types";
 
-import { CARD_H, CARD_W, GAP, ROW_H } from "./constants";
+import { type CardMetrics, DEFAULT_METRICS, type SizeOf, sizerFor } from "./constants";
 import { type Contour, leafContour, packSubtrees, stackUnder } from "./contour";
 import { barOffset, childEdge } from "./edges";
 import { boundsOf, emptyLayout, notIn } from "./result";
@@ -27,10 +27,12 @@ type Card = {
  */
 export function layoutDescendants(
   doc: TreeDocument,
-  opts: { rootId: string; collapsed?: ReadonlySet<string> },
+  opts: { rootId: string; collapsed?: ReadonlySet<string>; metrics?: CardMetrics; sizes?: SizeOf },
 ): LayoutResult {
   const { rootId } = opts;
-  if (!Object.hasOwn(doc.persons, rootId)) return emptyLayout(doc);
+  const m = opts.metrics ?? DEFAULT_METRICS;
+  const size = sizerFor(m, opts.sizes);
+  if (!Object.hasOwn(doc.persons, rootId)) return emptyLayout(doc, m);
   const collapsed = opts.collapsed ?? NONE;
 
   const primary = new Set<string>();
@@ -94,23 +96,36 @@ export function layoutDescendants(
     }
   }
 
-  // Bottom-up: each parent centred over its first and last child.
+  const widthOf = cards.map((c) => size(c.member.personId).w);
+  const heightOf = cards.map((c) => size(c.member.personId).h);
+  // Rows: each as tall as its tallest card, the template's row gap between them.
+  const rowGap = m.rowH - m.cardH;
+  const rowHeight: number[] = [];
+  cards.forEach((c, i) => (rowHeight[c.depth] = Math.max(rowHeight[c.depth] ?? 0, heightOf[i]!)));
+  const rowTop: number[] = [0];
+  for (let d = 1; d < rowHeight.length; d++)
+    rowTop[d] = rowTop[d - 1]! + rowHeight[d - 1]! + rowGap;
+
+  // Bottom-up: each parent centred over the centres of its first and last child.
   const contours: Contour[] = Array.from({ length: cards.length });
   const offsetOf: number[] = Array.from({ length: cards.length }, () => 0);
   for (let i = cards.length - 1; i >= 0; i--) {
     const { kids } = cards[i]!;
     if (kids.length === 0) {
-      contours[i] = leafContour(CARD_W);
+      contours[i] = leafContour(widthOf[i]!);
       continue;
     }
     const { offsets, merged } = packSubtrees(
       kids.map((k) => contours[k]!),
-      GAP,
+      m.gap,
     );
-    const dx = -(offsets[0]! + offsets.at(-1)!) / 2;
+    const firstCentre = offsets[0]! + widthOf[kids[0]!]! / 2;
+    const lastCentre = offsets.at(-1)! + widthOf[kids.at(-1)!]! / 2;
+    const dx = widthOf[i]! / 2 - (firstCentre + lastCentre) / 2;
     kids.forEach((k, j) => (offsetOf[k] = dx + offsets[j]!));
-    contours[i] = stackUnder(CARD_W, merged, dx);
+    contours[i] = stackUnder(widthOf[i]!, merged, dx);
   }
+  const sized = opts.sizes !== undefined;
 
   const xs: number[] = Array.from({ length: cards.length }, () => 0);
   let minX = 0;
@@ -125,7 +140,7 @@ export function layoutDescendants(
   for (let i = 0; i < cards.length; i++) {
     const card = cards[i]!;
     const x = xs[i]! - minX;
-    const y = card.depth * ROW_H;
+    const y = rowTop[card.depth]!;
     maxDepth = Math.max(maxDepth, card.depth);
     nodes.push({
       nodeId: card.member.nodeId,
@@ -135,19 +150,27 @@ export function layoutDescendants(
       y,
       generation: card.depth,
       hiddenCount: card.hiddenCount,
+      ...(sized ? { width: widthOf[i]!, height: heightOf[i]! } : {}),
     });
     if (card.parent < 0) continue;
     const parentX = xs[card.parent]! - minX;
-    const parentTop = y - ROW_H;
+    const parentDepth = cards[card.parent]!.depth;
+    const parentTop = rowTop[parentDepth]!;
+    const rowMetrics = {
+      ...m,
+      cardH: rowHeight[parentDepth]!,
+      rowH: rowHeight[parentDepth]! + rowGap,
+    };
     edges.push(
       childEdge(
         card.unionId,
         card.childType,
-        [parentX + CARD_W / 2, parentTop + CARD_H],
-        parentTop + barOffset(0, 1),
+        [parentX + widthOf[card.parent]! / 2, parentTop + heightOf[card.parent]!],
+        parentTop + barOffset(0, 1, rowMetrics),
         card.member.nodeId,
         x,
         y,
+        { ...m, cardW: widthOf[i]! },
       ),
     );
   }
@@ -157,10 +180,11 @@ export function layoutDescendants(
   return {
     nodes,
     edges,
-    bounds: boundsOf(nodes, edges),
+    bounds: boundsOf(nodes, edges, m),
     generationCount: maxDepth + 1,
     primaryNode,
     unreachable: notIn(doc, descendantSet(doc, rootId)),
+    metrics: m,
   };
 }
 

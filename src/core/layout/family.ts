@@ -1,7 +1,7 @@
 import type { TreeDocument } from "@/core/model/types";
 
 import { buildBlockTree } from "./blocks";
-import { CARD_H, CARD_W, COUPLE_GAP, GAP, ROW_H } from "./constants";
+import { type CardMetrics, DEFAULT_METRICS, type SizeOf, sizerFor } from "./constants";
 import {
   clearLeft,
   clearRight,
@@ -17,46 +17,65 @@ import { boundsOf, emptyLayout } from "./result";
 import type { Block, LayoutEdge, LayoutNode, LayoutResult } from "./types";
 
 const NONE: ReadonlySet<string> = new Set();
-const STEP = CARD_W + COUPLE_GAP;
 /** Minimum distance between one union's outermost child line and a neighbouring union's drop. */
 const LINE_CLEARANCE = 16;
 
-const blockWidth = (block: Block) => block.members.length * STEP - COUPLE_GAP;
 const bloodIndex = (block: Block) => block.members.findIndex((m) => m.nodeId === block.bloodNodeId);
+
+/**
+ * A block's geometry: each member's width and height, and each member's left edge from the
+ * block's left edge (cards `coupleGap` apart). Cards may differ in size (a card resized on its own).
+ */
+type BlockBox = { widths: number[]; heights: number[]; offsets: number[]; width: number };
+
+function boxOf(block: Block, size: ReturnType<typeof sizerFor>, m: CardMetrics): BlockBox {
+  const widths = block.members.map((member) => size(member.personId).w);
+  const heights = block.members.map((member) => size(member.personId).h);
+  const offsets: number[] = [];
+  let x = 0;
+  for (const w of widths) {
+    offsets.push(x);
+    x += w + m.coupleGap;
+  }
+  return { widths, heights, offsets, width: x - m.coupleGap };
+}
 
 /** How one union of a block is drawn, relative to the block's left edge and row top. */
 type UnionShape = {
   /** Where its child lines start. */
   anchor: [number, number];
-  line?: { leftX: number; rightX: number };
-  bracket?: { fromX: number; spouseX: number; rise: number };
+  line?: { leftX: number; rightX: number; leftW: number; y: number };
+  bracket?: { fromX: number; spouseX: number; spouseW: number; rise: number };
 };
 
 /**
- * Union `[a, b]` of the blood person at `self`: a mid-height line across the gap; for a third or
- * later spouse a bracket (children drop from the bracket, through the gap left of the spouse);
- * single-parent unions spread their anchors along the bottom of the blood person's card.
+ * Union `[a, b]` of the blood person at `self`: a line across the gap at the couple line height;
+ * for a third or later spouse a bracket (children drop from the bracket, through the gap left of
+ * the spouse); single-parent unions spread their anchors along the bottom of the blood person's card.
  */
-function unionShapes(block: Block): UnionShape[] {
+function unionShapes(block: Block, box: BlockBox, m: CardMetrics): UnionShape[] {
   const self = bloodIndex(block);
   const soloCount = block.unions.filter((u) => u.anchorBetween[0] === u.anchorBetween[1]).length;
   const bracketCount = block.unions.filter(
     ({ anchorBetween: [a, b] }) => a !== b && a !== self && b !== self,
   ).length;
+  const { widths: w, heights: h, offsets: x } = box;
   let solo = 0;
   let bracket = 0;
   return block.unions.map(({ anchorBetween: [a, b] }): UnionShape => {
     if (a === b) {
-      const x = self * STEP + (CARD_W * ++solo) / (soloCount + 1);
-      return { anchor: [x, CARD_H] };
+      const at = x[self]! + (w[self]! * ++solo) / (soloCount + 1);
+      return { anchor: [at, h[self]!] };
     }
-    const gapX = (a * STEP + CARD_W + b * STEP) / 2;
+    const gapX = (x[a]! + w[a]! + x[b]!) / 2;
     if (a === self || b === self) {
-      return { anchor: [gapX, CARD_H / 2], line: { leftX: a * STEP, rightX: b * STEP } };
+      // Between two cards of different heights the line keeps to the shorter one's middle.
+      const y = m.unionY ?? Math.min(h[a]!, h[b]!) / 2;
+      return { anchor: [gapX, y], line: { leftX: x[a]!, rightX: x[b]!, leftW: w[a]!, y } };
     }
     const rise = bracketRise(bracket, bracketCount);
-    const fromX = self * STEP + bracketStart(bracket++, bracketCount);
-    return { anchor: [gapX, -rise], bracket: { fromX, spouseX: b * STEP, rise } };
+    const fromX = x[self]! + bracketStart(bracket++, bracketCount, { ...m, cardW: w[self]! });
+    return { anchor: [gapX, -rise], bracket: { fromX, spouseX: x[b]!, spouseW: w[b]!, rise } };
   });
 }
 
@@ -77,13 +96,22 @@ type Group = {
 /**
  * The family view: blood relatives below `rootId` on generation rows, partners beside them,
  * each union's children grouped under that union and neighbouring branches packed by contour.
- * Pure and deterministic. A root that is not in the document gives an empty layout.
+ * Cards take their own size from `sizes` (the template's card otherwise); each row is as tall as
+ * its tallest card, and cards sit at their row's top. Pure and deterministic. A root that is not
+ * in the document gives an empty layout.
  */
 export function layoutFamily(
   doc: TreeDocument,
-  opts: { rootId: string; collapsed?: ReadonlySet<string> },
+  opts: {
+    rootId: string;
+    collapsed?: ReadonlySet<string>;
+    metrics?: CardMetrics;
+    sizes?: SizeOf;
+  },
 ): LayoutResult {
-  if (!Object.hasOwn(doc.persons, opts.rootId)) return emptyLayout(doc);
+  const m = opts.metrics ?? DEFAULT_METRICS;
+  const size = sizerFor(m, opts.sizes);
+  if (!Object.hasOwn(doc.persons, opts.rootId)) return emptyLayout(doc, m);
   const tree = buildBlockTree(doc, opts.rootId, opts.collapsed ?? NONE);
 
   // Blocks in pre-order, so every parent comes before its children.
@@ -105,19 +133,41 @@ export function layoutFamily(
     }
   }
 
+  const boxes = blocks.map((b) => boxOf(b, size, m));
+  // Rows: each as tall as its tallest card, the template's row gap between them.
+  const rowGap = m.rowH - m.cardH;
+  const rowHeight: number[] = [];
+  blocks.forEach((b, i) => {
+    rowHeight[b.depth] = Math.max(rowHeight[b.depth] ?? 0, ...boxes[i]!.heights);
+  });
+  const rowTop: number[] = [0];
+  for (let d = 1; d < rowHeight.length; d++) {
+    rowTop[d] = rowTop[d - 1]! + rowHeight[d - 1]! + rowGap;
+  }
+  /** The metrics a row's sibling bars are kept in: its tallest card, its distance to the next. */
+  const rowMetrics = (d: number): CardMetrics => ({
+    ...m,
+    cardH: rowHeight[d]!,
+    rowH: rowHeight[d]! + rowGap,
+  });
+
   // Bottom-up: place each union's children under that union, then the block on top.
-  const shapes = blocks.map(unionShapes);
+  const shapes = blocks.map((b, i) => unionShapes(b, boxes[i]!, m));
   const contours: Contour[] = Array.from({ length: blocks.length });
   const offsetOf: number[] = Array.from({ length: blocks.length }, () => 0);
   const barOf: number[][] = blocks.map((b) => b.unions.map(() => 0));
   for (let i = blocks.length - 1; i >= 0; i--) {
-    const groups = groupsOf(kidsOf[i]!, shapes[i]!, blocks, contours);
-    const placed = placeGroups(groups);
+    const groups = groupsOf(kidsOf[i]!, shapes[i]!, blocks, boxes, contours, m);
+    const placed = placeGroups(groups, m.gap);
     groups.forEach((group, g) => {
       group.kids.forEach((k, j) => (offsetOf[k] = placed.x[g]! + group.offsets[j]!));
-      barOf[i]![group.union] = barOffset(Math.abs(g - placed.pivot), placed.levels);
+      barOf[i]![group.union] = barOffset(
+        Math.abs(g - placed.pivot),
+        placed.levels,
+        rowMetrics(blocks[i]!.depth),
+      );
     });
-    const width = blockWidth(blocks[i]!);
+    const width = boxes[i]!.width;
     contours[i] = placed.contour ? stackUnder(width, placed.contour, 0) : leafContour(width);
   }
 
@@ -128,25 +178,29 @@ export function layoutFamily(
     lefts[i] = lefts[parentOf[i]!]! + offsetOf[i]!;
     minLeft = Math.min(minLeft, lefts[i]!);
   }
-  const memberX = (i: number, m: number) => lefts[i]! - minLeft + m * STEP;
+  const memberX = (i: number, k: number) => lefts[i]! - minLeft + boxes[i]!.offsets[k]!;
+  const sized = opts.sizes !== undefined;
 
   const nodes: LayoutNode[] = [];
   const edges: LayoutEdge[] = [];
   let maxDepth = 0;
   for (let i = 0; i < blocks.length; i++) {
     const block = blocks[i]!;
-    const rowTop = block.depth * ROW_H;
+    const box = boxes[i]!;
+    const top = rowTop[block.depth]!;
     const left = memberX(i, 0);
     maxDepth = Math.max(maxDepth, block.depth);
-    block.members.forEach((member, m) => {
+    block.members.forEach((member, k) => {
       nodes.push({
         nodeId: member.nodeId,
         personId: member.personId,
         kind: member.kind,
-        x: memberX(i, m),
-        y: rowTop,
+        x: memberX(i, k),
+        y: top,
         generation: block.depth,
         hiddenCount: member.nodeId === block.bloodNodeId ? block.hiddenCount : 0,
+        // Only a layout with per-card sizes says so; every card is the metrics' size otherwise.
+        ...(sized ? { width: box.widths[k]!, height: box.heights[k]! } : {}),
       });
     });
 
@@ -155,18 +209,26 @@ export function layoutFamily(
       const { anchor, line, bracket } = shapes[i]![u]!;
       if (line) {
         edges.push(
-          unionLine(union.id, union.status, rowTop, left + line.leftX, left + line.rightX),
+          unionLine(union.id, union.status, top, left + line.leftX, left + line.rightX, {
+            ...m,
+            cardW: line.leftW,
+            unionY: line.y,
+          }),
         );
       } else if (bracket) {
-        const { fromX, spouseX, rise } = bracket;
+        const { fromX, spouseX, spouseW, rise } = bracket;
         edges.push(
-          unionBracket(union.id, union.status, rowTop, left + fromX, left + spouseX, rise),
+          unionBracket(union.id, union.status, top, left + fromX, left + spouseX, rise, {
+            ...m,
+            cardW: spouseW,
+          }),
         );
       }
-      const start: [number, number] = [left + anchor[0], rowTop + anchor[1]];
-      const barY = rowTop + barOf[i]![u]!;
+      const start: [number, number] = [left + anchor[0], top + anchor[1]];
+      const barY = top + barOf[i]![u]!;
       kidsOf[i]![u]!.forEach((k, c) => {
         const child = blocks[k]!;
+        const blood = bloodIndex(child);
         edges.push(
           childEdge(
             union.id,
@@ -174,8 +236,9 @@ export function layoutFamily(
             start,
             barY,
             child.bloodNodeId,
-            memberX(k, bloodIndex(child)),
-            child.depth * ROW_H,
+            memberX(k, blood),
+            rowTop[child.depth]!,
+            { ...m, cardW: boxes[k]!.widths[blood]! },
           ),
         );
       });
@@ -185,10 +248,11 @@ export function layoutFamily(
   return {
     nodes,
     edges,
-    bounds: boundsOf(nodes, edges),
+    bounds: boundsOf(nodes, edges, m),
     generationCount: maxDepth + 1,
     primaryNode: tree.primaryNode,
     unreachable: tree.unreachable,
+    metrics: m,
   };
 }
 
@@ -197,17 +261,23 @@ function groupsOf(
   kidsByUnion: number[][],
   shapes: UnionShape[],
   blocks: Block[],
+  boxes: BlockBox[],
   contours: Contour[],
+  m: CardMetrics,
 ): Group[] {
   const groups: Group[] = [];
+  const lineOf = (k: number) => {
+    const blood = bloodIndex(blocks[k]!);
+    return boxes[k]!.offsets[blood]! + boxes[k]!.widths[blood]! / 2;
+  };
   kidsByUnion.forEach((kids, union) => {
     if (kids.length === 0) return;
     const { offsets, merged } = packSubtrees(
       kids.map((k) => contours[k]!),
-      GAP,
+      m.gap,
     );
-    const first = blocks[kids[0]!]!;
-    const last = blocks[kids.at(-1)!]!;
+    const first = kids[0]!;
+    const last = kids.at(-1)!;
     const lastOffset = offsets.at(-1)!;
     groups.push({
       union,
@@ -215,9 +285,9 @@ function groupsOf(
       offsets,
       contour: merged,
       anchorX: shapes[union]!.anchor[0],
-      centre: (blockWidth(first) / 2 + lastOffset + blockWidth(last) / 2) / 2,
-      firstLine: bloodIndex(first) * STEP + CARD_W / 2,
-      lastLine: lastOffset + bloodIndex(last) * STEP + CARD_W / 2,
+      centre: (boxes[first]!.width / 2 + lastOffset + boxes[last]!.width / 2) / 2,
+      firstLine: lineOf(first),
+      lastLine: lastOffset + lineOf(last),
     });
   });
   return groups.toSorted((a, b) => a.anchorX - b.anchorX);
@@ -233,7 +303,10 @@ function groupsOf(
  * Returns each group's x offset from the block's left edge, the pivot, the number of bar levels
  * and the children's merged contour.
  */
-function placeGroups(groups: Group[]): {
+function placeGroups(
+  groups: Group[],
+  gap: number,
+): {
   x: number[];
   pivot: number;
   levels: number;
@@ -256,7 +329,7 @@ function placeGroups(groups: Group[]): {
     x[g] = Math.max(
       group.anchorX - group.centre,
       groups[g - 1]!.anchorX + LINE_CLEARANCE - group.firstLine,
-      clearRight(placed, group.contour, GAP),
+      clearRight(placed, group.contour, gap),
     );
     mergeAt(placed, group.contour, x[g]!);
   }
@@ -265,7 +338,7 @@ function placeGroups(groups: Group[]): {
     x[g] = Math.min(
       group.anchorX - group.centre,
       groups[g + 1]!.anchorX - LINE_CLEARANCE - group.lastLine,
-      clearLeft(placed, group.contour, GAP),
+      clearLeft(placed, group.contour, gap),
     );
     mergeAt(placed, group.contour, x[g]!);
   }

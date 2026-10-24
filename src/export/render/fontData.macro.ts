@@ -20,3 +20,14 @@ export function notoBase64(file: string): string {
   const url = import.meta.resolve(`@fontsource-variable/noto-${match[1]}/files/${file}`);
   return readFileSync(fileURLToPath(url)).toString("base64");
 }
+
+const TEMPLATE_FONT =
+  /^(cormorant-garamond|fraunces|caveat)-latin(-ext)?-wght-(normal|italic)\.woff2$/;
+
+/** Bun macro: a template font (src/templates/fonts.css) from its `@fontsource-variable` package. */
+export function templateFontBase64(file: string): string {
+  const match = TEMPLATE_FONT.exec(file);
+  if (!match) throw new Error(`Not a template font file: ${file}`);
+  const url = import.meta.resolve(`@fontsource-variable/${match[1]}/files/${file}`);
+  return readFileSync(fileURLToPath(url)).toString("base64");
+}

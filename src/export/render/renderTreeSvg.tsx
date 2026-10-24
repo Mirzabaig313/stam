@@ -2,18 +2,34 @@ import type { i18n as I18n, TFunction } from "i18next";
 import { renderToStaticMarkup } from "react-dom/server";
 import { I18nextProvider } from "react-i18next";
 
-import { CARD_H, CARD_W } from "@/core/layout/constants";
+import type { CardMetrics } from "@/core/layout/constants";
+import { layoutFamily } from "@/core/layout/family";
+import { growUpward } from "@/core/layout/flip";
 import type { LayoutResult } from "@/core/layout/types";
 import type { TreeDocument } from "@/core/model/types";
 import type { ExportInput, ExportOptions, RenderedSvg } from "@/export/types";
+import { paletteFor, TEMPLATES } from "@/templates";
+import { type CardStyles, sizesFor } from "@/templates/cardStyle";
+import { edgeLookFor, eldestGeneration } from "@/templates/edgeLook";
+import { DEFAULT_LOOK, type Look } from "@/templates/look";
+import { type FaceScale, faceScale, metricsFor } from "@/templates/metrics";
+import type { Palette, Template } from "@/templates/types";
 import { Edges } from "@/ui/canvas/Edges";
 import { rowNumeral, rowsOf } from "@/ui/canvas/GenerationRuler";
 import { PersonCard } from "@/ui/cards/PersonCard";
 
 import { fontFaceCss, fontsFor, scriptCss } from "./fonts";
+import {
+  autoSubtitle,
+  type FrameGeometry,
+  frameGeometry,
+  FrameOver,
+  FrameUnder,
+  titleWidthFor,
+} from "./frame";
 import { applyPrivacy, withoutDates } from "./privacy";
 import { selectScope } from "./scope";
-import { PALETTES, themeCss } from "./theme";
+import { themeCss } from "./theme";
 
 const PAD = 48;
 const RULER_W = 40;
@@ -67,7 +83,7 @@ function mirrored(layout: LayoutResult): LayoutResult {
   const b = layout.bounds;
   return {
     ...layout,
-    nodes: layout.nodes.map((n) => ({ ...n, x: -(n.x + CARD_W) })),
+    nodes: layout.nodes.map((n) => ({ ...n, x: -(n.x + (n.width ?? layout.metrics.cardW)) })),
     edges: layout.edges.map((e) => ({
       ...e,
       points: e.points.map(([x, y]): [number, number] => [-x, y]),
@@ -148,6 +164,60 @@ function geometryOf(
   };
 }
 
+type Drawing = {
+  template: Template;
+  palette: Palette;
+  scale: FaceScale;
+};
+
+/** The tree itself: the template's connectors and cards, in layout coordinates. */
+function TreeGroup({
+  doc,
+  layout,
+  dx,
+  dy,
+  rtl,
+  drawing,
+  photoOf,
+  cardStyles,
+}: {
+  cardStyles?: CardStyles;
+  doc: TreeDocument;
+  layout: LayoutResult;
+  dx: number;
+  dy: number;
+  rtl: boolean;
+  drawing: Drawing;
+  photoOf: (personId: string) => string | undefined;
+}) {
+  const { template, palette, scale } = drawing;
+  const eldest = eldestGeneration(layout);
+  return (
+    <g className="stam-export__tree" transform={`translate(${dx} ${dy})`}>
+      <Edges edges={layout.edges} lod="full" look={edgeLookFor(template, palette, scale, layout)} />
+      <g className="stam-export__nodes">
+        {layout.nodes.map((node) => (
+          <PersonCard
+            key={node.nodeId}
+            doc={doc}
+            node={node}
+            metrics={layout.metrics}
+            template={template}
+            palette={palette}
+            scale={scale}
+            eldest={node.generation === eldest}
+            cardStyle={cardStyles?.[node.personId]}
+            lod="full"
+            dir={rtl ? "rtl" : "ltr"}
+            photoUrl={photoOf(node.personId)}
+            static
+          />
+        ))}
+      </g>
+    </g>
+  );
+}
+
 type BodyProps = {
   doc: TreeDocument;
   layout: LayoutResult;
@@ -157,9 +227,22 @@ type BodyProps = {
   title: string;
   subtitle: string;
   photoOf: (personId: string) => string | undefined;
+  drawing: Drawing;
+  cardStyles?: CardStyles;
 };
 
-function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: BodyProps) {
+function ExportBody({
+  doc,
+  layout,
+  opts,
+  geo,
+  rtl,
+  title,
+  subtitle,
+  photoOf,
+  drawing,
+  cardStyles,
+}: BodyProps) {
   const inward = rtl ? RULER_TICK : -RULER_TICK;
   return (
     <>
@@ -168,7 +251,7 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
           className="stam-export__ground"
           width={geo.width}
           height={geo.height}
-          fill={PALETTES[opts.theme].ground}
+          fill={drawing.palette.ground}
         />
       )}
       {geo.title && (
@@ -205,7 +288,7 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
             y2={r2(geo.treeTop + geo.treeHeight)}
           />
           {rowsOf(layout.nodes).map(({ generation, y }, _, rows) => {
-            const cy = r2(y + geo.dy + CARD_H / 2);
+            const cy = r2(y + geo.dy + layout.metrics.cardH / 2);
             return (
               <g key={generation}>
                 <line x1={geo.ruler!.edge + inward} x2={geo.ruler!.edge} y1={cy} y2={cy} />
@@ -224,24 +307,102 @@ function ExportBody({ doc, layout, opts, geo, rtl, title, subtitle, photoOf }: B
           })}
         </g>
       )}
-      <g className="stam-export__tree" transform={`translate(${geo.dx} ${geo.dy})`}>
-        <Edges edges={layout.edges} lod="full" />
-        <g className="stam-export__nodes">
-          {layout.nodes.map((node) => (
-            <PersonCard
-              key={node.nodeId}
-              doc={doc}
-              node={node}
-              lod="full"
-              dir={rtl ? "rtl" : "ltr"}
-              photoUrl={photoOf(node.personId)}
-              static
-            />
-          ))}
-        </g>
-      </g>
+      <TreeGroup
+        doc={doc}
+        layout={layout}
+        dx={geo.dx}
+        dy={geo.dy}
+        rtl={rtl}
+        drawing={drawing}
+        photoOf={photoOf}
+        cardStyles={cardStyles}
+      />
     </>
   );
+}
+
+/**
+ * The layout the export draws: the editor's own when the export keeps the tree's look, else the
+ * family laid out again with the export's card metrics (and turned upward for Botanical).
+ */
+function exportLayout(input: ExportInput, doc: TreeDocument, opts: ExportOptions, look: Look) {
+  const treeLook = input.look ?? DEFAULT_LOOK;
+  const metrics = metricsFor(look);
+  const built = input.layout.metrics;
+  // The editor's layout fits when it was built for these cards and grows the same way.
+  const same =
+    built.cardW === metrics.cardW &&
+    built.cardH === metrics.cardH &&
+    built.coupleGap === metrics.coupleGap &&
+    built.gap === metrics.gap &&
+    built.rowH === metrics.rowH &&
+    built.unionY === metrics.unionY &&
+    TEMPLATES[look.template].growth === TEMPLATES[treeLook.template].growth;
+  const up = TEMPLATES[look.template].growth === "up";
+  const grow = (l: LayoutResult) => (up ? growUpward(l) : l);
+  let base = input.layout;
+  if (!same) {
+    const rootId = input.viewRootId ?? doc.rootPersonId;
+    base =
+      rootId && Object.hasOwn(doc.persons, rootId)
+        ? grow(layoutFamily(doc, { rootId, metrics, ...sizesOption(input, metrics) }))
+        : input.layout;
+  }
+  const scoped = selectScope({ ...input, doc, layout: base }, opts);
+  // "whole" and "branch" lay the family out afresh, the right way up.
+  return scoped === base ? scoped : grow(scoped);
+}
+
+/** The layout's `sizes` option for the cards resized on their own, if any. */
+function sizesOption(input: ExportInput, metrics: CardMetrics) {
+  const sizes = sizesFor(input.cardStyles ?? {}, metrics);
+  return sizes ? { sizes } : {};
+}
+
+/** "My family" becomes the poster's title unless the dialog gave one. */
+function framedSvg(
+  input: ExportInput,
+  opts: ExportOptions,
+  t: TFunction,
+  rtl: boolean,
+  drawing: Drawing,
+  doc: TreeDocument,
+  layout: LayoutResult,
+  photoOf: (personId: string) => string | undefined,
+): { body: string; geo: FrameGeometry; title: string; subtitle: string } {
+  const title = opts.title?.trim() || input.doc.name;
+  const subtitle = opts.subtitle?.trim() || autoSubtitle(doc, layout, t);
+  const geo = frameGeometry(layout, drawing.template, rtl, titleWidthFor(drawing.template, title));
+  const frame = {
+    geo,
+    layout,
+    doc,
+    template: drawing.template,
+    palette: drawing.palette,
+    title,
+    subtitle,
+    t,
+    rtl,
+    madeWith: opts.madeWith ?? true,
+  };
+  const body = renderToStaticMarkup(
+    <I18nextProvider i18n={staticI18n(t)}>
+      <FrameUnder {...frame} />
+      <TreeGroup
+        doc={doc}
+        layout={layout}
+        dx={geo.dx}
+        dy={geo.dy}
+        rtl={rtl}
+        drawing={drawing}
+        photoOf={photoOf}
+        cardStyles={input.cardStyles}
+      />
+      <FrameOver {...frame} />
+    </I18nextProvider>,
+    { identifierPrefix: "stam-x-" },
+  );
+  return { body, geo, title, subtitle };
 }
 
 /**
@@ -261,18 +422,41 @@ export function renderTreeSvg(
 ): RenderedSvg {
   const rtl = dir === "rtl";
   const doc = exportDoc(input.doc, opts);
-  const scoped = selectScope({ ...input, doc }, opts);
+  const look = opts.look ?? input.look ?? DEFAULT_LOOK;
+  const template = TEMPLATES[look.template];
+  const drawing: Drawing = {
+    template,
+    palette: paletteFor(template, opts.theme),
+    scale: faceScale(look),
+  };
+  const scoped = exportLayout(input, doc, opts, look);
   const layout = rtl ? mirrored(scoped) : scoped;
-
-  const title = opts.title?.trim() ?? "";
-  const subtitle = opts.subtitle?.trim() ?? "";
-  const geo = geometryOf(layout, opts, rtl, title, subtitle);
   const photoOf = (personId: string) => {
     if (!opts.includePhotos) return undefined;
     const photoId = doc.persons[personId]?.photoId;
     const url = photoId ? input.photos[photoId] : undefined;
     return isDataImage(url) ? url : undefined;
   };
+
+  if (opts.frame) {
+    const framed = framedSvg(input, opts, t, rtl, drawing, doc, layout, photoOf);
+    const fonts = fontsFor(doc, [framed.title, framed.subtitle], template.id);
+    // The frame sets its own title fonts (Arabic script falls through to Naskh), so the plain
+    // export's Nastaliq title rule (scriptCss) stays out.
+    const css = [fontFaceCss(fonts), themeCss(opts.theme)].join("\n");
+    const label = escapeXml(framed.title);
+    const { width, height } = framed.geo;
+    const svg =
+      `<svg xmlns="${SVG_NS}" xmlns:xlink="${XLINK_NS}" width="${width}" height="${height}"` +
+      ` viewBox="0 0 ${width} ${height}" class="stam-export stam-export--${opts.theme} stam-export--${template.id}"` +
+      ` role="img" aria-label="${label}"${rtl ? ' direction="rtl"' : ""}>` +
+      `<title>${label}</title><style>${css}</style>${framed.body}</svg>`;
+    return { svg, width, height };
+  }
+
+  const title = opts.title?.trim() ?? "";
+  const subtitle = opts.subtitle?.trim() ?? "";
+  const geo = geometryOf(layout, opts, rtl, title, subtitle);
 
   const body = renderToStaticMarkup(
     <I18nextProvider i18n={staticI18n(t)}>
@@ -285,12 +469,14 @@ export function renderTreeSvg(
         title={title}
         subtitle={subtitle}
         photoOf={photoOf}
+        drawing={drawing}
+        cardStyles={input.cardStyles}
       />
     </I18nextProvider>,
     { identifierPrefix: "stam-x-" },
   );
 
-  const fonts = fontsFor(doc, [title, subtitle]);
+  const fonts = fontsFor(doc, [title, subtitle], template.id);
   const css = [fontFaceCss(fonts), themeCss(opts.theme), scriptCss(fonts)]
     .filter(Boolean)
     .join("\n");

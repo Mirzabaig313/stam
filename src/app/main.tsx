@@ -1,6 +1,7 @@
 // Fonts and styles first, so the first paint is already themed.
 import "@fontsource-variable/archivo/wdth.css";
 import "@/i18n/fonts.css";
+import "@/templates/fonts.css";
 import "@/ui/styles/app.css";
 
 import { StrictMode } from "react";

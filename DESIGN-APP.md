@@ -202,9 +202,10 @@ Each one is exported from `src/ui/design/index.ts`. The unit tests are in `tests
   look.
 - **Card:** `--surface-raised`, 12 px radius, `--line` edge, `--shadow-1`. Lists of cards may
   deepen to `--shadow-2` on hover.
-- **Person card (canvas):** the radius comes from CSS `rx` (exports keep their own geometry).
-  The edge is `--card-edge`, with a contact shadow, initials on the name's hue in a white-ringed
-  disc, and a 16 px gender mark. A mulberry 2 px edge marks the selection.
+- **Person card (canvas):** drawn by the tree's template (see "Templates" below). Whatever the
+  template, the selection is a mulberry 2 px ring set 4 px outside the card's own outline (it
+  follows a leaf, an arch or a print as well as a box) and keyboard focus is an ink ring outside
+  that; zoomed out to names only, the card's own edge turns mulberry instead.
 - **Sheet:** see the table. The title uses the display voice. The body scrolls with
   `overscroll-behavior: contain`. Optional, added for the person panel: `label` names the
   landmark instead of the title, `subtitle` puts lines under the title, and `expandable` turns the
@@ -223,24 +224,51 @@ Each one is exported from `src/ui/design/index.ts`. The unit tests are in `tests
   saying what will appear and that everything stays on the device, and the primary action.
 - **Avatar:** see the table. Print draws a 1 px ink ring instead of a fill.
 
+## Templates
+
+A tree is drawn in one of six templates, on the canvas and in every export alike; people choose
+one, and the card size, text size and spacing, in the Look dialog (the editor's More menu). The
+choice is kept per tree on this device. Code: `src/templates/` (one face per template in
+`faces/`), the print frame in `src/export/render/frame.tsx`, the design in
+`docs/superpowers/specs/2026-10-24-tree-templates-design.md`.
+
+| Template             | Card                                                    | Lines                                 | Deceased                                      |
+| -------------------- | ------------------------------------------------------- | ------------------------------------- | --------------------------------------------- |
+| Warm album (default) | a photo print, small paper corners, tilted up to 1.5°   | soft, hand-drawn                      | sepia print, small mourning ribbon            |
+| Heritage manuscript  | a notched cartouche, gold inner frame, book serif       | ink hairline, gold diamond on couples | darker cartouche, ink inner frame             |
+| Botanical tree       | a leaf; the tree grows upward                           | bark, thinning away from the root     | autumn leaf; married-in people a lighter leaf |
+| Modern gallery       | a medallion above the name                              | crisp ink, reaching the medallions    | hollow medallion; the eldest row in vermilion |
+| Shajara              | a mihrab arch, Nastaliq name first; reads right to left | vines                                 | مرحوم after the years                         |
+| Swiss minimal        | a hairline box                                          | one hairline                          | † after the name                              |
+
+Rules every template keeps: divorced couples get a "//" on their line; only an adopted, step or
+foster child's own drop is dashed, never the bar siblings share; an unknown person has a dashed
+outline and "?"; faces draw their colours inline, so the canvas only adds its states (hover,
+drop target, selection) on top; every palette passes AA (`tests/templates/contrast.test.ts`).
+
 ## Canvas
 
-- The ground is `--ground`. Connectors are ink at `--edge-opacity` (0.5, 3.9:1 on light, R32),
-  with round joins. Generations are 136 px apart (`ROW_H`), a 64 px gap between rows.
-- **Person card:** a 5 px spine down the inline-start edge is the colour key, clipped to the
-  card's corners: sky or rose deep by gender (the ♂/♀ glyph takes the same colour), or the deep
-  hue of the branch or generation, which also tints the card and its edge. Years read
-  "1920–1994" (a spaced dash only around approximate years); a deceased person with no years
-  gets a quiet "Deceased" tag, never a lone "†". Exports keep their own years line and no spine.
-- The collapse chevron shows only on the card under the pointer, the keyboard or the selection.
-  A collapsed branch shows a raised "+N" pill on the card's bottom edge, which is the expand
-  control.
+- The ground is the template's own (its light or dark palette, black on white in Print).
+  Connectors are drawn in the template's line colour and style. Card size and the gaps between
+  cards and rows come from the tree's look (`src/templates/metrics.ts`).
+- **Person card:** every template has a photo slot (the photo, or initials on a soft hue) whose
+  ring is the colour key: sky or rose deep by gender, or the deep hue of the branch or
+  generation. Years read "1920–1994" (a spaced dash only around approximate years); a deceased
+  person with no years gets a quiet "Deceased" line, never a lone "†". Exports keep their own years
+  line ("1913 – †1964") and colour the ring by gender.
+- The collapse chevron is a small sunken disc inside the card's bottom inline-end corner, shown
+  only on the card under the pointer, the keyboard or the selection. A collapsed branch shows a
+  sunken "+N" pill in the same corner, which is the expand control. On a three-line card (with a
+  native name) the years line stops short of it.
 - The minimap is a sunken print in a raised 16 px frame (`--shadow-2`), cards in a muted
   mulberry-grey, the selection in the accent and the view framed in the accent. It appears from
   10 cards up, only while part of the tree is off screen, and never on a phone.
 - The ruler sits on a slightly translucent ground.
 - Quick-add handles are round 24 px "+" buttons that fill with mulberry on hover. The inline
-  editor has a mulberry edge, a 12 px radius and `--shadow-3`.
+  editor reads as a field in focus, not a selected card: a 1.5 px mulberry edge with a soft
+  `--accent-soft` halo, a 12 px radius and `--shadow-2`. Inside: a dashed avatar circle, a filled
+  "Full name" field (sunken, 8 px radius), ♂ and ♀ as outlined chips that fill with their
+  gender's soft hue when chosen, a filled mulberry ✓ and a quiet ✕.
 - **Empty tree:** a raised album page (16 px radius, `--shadow-2`) in the middle of the canvas
   with the album art, "Every tree starts with one person", one sentence, and the dashed "Start
   with a person" photo slot.

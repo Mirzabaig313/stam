@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { layoutFamily } from "@/core/layout/family";
 import type { ExportInput, ExportOptions, RenderedSvg } from "@/export/types";
 import { i18n } from "@/i18n";
+import { TEMPLATES } from "@/templates";
 import { type ExportRequest, type Loaders, runExport } from "@/ui/export/exporters";
 import { defaultSettings, switchFormat } from "@/ui/export/formats";
 import { buildPeople } from "@/ui/export/people";
@@ -63,7 +64,13 @@ const run = (r: ExportRequest) => runExport(r, load);
 
 const doc = famSimple();
 const layout = layoutFamily(doc, { rootId: doc.rootPersonId! });
-const input: ExportInput = { doc, layout, viewRootId: null, selectedId: null, photos: {} };
+const input: ExportInput = {
+  doc,
+  layout,
+  viewRootId: null,
+  selectedId: null,
+  photos: {},
+};
 const t = i18n.t.bind(i18n);
 const req = (settings = defaultSettings()) => ({
   input,
@@ -103,9 +110,20 @@ describe("runExport", () => {
       Record<string, unknown>,
     ];
     expect(r).toBe(SVG);
-    expect(o).toMatchObject({ format: "png", scale: 3, background: "solid", ground: "#f4f5f2" });
+    expect(o).toMatchObject({
+      format: "png",
+      scale: 3,
+      background: "solid",
+      ground: TEMPLATES.album.palettes.light.ground,
+    });
     calls.length = 0;
-    await run(req({ ...switchFormat(defaultSettings(), "jpeg"), quality: 0.7, theme: "print" }));
+    await run(
+      req({
+        ...switchFormat(defaultSettings(), "jpeg"),
+        quality: 0.7,
+        theme: "print",
+      }),
+    );
     expect(calls.find((c) => c.fn === "rasterize")!.args[1]).toMatchObject({
       format: "jpeg",
       quality: 0.7,
@@ -115,12 +133,16 @@ describe("runExport", () => {
 
   test("the HTML page gets the export theme", async () => {
     await run(req({ ...switchFormat(defaultSettings(), "html"), theme: "dark" }));
-    expect(calls.find((c) => c.fn === "toHtml")!.args[2]).toMatchObject({ theme: "dark" });
+    expect(calls.find((c) => c.fn === "toHtml")!.args[2]).toMatchObject({
+      theme: "dark",
+    });
   });
 
   test("a dark PNG fills its background with the dark ground", async () => {
     await run(req({ ...switchFormat(defaultSettings(), "png"), theme: "dark" }));
-    expect(calls.find((c) => c.fn === "rasterize")!.args[1]).toMatchObject({ ground: "#0f110f" });
+    expect(calls.find((c) => c.fn === "rasterize")!.args[1]).toMatchObject({
+      ground: TEMPLATES.album.palettes.dark.ground,
+    });
   });
 
   test("reports a scale the rasteriser had to reduce", async () => {
@@ -131,7 +153,9 @@ describe("runExport", () => {
 
   test("draws in the interface's direction", async () => {
     await run({ ...req(), dir: "rtl" });
-    expect(calls.find((c) => c.fn === "renderTreeSvg")!.args[3]).toEqual({ dir: "rtl" });
+    expect(calls.find((c) => c.fn === "renderTreeSvg")!.args[3]).toEqual({
+      dir: "rtl",
+    });
   });
 
   test("the tiled PDF and the HTML page get the translator", async () => {
@@ -143,11 +167,18 @@ describe("runExport", () => {
 
   test("HTML details come from the privacy-filtered document", async () => {
     const d = famSimple();
-    d.persons.c1 = { ...d.persons.c1!, notes: "Secret", birth: { date: { year: 1980 } } };
+    d.persons.c1 = {
+      ...d.persons.c1!,
+      notes: "Secret",
+      birth: { date: { year: 1980 } },
+    };
     const filtered = await import("@/export/render").then((m) => m.applyPrivacy);
     const real = {
       ...load,
-      render: async () => ({ ...(await load.render()), applyPrivacy: filtered }),
+      render: async () => ({
+        ...(await load.render()),
+        applyPrivacy: filtered,
+      }),
     } as Loaders;
     const l = layoutFamily(d, { rootId: d.rootPersonId! });
     await runExport(
@@ -182,7 +213,11 @@ describe("runExport", () => {
       marginMm: 15,
     });
     await run(
-      req({ ...switchFormat(defaultSettings(), "pdf-tiled"), tiledPage: "Letter", tiledScale: 2 }),
+      req({
+        ...switchFormat(defaultSettings(), "pdf-tiled"),
+        tiledPage: "Letter",
+        tiledScale: 2,
+      }),
     );
     expect(calls.find((c) => c.fn === "toTiledPdf")!.args[1]).toEqual({
       page: "Letter",
@@ -273,7 +308,11 @@ describe("buildPeople", () => {
 
   test("dates in the export's language, through Intl", () => {
     const dated = docOf(
-      [person("a", "Ali", "Khan", "male", { birth: { date: { year: 1950, month: 3, day: 14 } } })],
+      [
+        person("a", "Ali", "Khan", "male", {
+          birth: { date: { year: 1950, month: 3, day: 14 } },
+        }),
+      ],
       [],
       "a",
     );
@@ -297,8 +336,14 @@ describe("buildPeople", () => {
 describe("GEDCOM export", () => {
   const living = docOf(
     [
-      person("a", "Ann", "Lee", "female", { birth: { date: { year: 1990 } }, notes: "secret" }),
-      person("b", "Bob", "Lee", "male", { isLiving: false, birth: { date: { year: 1900 } } }),
+      person("a", "Ann", "Lee", "female", {
+        birth: { date: { year: 1990 } },
+        notes: "secret",
+      }),
+      person("b", "Bob", "Lee", "male", {
+        isLiving: false,
+        birth: { date: { year: 1900 } },
+      }),
     ],
     [],
     "a",
@@ -307,7 +352,10 @@ describe("GEDCOM export", () => {
     ...req({ ...switchFormat(defaultSettings(), "gedcom"), privacy }),
     input: { ...input, doc: living },
   });
-  const realLoad = { ...load, gedcom: () => import("@/io/gedcom") } as unknown as Loaders;
+  const realLoad = {
+    ...load,
+    gedcom: () => import("@/io/gedcom"),
+  } as unknown as Loaders;
 
   test("writes the whole tree as GEDCOM without rendering anything", async () => {
     const { blob } = await runExport(gedReq(false), realLoad);

@@ -10,9 +10,11 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 
-import { CARD_W, COUPLE_GAP } from "@/core/layout/constants";
+import { CARD_W, DEFAULT_METRICS } from "@/core/layout/constants";
+import { nodeWidth } from "@/core/layout/result";
 import type { LayoutNode } from "@/core/layout/types";
 import { parentsOf, unionsOf } from "@/core/model/tree";
+import { TEMPLATES } from "@/templates";
 import { useTreeDir } from "@/ui/canvas/treeDirection";
 import type { Rect } from "@/ui/canvas/viewport";
 import { focusCard } from "@/ui/keyboard/focusCard";
@@ -70,6 +72,9 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
   // The drawing's direction, which the tree-direction setting can set apart from the language's.
   const rtl = useTreeDir() === "rtl";
   const doc = useEditor((s) => s.doc);
+  const metrics = useEditor((s) => s.layout?.metrics ?? DEFAULT_METRICS);
+  // A tree that grows upward (Botanical) has parents below and children above.
+  const upward = useEditor((s) => TEMPLATES[s.look.template].growth === "up");
   const [open, setOpen] = useState<Open>(null);
 
   const handleRefs = useRef<Partial<Record<"start" | "end" | "union", HTMLButtonElement | null>>>(
@@ -94,13 +99,16 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
   });
   const parentNames =
     parentLabels.length === 2
-      ? t("canvas.describe.twoParents", { first: parentLabels[0], second: parentLabels[1] })
+      ? t("canvas.describe.twoParents", {
+          first: parentLabels[0],
+          second: parentLabels[1],
+        })
       : (parentLabels[0] ?? "");
   const aboveLabel =
     parents.length > 0
       ? t("handles.addBetween", { parents: parentNames, name })
       : t("handles.addParent", { name });
-  const k = rect.width / CARD_W;
+  const k = rect.width / nodeWidth(node, metrics);
   const { width: w, height: h } = rect;
 
   // "↑ View family" sits above a spouse card's inline-end corner: move the top handle clear of it.
@@ -108,12 +116,15 @@ export function Handles({ node, rect, onAdd, roles = EVERY_ROLE }: HandlesProps)
   const topX = familyButton ? (rtl ? w * 0.75 : w * 0.25) : w / 2;
   // Every handle sits outside its card edge: above, or below (past the "+N" badge of a collapsed
   // card). Nothing is ever drawn over a name, avatar or date.
-  const topY = -HANDLE_SIZE - EDGE_GAP;
-  const bottomY = (node.hiddenCount > 0 ? h + BADGE_REACH * k : h) + EDGE_GAP;
+  const aboveY = -HANDLE_SIZE - EDGE_GAP;
+  const belowY = (node.hiddenCount > 0 ? h + BADGE_REACH * k : h) + EDGE_GAP;
+  // "Parent" goes where the parents are drawn, "child" where the children are.
+  const topY = upward ? belowY : aboveY;
+  const bottomY = upward ? aboveY : belowY;
   // The side handles stand centred on the side edges, in the gap to the neighbour. When zoomed
   // out the couple gap is narrower than a handle, so they join the bottom handle in a row below
   // the card instead of covering the neighbouring card.
-  const roomBeside = COUPLE_GAP * k >= SIDE_ROOM;
+  const roomBeside = metrics.coupleGap * k >= SIDE_ROOM;
   const left: Point = roomBeside
     ? [-HANDLE_SIZE - EDGE_GAP, h / 2 - HALF]
     : [w / 2 - HALF - EDGE_GAP - HANDLE_SIZE, bottomY];

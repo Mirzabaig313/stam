@@ -1,4 +1,4 @@
-import { CARD_H, CARD_W, ROW_H } from "@/core/layout/constants";
+import { nodeHeight, nodeWidth } from "@/core/layout/result";
 import type { Block, LayoutEdge, LayoutResult } from "@/core/layout/types";
 
 // Geometry checks shared by the unit and property tests. Each throws an Error naming what broke.
@@ -66,8 +66,12 @@ export function expectBarsBetweenRows(layout: LayoutResult): void {
     if (edge.kind !== "child") continue;
     const barY = edge.points[1]![1];
     const childTop = edge.points.at(-1)![1];
-    const parentTop = childTop - ROW_H;
-    if (barY < parentTop + CARD_H + 12 || barY > childTop - 12) {
+    // The bar sits in the gap above the child's row: below every card of the row above.
+    const above = Math.max(...layout.nodes.filter((n) => n.y < childTop).map((n) => n.y));
+    const parentBottom = Math.max(
+      ...layout.nodes.filter((n) => n.y === above).map((n) => n.y + nodeHeight(n, layout.metrics)),
+    );
+    if (barY < parentBottom + 12 || barY > childTop - 12) {
       throw new Error(`${edge.id} bar at ${barY} is outside its row band`);
     }
   }
@@ -80,12 +84,16 @@ export function expectBarsBetweenRows(layout: LayoutResult): void {
  */
 export function expectGroupsUnderAnchors(root: Block, layout: LayoutResult): void {
   const xOf = new Map(layout.nodes.map((n) => [n.nodeId, n.x]));
+  const widthOf = new Map(layout.nodes.map((n) => [n.nodeId, nodeWidth(n, layout.metrics)]));
   const anchorOf = new Map<string, number>();
   for (const edge of layout.edges) {
     if (edge.kind === "child") anchorOf.set(edge.unionId, edge.points[0]![0]);
   }
   const centre = (block: Block) =>
-    (xOf.get(block.members[0]!.nodeId)! + xOf.get(block.members.at(-1)!.nodeId)! + CARD_W) / 2;
+    (xOf.get(block.members[0]!.nodeId)! +
+      xOf.get(block.members.at(-1)!.nodeId)! +
+      widthOf.get(block.members.at(-1)!.nodeId)!) /
+    2;
 
   const stack = [root];
   while (stack.length > 0) {

@@ -1,7 +1,7 @@
-import { CARD_H, CARD_W } from "@/core/layout/constants";
 import { layoutFamily } from "@/core/layout/family";
 import type { LayoutEdge, LayoutResult } from "@/core/layout/types";
 import type { ExportInput, ExportOptions } from "@/export/types";
+import { sizesFor } from "@/templates/cardStyle";
 
 type Rect = { x: number; y: number; width: number; height: number };
 
@@ -31,8 +31,9 @@ function edgeHits(edge: LayoutEdge, r: Rect): boolean {
  * every kept card whole, plus the kept edges clipped to the rect (the SVG viewBox cuts the rest).
  */
 export function cropLayout(layout: LayoutResult, rect: Rect): LayoutResult {
+  const { cardW, cardH } = layout.metrics;
   const nodes = layout.nodes.filter((n) =>
-    overlaps({ x: n.x, y: n.y, width: CARD_W, height: CARD_H }, rect),
+    overlaps({ x: n.x, y: n.y, width: n.width ?? cardW, height: n.height ?? cardH }, rect),
   );
   const edges = layout.edges.filter((e) => edgeHits(e, rect));
 
@@ -46,7 +47,7 @@ export function cropLayout(layout: LayoutResult, rect: Rect): LayoutResult {
     maxX = Math.max(maxX, x1);
     maxY = Math.max(maxY, y1);
   };
-  for (const n of nodes) grow(n.x, n.y, n.x + CARD_W, n.y + CARD_H);
+  for (const n of nodes) grow(n.x, n.y, n.x + (n.width ?? cardW), n.y + (n.height ?? cardH));
   const clampX = (x: number) => Math.min(Math.max(x, rect.x), rect.x + rect.width);
   const clampY = (y: number) => Math.min(Math.max(y, rect.y), rect.y + rect.height);
   for (const e of edges) {
@@ -68,6 +69,7 @@ export function cropLayout(layout: LayoutResult, rect: Rect): LayoutResult {
     generationCount: new Set(nodes.map((n) => n.generation)).size,
     primaryNode,
     unreachable: layout.unreachable,
+    metrics: layout.metrics,
   };
 }
 
@@ -81,16 +83,19 @@ export function cropLayout(layout: LayoutResult, rect: Rect): LayoutResult {
  */
 export function selectScope(input: ExportInput, opts: ExportOptions): LayoutResult {
   const { doc, layout, selectedId, visibleRect } = input;
+  // Cards resized on their own keep their size in a fresh layout too.
+  const sizes = sizesFor(input.cardStyles ?? {}, layout.metrics);
+  const own = sizes ? { sizes } : {};
   switch (opts.scope) {
     case "whole": {
       const root = doc.rootPersonId;
       return root && Object.hasOwn(doc.persons, root)
-        ? layoutFamily(doc, { rootId: root })
+        ? layoutFamily(doc, { rootId: root, metrics: layout.metrics, ...own })
         : layout;
     }
     case "branch":
       return selectedId && Object.hasOwn(doc.persons, selectedId)
-        ? layoutFamily(doc, { rootId: selectedId })
+        ? layoutFamily(doc, { rootId: selectedId, metrics: layout.metrics, ...own })
         : layout;
     case "visible":
       return visibleRect ? cropLayout(layout, visibleRect) : layout;

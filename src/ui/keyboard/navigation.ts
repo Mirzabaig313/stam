@@ -7,7 +7,7 @@ export type ArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 /**
  * The node to focus after an arrow key, or null when there is none.
  * Up: primary card of the first biological parent, if on screen. Down: primary card of the
- * first child that is on screen. Left/Right: the nearest card in the same row by x, whatever
+ * first child that is on screen (the other way round when the tree grows upward). Left/Right: the nearest card in the same row by x, whatever
  * its kind; in RTL the two swap so the arrows follow what the user sees.
  */
 export function nextFocus(
@@ -16,11 +16,19 @@ export function nextFocus(
   nodeId: string,
   key: ArrowKey,
   dir: "ltr" | "rtl" = "ltr",
+  growth: "down" | "up" = "down",
 ): string | null {
   const node = layout.nodes.find((n) => n.nodeId === nodeId);
   if (!node) return null;
 
-  switch (key) {
+  // In a tree that grows upward the arrows still follow what the user sees: up goes to a child.
+  const towards =
+    growth === "up" && (key === "ArrowUp" || key === "ArrowDown")
+      ? key === "ArrowUp"
+        ? "ArrowDown"
+        : "ArrowUp"
+      : key;
+  switch (towards) {
     case "ArrowUp": {
       const parent = parentsOf(doc, node.personId)[0];
       return parent === undefined ? null : (layout.primaryNode[parent] ?? null);

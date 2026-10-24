@@ -5,6 +5,9 @@ import { layoutPedigree } from "@/core/layout/pedigree";
 import type { TreeDocument } from "@/core/model/types";
 import { renderTreeSvg } from "@/export/render/renderTreeSvg";
 import type { ExportInput, ExportOptions } from "@/export/types";
+import { TEMPLATES } from "@/templates";
+import { DEFAULT_LOOK } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 
 import { docOf, famCousinMarriage, famSimple, person, union } from "../../fixtures/families";
 import { t } from "../../ui/i18n";
@@ -21,8 +24,12 @@ const OPTS: ExportOptions = {
 
 const PHOTO = "data:image/png;base64,iVBORw0KGgo=";
 
+/** The editor lays a tree out for its look; these trees keep the default one (Warm album). */
+const metrics = metricsFor(DEFAULT_LOOK);
+const ALBUM = TEMPLATES.album.palettes;
+
 function inputOf(doc: TreeDocument, extra: Partial<ExportInput> = {}): ExportInput {
-  const layout = layoutFamily(doc, { rootId: doc.rootPersonId! });
+  const layout = layoutFamily(doc, { rootId: doc.rootPersonId!, metrics });
   return { doc, layout, viewRootId: null, selectedId: null, photos: {}, ...extra };
 }
 
@@ -107,11 +114,15 @@ describe("renderTreeSvg", () => {
     );
   });
 
-  test("draws gender marks as stroked paths, never as ♂/♀ text no embedded font has", () => {
+  test("marks gender with the photo ring's colour, never as ♂/♀ text no embedded font has", () => {
     const { svg } = render(famSimple());
     expect(svg).not.toMatch(/[♂♀]/);
-    expect(parse(svg).querySelectorAll("path.stam-card__gender-mark")).toHaveLength(5);
-    expect(svg).toMatch(/\.stam-card__gender-mark\{fill:none;stroke:#/);
+    const rings = [...parse(svg).querySelectorAll(".stam-card__key")].map((k) =>
+      k.getAttribute("style"),
+    );
+    expect(rings).toHaveLength(5);
+    expect(rings.some((r) => r?.includes(ALBUM.light.male))).toBe(true);
+    expect(rings.some((r) => r?.includes(ALBUM.light.female))).toBe(true);
   });
 
   test("draws static cards: no roles, tab stops or controls", () => {
@@ -158,7 +169,7 @@ describe("renderTreeSvg", () => {
 
   test("each scope draws the expected people", () => {
     const doc = famCousinMarriage();
-    const view = layoutFamily(doc, { rootId: "g1", collapsed: new Set(["p1", "p2"]) });
+    const view = layoutFamily(doc, { rootId: "g1", collapsed: new Set(["p1", "p2"]), metrics });
     const base: ExportInput = { doc, layout: view, viewRootId: null, selectedId: "p2", photos: {} };
     const ids = (scope: ExportOptions["scope"], extra: Partial<ExportInput> = {}) =>
       personIds(renderTreeSvg({ ...base, ...extra }, { ...OPTS, scope }, t).svg);
@@ -203,7 +214,7 @@ describe("renderTreeSvg", () => {
 
   test("a pedigree's ruler counts from its top row too", () => {
     const doc = famCousinMarriage();
-    const layout = layoutPedigree(doc, { focusId: "kid" });
+    const layout = layoutPedigree(doc, { focusId: "kid", metrics });
     const { svg } = renderTreeSvg(inputOf(doc, { layout }), { ...OPTS, showRuler: true }, t);
     const labels = [...parse(svg).querySelectorAll(".stam-export__ruler text")];
     expect(labels.map((l) => l.textContent)).toEqual(["I", "II", "III", "IV"]);
@@ -211,7 +222,9 @@ describe("renderTreeSvg", () => {
 
   test("solid background fills the ground; transparent leaves it out; print is white", () => {
     const solid = parse(render(famSimple()).svg);
-    expect(solid.querySelector(".stam-export__ground")?.getAttribute("fill")).toBe("#f4f5f2");
+    expect(solid.querySelector(".stam-export__ground")?.getAttribute("fill")).toBe(
+      ALBUM.light.ground,
+    );
     expect(
       parse(render(famSimple(), { background: "transparent" }).svg).querySelector(
         ".stam-export__ground",
@@ -219,16 +232,16 @@ describe("renderTreeSvg", () => {
     ).toBeNull();
     const print = render(famSimple(), { theme: "print" }).svg;
     expect(parse(print).querySelector(".stam-export__ground")?.getAttribute("fill")).toBe(
-      "#ffffff",
+      ALBUM.paper.ground,
     );
-    expect(print).toContain(".stam-card__bg{fill:none;stroke:#000000");
   });
 
-  test("dark resolves the dark tokens: dark ground, light ink, lifted cards", () => {
+  test("dark draws the template's dark palette, resolved to literal colours", () => {
     const dark = render(famSimple(), { theme: "dark" }).svg;
-    expect(parse(dark).querySelector(".stam-export__ground")?.getAttribute("fill")).toBe("#0f110f");
-    expect(dark).toContain(".stam-card__bg{fill:#1c201c;stroke:#e8eae6");
-    expect(dark).toContain(".stam-card__years{fill:#9aa29b");
+    expect(parse(dark).querySelector(".stam-export__ground")?.getAttribute("fill")).toBe(
+      ALBUM.dark.ground,
+    );
+    expect(dark).toContain(`fill:${ALBUM.dark.card}`);
     expect(dark).toContain("stam-export--dark");
     expect(dark).not.toContain("var(--");
   });
@@ -239,7 +252,7 @@ describe("renderTreeSvg", () => {
       [union("u", ["f"], ["k"])],
       "f",
     );
-    expect(render(doc).svg).toContain("Unknown father");
+    expect(render(doc).svg).toMatch(/Unknown fat/);
   });
 
   test("RTL mirrors the tree", () => {

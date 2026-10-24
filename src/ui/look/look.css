@@ -1,0 +1,140 @@
+/* The Look dialog: six template cards with a drawing of the tree in each, then the size controls.
+   Three columns on desktop, two on a tablet, one on a phone. Logical properties only. */
+.dialog:has(.look-form) {
+  inline-size: min(940px, calc(100% - 2 * var(--gutter)));
+}
+
+.look-form {
+  display: grid;
+  gap: 18px;
+}
+
+.look-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 760px) {
+  .look-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .look-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.look-card {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 8px 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition:
+    box-shadow var(--dur-micro) var(--ease),
+    border-color var(--dur-micro) var(--ease);
+}
+
+.look-card:hover {
+  border-color: var(--line-strong);
+}
+
+/* The real radio covers the card (invisible): a click anywhere chooses, and focus lands on it. */
+.look-card input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.look-card:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    var(--shadow-1);
+}
+
+.look-card:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.look-preview {
+  display: block;
+  inline-size: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+}
+
+.look-card__text {
+  display: grid;
+  gap: 1px;
+  padding-inline: 4px;
+}
+
+.look-card__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.look-card:has(input:checked) .look-card__name::after {
+  content: "";
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.look-card__hint {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.look-sizes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .look-sizes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.look-slider__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.look-slider input[type="range"] {
+  flex: 1;
+  min-inline-size: 0;
+  accent-color: var(--accent);
+}
+
+.look-slider__value {
+  min-inline-size: 4.5ch;
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}

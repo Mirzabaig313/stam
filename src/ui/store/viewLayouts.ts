@@ -1,7 +1,9 @@
 import { unreachableFrom } from "@/core/layout/blocks";
+import type { CardMetrics, SizeOf } from "@/core/layout/constants";
 import { layoutDescendants } from "@/core/layout/descendants";
 import { layoutFamily } from "@/core/layout/family";
 import { clampFanGenerations, layoutFan } from "@/core/layout/fan";
+import { growUpward } from "@/core/layout/flip";
 import { layoutHourglass } from "@/core/layout/hourglass";
 import { layoutPedigree } from "@/core/layout/pedigree";
 import { layoutTimeline } from "@/core/layout/timeline";
@@ -59,6 +61,12 @@ export type ViewInputs = {
   collapsed: ReadonlySet<string>;
   /** Generations the fan draws (2–7); `FAN_GENERATIONS` when left out. */
   fanGenerations?: number;
+  /** Card size and spacing of the tree's look; the default metrics when left out. */
+  metrics?: CardMetrics;
+  /** "up": the template draws the eldest row at the bottom (Botanical). */
+  growth?: "down" | "up";
+  /** Cards resized on their own. */
+  sizes?: SizeOf;
 };
 
 export type ComputedViews = {
@@ -100,13 +108,16 @@ export function computeViews(
   };
   const rootId = input.viewRootId ?? doc?.rootPersonId;
   if (!doc || rootId === undefined) return none;
-  const { collapsed, viewMode } = input;
-  const family = () => fns.family(doc, { rootId, collapsed });
+  const { collapsed, viewMode, metrics, sizes } = input;
+  /** Card views in a template that grows upward are drawn upside down (see `growUpward`). */
+  const grown = (layout: LayoutResult): LayoutResult =>
+    input.growth === "up" ? growUpward(layout) : layout;
+  const family = () => grown(fns.family(doc, { rootId, collapsed, metrics, sizes }));
   const focus = resolveFocus(doc, input.focusId, input.viewRootId);
   /** A focus view's own layout, with the family view's unreachable people. */
   const around = (layout: LayoutResult | null): ComputedViews => ({
     ...none,
-    layout,
+    layout: layout && grown(layout),
     familyUnreachable: unreachableFrom(doc, rootId),
   });
   /** The family layout, which fan and timeline keep for exports. */
@@ -116,11 +127,17 @@ export function computeViews(
   };
   switch (viewMode) {
     case "pedigree":
-      return around(focus ? fns.pedigree(doc, { focusId: focus, collapsed }) : null);
+      return around(
+        focus ? fns.pedigree(doc, { focusId: focus, collapsed, metrics, sizes }) : null,
+      );
     case "descendants":
-      return around(focus ? fns.descendants(doc, { rootId: focus, collapsed }) : null);
+      return around(
+        focus ? fns.descendants(doc, { rootId: focus, collapsed, metrics, sizes }) : null,
+      );
     case "hourglass":
-      return around(focus ? fns.hourglass(doc, { focusId: focus, collapsed }) : null);
+      return around(
+        focus ? fns.hourglass(doc, { focusId: focus, collapsed, metrics, sizes }) : null,
+      );
     case "fan":
       return withFamily({
         fanLayout: focus

@@ -2,6 +2,9 @@ import type { TFunction } from "i18next";
 
 import { applyPrivacy } from "@/export/render/privacy";
 import type { ExportInput } from "@/export/types";
+import { loadFace, paletteFor, TEMPLATES } from "@/templates";
+import { loadTemplateFonts } from "@/templates/loadFonts";
+import { DEFAULT_LOOK } from "@/templates/look";
 
 import { allowsTransparent, type ExportSettings, posterPageSpec, toExportOptions } from "./formats";
 import { buildPeople } from "./people";
@@ -31,9 +34,6 @@ export type ExportResult = {
 
 const isScaleLimit = (code: string | undefined): code is ScaleLimit =>
   code === "SIDE_LIMIT" || code === "AREA_LIMIT";
-
-/** The paper colour behind an export, resolved from the tokens (exports carry no CSS variables). */
-const GROUND = { light: "#f4f5f2", dark: "#0f110f", print: "#ffffff" } as const;
 
 /** The lazy module loads; tests pass fakes, so no module registry is touched. */
 export type Loaders = {
@@ -66,7 +66,12 @@ export async function runExport(
     const doc = settings.privacy ? applyPrivacy(req.input.doc) : req.input.doc;
     return { blob: new Blob([writeGedcom(doc)], { type: "application/x-gedcom" }) };
   }
-  const opts = toExportOptions(settings);
+  const opts = toExportOptions(settings, req.input.look);
+  const templateId = opts.look?.template ?? DEFAULT_LOOK.template;
+  await loadFace(templateId);
+  const template = TEMPLATES[templateId];
+  // Cards are fitted with measured text: the template's fonts must be in before it is measured.
+  await loadTemplateFonts(template);
   const render = await load.render();
   const doc = opts.privacy ? render.applyPrivacy(req.input.doc) : req.input.doc;
   const input: ExportInput = { ...req.input, doc };
@@ -83,7 +88,7 @@ export async function runExport(
         scale: settings.scale,
         ...(settings.format === "jpeg" ? { quality: settings.quality } : {}),
         background: allowsTransparent(settings.format) ? opts.background : "solid",
-        ground: GROUND[settings.theme],
+        ground: paletteFor(template, settings.theme).ground,
       });
       return {
         blob: out.blob,

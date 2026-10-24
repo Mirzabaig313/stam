@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 
 import { act, cleanup, renderHook } from "@testing-library/react";
 
+import { DEFAULT_METRICS } from "@/core/layout/constants";
 import type { LayoutEdge, LayoutNode, LayoutResult } from "@/core/layout/types";
 import { ease } from "@/ui/canvas/motion";
 import { settledFrame, tweenFrame, useLayoutTween } from "@/ui/canvas/useLayoutTween";
@@ -39,6 +40,7 @@ function layoutOf(nodes: LayoutNode[], edges: LayoutEdge[] = []): LayoutResult {
     generationCount: 1,
     primaryNode: Object.fromEntries(nodes.map((n) => [n.personId, n.nodeId])),
     unreachable: [],
+    metrics: DEFAULT_METRICS,
   };
 }
 

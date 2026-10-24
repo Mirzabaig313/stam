@@ -3,12 +3,15 @@ import { describe, expect, test } from "bun:test";
 import * as fc from "fast-check";
 
 import { type BlockTree, buildBlockTree } from "@/core/layout/blocks";
-import { CARD_H, CARD_W, COUPLE_GAP, GAP, ROW_H } from "@/core/layout/constants";
+import { type CardMetrics, type CardSize, DEFAULT_METRICS } from "@/core/layout/constants";
 import { layoutFamily } from "@/core/layout/family";
+import { nodeHeight, nodeWidth } from "@/core/layout/result";
 import type { LayoutResult } from "@/core/layout/types";
 import { partnersOf, unionsOf } from "@/core/model/tree";
 import type { TreeDocument } from "@/core/model/types";
 import { validate } from "@/core/model/validate";
+import { CARD_SIZE, SPACINGS, TEMPLATE_IDS, TEXT_SIZE } from "@/templates/look";
+import { metricsFor } from "@/templates/metrics";
 
 import { arbFamily, runs } from "../../fixtures/arbitraries";
 import { arbDeepFamily } from "../../fixtures/deepFamily";
@@ -24,19 +27,70 @@ import {
 const TIMEOUT_MS = 10 * 60 * 1000;
 const numRuns = runs();
 
-type Case = { doc: TreeDocument; rootId: string; collapsed: Set<string> };
+type Case = {
+  doc: TreeDocument;
+  rootId: string;
+  collapsed: Set<string>;
+  metrics: CardMetrics;
+  /** Cards resized on their own (60 % to 250 % of the metrics' card), by person. */
+  sizes: Map<string, CardSize> | null;
+};
 
-/** A random family, a random view root, and a random set of collapsed people. */
+/** The size controls' steps between `min` and `max`. */
+const steps = (r: { min: number; max: number; step: number }) =>
+  fc.integer({ min: r.min / r.step, max: r.max / r.step }).map((n) => n * r.step);
+
+/** Half the time today's card; otherwise any template at any card size, text size and spacing. */
+const arbMetrics: fc.Arbitrary<CardMetrics> = fc.oneof(
+  fc.constant(DEFAULT_METRICS),
+  fc
+    .record({
+      template: fc.constantFrom(...TEMPLATE_IDS),
+      cardSize: steps(CARD_SIZE),
+      textSize: steps(TEXT_SIZE),
+      spacing: fc.constantFrom(...SPACINGS),
+    })
+    .map(metricsFor),
+);
+
+/** A random family, a random view root, a random set of collapsed people and card metrics. */
 function arbCase(families: fc.Arbitrary<TreeDocument>): fc.Arbitrary<Case> {
   return fc
-    .tuple(families, fc.nat(1000), fc.array(fc.nat(1000), { maxLength: 4 }))
+    .tuple(
+      families,
+      fc.nat(1000),
+      fc.array(fc.nat(1000), { maxLength: 4 }),
+      arbMetrics,
+      fc.option(
+        fc.array(
+          fc.tuple(
+            fc.nat(1000),
+            fc.integer({ min: 60, max: 250 }),
+            fc.integer({ min: 60, max: 250 }),
+          ),
+          { maxLength: 8 },
+        ),
+        { freq: 2 },
+      ),
+    )
     .filter(([doc]) => Object.keys(doc.persons).length > 0)
-    .map(([doc, rootPick, collapsePicks]) => {
+    .map(([doc, rootPick, collapsePicks, metrics, resized]) => {
       const people = Object.keys(doc.persons);
       const pick = (n: number) => people[n % people.length]!;
       // Mostly the document root; sometimes another person, as "View family" does.
       const rootId = rootPick % 3 === 0 ? pick(rootPick) : (doc.rootPersonId ?? pick(rootPick));
-      return { doc, rootId, collapsed: new Set(collapsePicks.map(pick)) };
+      const sizes = resized
+        ? new Map(
+            resized.map(([n, w, h]) => [
+              pick(n),
+              {
+                w: Math.round((metrics.cardW * w) / 100),
+                h: Math.round((metrics.cardH * h) / 100),
+              },
+            ]),
+          )
+        : null;
+      return { doc, rootId, collapsed: new Set(collapsePicks.map(pick)), metrics, sizes };
     });
 }
 
@@ -64,8 +118,13 @@ function expectedPeople({ doc, rootId, collapsed }: Case) {
   return { blood, shown };
 }
 
-const layoutOf = ({ doc, rootId, collapsed }: Case): LayoutResult =>
-  layoutFamily(doc, { rootId, collapsed });
+const layoutOf = ({ doc, rootId, collapsed, metrics, sizes }: Case): LayoutResult =>
+  layoutFamily(doc, {
+    rootId,
+    collapsed,
+    metrics,
+    ...(sizes ? { sizes: (id: string) => sizes.get(id) } : {}),
+  });
 
 /** The block tree behind a layout, and which block each node belongs to. */
 type Context = { tree: BlockTree; blockOf: Map<string, number>; childBlocks: string[] };
@@ -95,29 +154,44 @@ type Check = (c: Case, layout: LayoutResult, ctx: Context) => void;
  * generated case inside one fast-check run. A failure names the property it broke.
  */
 const properties: Record<string, Check> = {
-  "no two node rectangles intersect or touch": (_, { nodes }) => {
+  "no two node rectangles intersect or touch": (_, { nodes, metrics: m }) => {
     const byX = nodes.toSorted((a, b) => a.x - b.x);
+    const widest = Math.max(...nodes.map((n) => nodeWidth(n, m)));
     for (let i = 0; i < byX.length; i++) {
       const a = byX[i]!;
-      for (let j = i + 1; j < byX.length && byX[j]!.x <= a.x + CARD_W; j++) {
+      for (let j = i + 1; j < byX.length && byX[j]!.x <= a.x + widest; j++) {
         const b = byX[j]!;
-        const overlapY = b.y <= a.y + CARD_H && a.y <= b.y + CARD_H;
+        const overlapX = b.x <= a.x + nodeWidth(a, m) && a.x <= b.x + nodeWidth(b, m);
+        const overlapY = b.y <= a.y + nodeHeight(a, m) && a.y <= b.y + nodeHeight(b, m);
+        if (!overlapX) continue;
         if (overlapY) throw new Error(`${a.nodeId} touches ${b.nodeId}`);
       }
     }
   },
 
-  "every node sits on its generation row": (_, { nodes }) => {
-    for (const node of nodes) expect(node.y).toBe(node.generation * ROW_H);
+  "every node sits on its generation row, rows apart by at least the row gap": (
+    _,
+    { nodes, metrics: m },
+  ) => {
+    const rows = Map.groupBy(nodes, (n) => n.generation);
+    const generations = [...rows.keys()].toSorted((a, b) => a - b);
+    let bottom = -Infinity;
+    for (const g of generations) {
+      const row = rows.get(g)!;
+      const top = row[0]!.y;
+      for (const n of row) expect(n.y).toBe(top);
+      expect(top).toBeGreaterThanOrEqual(bottom + m.rowH - m.cardH - 1e-9);
+      bottom = Math.max(...row.map((n) => n.y + nodeHeight(n, m)));
+    }
   },
 
-  "every child edge ends at its child's top centre": (_, { nodes, edges }) => {
+  "every child edge ends at its child's top centre": (_, { nodes, edges, metrics: m }) => {
     const byId = new Map(nodes.map((n) => [n.nodeId, n]));
     for (const edge of edges) {
       if (edge.kind !== "child") continue;
       const child = byId.get(edge.id.split(":").at(-1)!)!;
       expect(child).toBeDefined();
-      expect(edge.points.at(-1)).toEqual([child.x + CARD_W / 2, child.y]);
+      expect(edge.points.at(-1)).toEqual([child.x + nodeWidth(child, m) / 2, child.y]);
     }
   },
 
@@ -149,20 +223,22 @@ const properties: Record<string, Check> = {
     expect(new Set(layout.nodes.map((n) => n.nodeId)).size).toBe(layout.nodes.length);
   },
 
-  "cards of one block sit exactly COUPLE_GAP apart, other blocks at least GAP": (
+  "cards of one block sit exactly the couple gap apart, other blocks at least the gap": (
     _,
-    { nodes },
+    { nodes, metrics: m },
     { blockOf },
   ) => {
     for (const row of Map.groupBy(nodes, (n) => n.y).values()) {
       const byX = row.toSorted((a, b) => a.x - b.x);
       for (let i = 1; i < byX.length; i++) {
         const [a, b] = [byX[i - 1]!, byX[i]!];
-        const gap = b.x - a.x - CARD_W;
+        const gap = b.x - a.x - nodeWidth(a, m);
         if (blockOf.get(a.nodeId) === blockOf.get(b.nodeId)) {
-          if (gap !== COUPLE_GAP) throw new Error(`${a.nodeId}|${b.nodeId} gap ${gap}`);
-        } else if (gap < GAP) {
-          throw new Error(`${a.nodeId}|${b.nodeId} gap ${gap} < ${GAP}`);
+          if (Math.abs(gap - m.coupleGap) > 1e-9) {
+            throw new Error(`${a.nodeId}|${b.nodeId} gap ${gap}`);
+          }
+        } else if (gap < m.gap - 1e-9) {
+          throw new Error(`${a.nodeId}|${b.nodeId} gap ${gap} < ${m.gap}`);
         }
       }
     }

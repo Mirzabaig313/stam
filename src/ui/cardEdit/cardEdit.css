@@ -1,0 +1,285 @@
+/* Editing a card on the canvas: corner handles, line boxes and the floating toolbars, in the
+   canvas's HTML overlay (screen px). Logical properties, except the handles' physical corners. */
+
+.card-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.card-frame > * {
+  pointer-events: auto;
+}
+
+/* The corner handles: small squares centred on the card's corners, with a bigger hit area. */
+.card-frame__handle {
+  position: absolute;
+  inline-size: 24px;
+  block-size: 24px;
+  margin: -12px 0 0 -12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+}
+
+.card-frame__handle::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1.5px solid var(--accent, #7c2a5c);
+  border-radius: 2px;
+  background: var(--surface-raised, #fffcfa);
+  box-shadow: var(--shadow-1, 0 1px 2px rgb(0 0 0 / 0.12));
+}
+
+.card-frame__handle--topLeft,
+.card-frame__handle--bottomRight {
+  cursor: nwse-resize;
+}
+
+.card-frame__handle--topRight,
+.card-frame__handle--bottomLeft {
+  cursor: nesw-resize;
+}
+
+.card-frame__handle:focus-visible::before {
+  outline: 2px solid var(--focus, #2a1e24);
+  outline-offset: 2px;
+}
+
+/* A line of the card: invisible until pointed at; the selected one keeps a thin accent box. */
+.card-frame__line {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 1.5px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: text;
+}
+
+.card-frame__line:hover {
+  border-color: color-mix(in srgb, var(--accent, #7c2a5c) 45%, transparent);
+}
+
+.card-frame__line--selected {
+  border-color: var(--accent, #7c2a5c);
+}
+
+.card-frame__line:focus-visible {
+  outline: 2px solid var(--focus, #2a1e24);
+  outline-offset: 1px;
+}
+
+/* The toolbar floats above the card, centred on it (below it near the top of the canvas). */
+.card-frame__bar {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 3;
+}
+
+.card-frame__bar--below {
+  transform: translate(-50%, 0);
+}
+
+.card-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 14px;
+  background: var(--ink, #2a1e24);
+  color: var(--surface-raised, #fffcfa);
+  box-shadow: var(--shadow-3, 0 12px 32px rgb(0 0 0 / 0.25));
+  white-space: nowrap;
+}
+
+.card-toolbar__rule {
+  inline-size: 1px;
+  block-size: 20px;
+  margin-inline: 4px;
+  background: color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.card-tool {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  min-inline-size: 34px;
+  block-size: 34px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.card-tool:hover,
+.card-tool[aria-expanded="true"],
+.card-tool[aria-pressed="true"] {
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.card-tool:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+
+.card-tool__swatch {
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 40%, transparent);
+}
+
+/* The style preset: a native select dressed as a toolbar button, with its own chevron. */
+.card-tool--select {
+  display: inline-flex;
+  gap: 6px;
+  padding-inline: 10px 8px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.card-tool--select select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.card-tool--select select option {
+  color: var(--ink, #2a1e24);
+}
+
+/* A tool's panel: under the toolbar, raised. */
+.card-panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-start: 0;
+  display: grid;
+  gap: 10px;
+  min-inline-size: 220px;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-overlay, #fffcfa);
+  color: var(--ink, #2a1e24);
+  box-shadow: var(--shadow-3, 0 12px 32px rgb(0 0 0 / 0.25));
+  white-space: normal;
+}
+
+.card-frame__bar--below .card-panel {
+  inset-block-start: calc(100% + 8px);
+}
+
+.card-panel__swatches {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(6, 26px);
+  gap: 6px;
+}
+
+.card-swatch {
+  position: relative;
+  inline-size: 26px;
+  block-size: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  box-shadow: inset 0 0 0 1px var(--line, rgb(42 30 36 / 0.14));
+  cursor: pointer;
+}
+
+.card-swatch[aria-pressed="true"] {
+  box-shadow:
+    inset 0 0 0 1px var(--line, rgb(42 30 36 / 0.14)),
+    0 0 0 2px var(--accent, #7c2a5c);
+}
+
+/* "The template's own": a slashed swatch. */
+.card-swatch--template {
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px),
+    var(--danger, #a33a2b) calc(50% - 1px),
+    var(--danger, #a33a2b) calc(50% + 1px),
+    transparent calc(50% + 1px)
+  );
+}
+
+.card-swatch--custom {
+  overflow: hidden;
+  background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);
+}
+
+.card-swatch--custom input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.card-panel__slider {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 3ch;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.card-panel__slider input[type="range"] {
+  accent-color: var(--accent, #7c2a5c);
+}
+
+.card-panel__slider output {
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+.card-panel__clear {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-2, #6a5960);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* On a phone the toolbar is a bar along the bottom of the canvas. */
+/* Physical sides only here: the bar's inline style places it with left and top. */
+@media (max-width: 600px) {
+  .card-frame__bar,
+  .card-frame__bar--below {
+    position: fixed;
+    left: 8px !important;
+    right: 8px;
+    bottom: 12px;
+    top: auto !important;
+    transform: none;
+  }
+
+  .card-toolbar {
+    justify-content: center;
+    overflow-x: auto;
+  }
+
+  .card-panel {
+    inset-block-start: auto;
+    inset-block-end: calc(100% + 8px);
+  }
+}

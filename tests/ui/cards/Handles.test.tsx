@@ -101,9 +101,7 @@ describe("quick-add handles", () => {
     // No handles while an add is being named.
     expect(document.querySelector("[data-handles-for]")).toBeNull();
 
-    await user.type(nameInput(), "Bilal");
-    await user.click(screen.getByRole("button", { name: "Male" }));
-    await user.keyboard("{Enter}");
+    await user.type(nameInput(), "Bilal{Enter}");
     expect(store.getState().doc!.persons[editing.personId]).toMatchObject({
       firstName: "Bilal",
       lastName: "Khan",
@@ -112,7 +110,7 @@ describe("quick-add handles", () => {
     expect(document.activeElement).toBe(cardOf(editing.personId));
   });
 
-  test("a side handle offers Spouse and Sibling; Spouse opens the editor with the opposite gender", async () => {
+  test("a side handle offers Spouse and Sibling; a spouse gets the opposite gender", async () => {
     const { store, user } = await renderEditorCanvas(famSimple());
     hover("c1");
     await user.click(
@@ -123,9 +121,9 @@ describe("quick-add handles", () => {
     expect(document.activeElement).toBe(options[0]!);
     await user.click(options[0]!);
     expect(store.getState().editing).toMatchObject({ role: "spouse", fromId: "c1" });
-    expect(screen.getByRole("button", { name: "Female" }).getAttribute("aria-pressed")).toBe(
-      "true",
-    );
+    const { personId } = store.getState().editing!;
+    await user.type(nameInput(), "Sam{Enter}");
+    expect(store.getState().doc!.persons[personId]?.gender).toBe("female");
   });
 
   test("Sibling adds a sibling under the same parents", async () => {
@@ -308,9 +306,7 @@ describe("a person above (the owner's case)", () => {
       screen.getByRole("button", { name: "Add a person between Ismail Khan and Haider Khan" }),
     );
     expect(store.getState().editing).toMatchObject({ role: "between", fromId: "haider" });
-    await user.type(nameInput(), "Ahmed");
-    await user.click(screen.getByRole("button", { name: "Male" }));
-    await user.keyboard("{Enter}");
+    await user.type(nameInput(), "Ahmed{Enter}");
     const doc = store.getState().doc!;
     const ahmed = Object.values(doc.persons).find((p) => p.firstName === "Ahmed")!;
     // One word: the last name comes from Haider.

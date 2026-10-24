@@ -1,5 +1,7 @@
 import type { ChildType, UnionStatus } from "@/core/model/types";
 
+import type { CardMetrics } from "./constants";
+
 /**
  * `blood`: the person a block belongs to. `spouse`: a partner of the blood person.
  * `linked`: a later appearance of someone already placed elsewhere; always a leaf.
@@ -37,6 +39,12 @@ export type LayoutNode = {
   generation: number;
   /** "+N" badge on a collapsed blood person; 0 otherwise. */
   hiddenCount: number;
+  /**
+   * The card's own size, when the layout was given per-card sizes; the metrics' card otherwise
+   * (read it with `nodeWidth` / `nodeHeight`).
+   */
+  width?: number;
+  height?: number;
 };
 
 export type LayoutEdge = {
@@ -59,4 +67,6 @@ export type LayoutResult = {
   primaryNode: Record<string, string>;
   /** Persons not placed from the view root, in document order. */
   unreachable: string[];
+  /** The card size and spacing the layout was built with. */
+  metrics: CardMetrics;
 };

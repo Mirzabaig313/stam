@@ -1,13 +1,23 @@
-import { useSyncExternalStore } from "react";
+import { useContext, useSyncExternalStore } from "react";
+import { useStore } from "zustand";
+import { createStore } from "zustand/vanilla";
 
+import { TEMPLATES } from "@/templates";
 import { type TreeDirection, useSettings } from "@/ui/settings/settings";
+import { EditorContext } from "@/ui/store/useEditor";
 
 export type Dir = "ltr" | "rtl";
 
-/** The direction the tree is drawn in: the setting, or with "auto" the interface's. */
-export function resolveTreeDir(setting: TreeDirection, interfaceDir: Dir): Dir {
-  return setting === "auto" ? interfaceDir : setting;
+/**
+ * The direction the tree is drawn in: the setting, or with "auto" the direction the tree's
+ * template reads in (Shajara: right to left), else the interface's.
+ */
+export function resolveTreeDir(setting: TreeDirection, interfaceDir: Dir, preferred?: Dir): Dir {
+  return setting === "auto" ? (preferred ?? interfaceDir) : setting;
 }
+
+/** Outside an open tree there is no template to prefer a direction. */
+const NO_EDITOR = createStore(() => null);
 
 function subscribeToDir(onChange: () => void): () => void {
   const observer = new MutationObserver(onChange);
@@ -31,5 +41,9 @@ export function useInterfaceDir(): Dir {
  */
 export function useTreeDir(): Dir {
   const [settings] = useSettings();
-  return resolveTreeDir(settings.treeDirection, useInterfaceDir());
+  const editor = useContext(EditorContext);
+  const preferred = useStore(editor ?? NO_EDITOR, (s) =>
+    s ? TEMPLATES[s.look.template].preferredDirection : undefined,
+  );
+  return resolveTreeDir(settings.treeDirection, useInterfaceDir(), preferred);
 }

@@ -89,3 +89,12 @@ describe("nextFocus on famSimple", () => {
     expect(nextFocus(layout, doc, layout.primaryNode["c1"]!, "ArrowUp")).toBeNull();
   });
 });
+
+describe("nextFocus in a tree that grows upward (Botanical)", () => {
+  test("the arrows follow what the user sees: up reaches a child, down a parent", () => {
+    const { doc, layout, node } = setup();
+    expect(nextFocus(layout, doc, node("dad"), "ArrowUp", "ltr", "up")).toBe(node("c1"));
+    expect(nextFocus(layout, doc, node("c2"), "ArrowDown", "ltr", "up")).toBe(node("dad"));
+    expect(nextFocus(layout, doc, node("dad"), "ArrowDown", "ltr", "up")).toBeNull();
+  });
+});
