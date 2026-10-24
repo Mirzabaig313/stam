@@ -13,6 +13,26 @@ import type { authStore as defaultAuth } from "./auth";
 
 type Repo = Parameters<typeof saveSettings>[0] & Parameters<typeof settingsSavedAt>[0];
 
+const SYNCED_KEY = "stam.settingsSyncedAt";
+
+/** When this device's settings last matched the account's (ms), or null when never. */
+export function settingsSyncedAt(): number | null {
+  try {
+    const value = Number(localStorage.getItem(SYNCED_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function noteSynced(): void {
+  try {
+    localStorage.setItem(SYNCED_KEY, String(Date.now()));
+  } catch {
+    // Not remembered: the menu then says the settings sync without a time.
+  }
+}
+
 /**
  * Keeps a signed-in user's app settings with their account, so a new device or browser starts with
  * them. After sign-in the newer copy wins: the account's is applied here, or this device's is sent
@@ -26,7 +46,10 @@ export function startSettingsSync(deps: {
   const api = deps.api ?? defaultApi;
   const { repo, auth } = deps;
   const send = (settings: Settings, savedAt: number) =>
-    void api.saveSettings({ settings, savedAt }).catch(() => {});
+    void api
+      .saveSettings({ settings, savedAt })
+      .then(noteSynced)
+      .catch(() => {});
 
   async function reconcile(account: AccountSettings | null | undefined) {
     const here = await settingsSavedAt(repo);
@@ -34,8 +57,11 @@ export function startSettingsSync(deps: {
       const settings = normalizeSettings(account.settings);
       setCurrentSettings(settings);
       await saveSettings(repo, settings, { savedAt: account.savedAt }).catch(() => {});
+      noteSynced();
     } else if (here > (account?.savedAt ?? 0)) {
       send(currentSettings(), here);
+    } else {
+      noteSynced(); // already the same
     }
   }
 

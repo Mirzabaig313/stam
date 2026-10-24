@@ -8,6 +8,7 @@ import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
 import { SettingsDialog } from "@/ui/settings/SettingsDialog";
 import { ShareDialog } from "@/ui/share/ShareDialog";
+import { SyncButton } from "@/ui/share/SyncButton";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
@@ -288,6 +289,7 @@ export function Toolbar({
             onClick={() => store.getState().redo()}
           />
         </div>
+        <SyncButton onSaveToAccount={canShare ? () => setSharing("account") : undefined} />
         {canShare && (
           <IconButton
             icon="share"

@@ -2,7 +2,7 @@ import "./treeList.css";
 
 import { type ChangeEvent, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useStore } from "zustand";
 
 import { type Api, api as defaultApi } from "@/cloud/api";
@@ -232,6 +232,13 @@ export function TreeListPage({
   const inAccount = (me?.trees ?? []).filter(
     (tree) => !trees?.some((local) => local.id === tree.id),
   );
+
+  // "Trees in my account" in the ⋯ menu links here: bring that section into view once it shows.
+  const hash = useLocation().hash;
+  useEffect(() => {
+    if (hash !== "#in-your-account" || inAccount.length === 0) return;
+    document.getElementById("in-your-account")?.scrollIntoView({ block: "start" });
+  }, [hash, inAccount.length]);
   const newTree = (
     <Button variant="primary" icon="plus" onClick={() => setDialog({ kind: "new" })}>
       {t("treeList.newTree")}

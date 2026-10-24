@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { authStore } from "@/cloud/auth";
 import { backupFileName } from "@/io/json/stamJson";
 import { createAutosaver } from "@/storage/autosave";
 import type { BackupState } from "@/storage/backupReminder";
@@ -174,6 +175,8 @@ describe("accessibility", () => {
   });
 
   test("every More item has an icon and a label", async () => {
+    // A browser known to be signed out: the account section offers Google sign-in.
+    authStore.setState({ status: "signedOut", me: null });
     await mountToolbar();
     await openMenu();
     const items = [...screen.getByRole("menu").querySelectorAll('[role^="menuitem"]')];
@@ -184,6 +187,7 @@ describe("accessibility", () => {
       "Download backup (.json)",
       "Download backup with photos",
       "Settings",
+      "Sign in with Google",
     ]);
     for (const item of items) expect(item.querySelector("svg.icon")).toBeTruthy();
   });

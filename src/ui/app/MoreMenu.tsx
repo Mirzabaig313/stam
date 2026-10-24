@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import { BirthdaysPanel, useBirthdays } from "@/ui/birthdays/Birthdays";
+import { AccountMenuSection } from "@/ui/share/AccountMenuSection";
 import { Menu, MenuItem, MenuSeparator } from "@/ui/design/Menu";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 
@@ -180,6 +181,7 @@ export function MoreMenu({
           <MenuItem icon="settings" onClick={run(onOpenSettings)}>
             <span className="menu-item__label">{t("settings.open")}</span>
           </MenuItem>
+          <AccountMenuSection onDone={() => setAt(null)} />
         </Menu>
       )}
       {birthdaysOpen && onShowPerson && (

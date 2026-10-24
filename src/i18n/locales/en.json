@@ -795,5 +795,22 @@
     "hint": "Others see it next to your changes and on your avatar.",
     "save": "Save",
     "skip": "Not now"
+  },
+  "sync": {
+    "save": "Save to my account",
+    "synced": "Synced",
+    "syncing": "Syncing…",
+    "offlineNone": "Offline",
+    "offline_one": "Offline · {{count}} change waiting",
+    "offline_other": "Offline · {{count}} changes waiting",
+    "signedOut": "Signed out · sign in to sync",
+    "now": "click to sync now"
+  },
+  "account": {
+    "signIn": "Sign in with Google",
+    "trees": "Trees in my account",
+    "signOut": "Sign out",
+    "settingsFollow": "Your settings follow your account.",
+    "settingsSynced": "Settings synced {{when}}."
   }
 }

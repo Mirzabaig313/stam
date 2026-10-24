@@ -125,6 +125,8 @@ export type EditorActions = {
   select(id: string | null): void;
   /** A link user's name in a shared tree (told to the room; see `cloudSession.setName`). */
   setDisplayName(name: string): void;
+  /** A shared tree: connect again now and send the waiting changes (the Sync button). */
+  syncNow(): void;
   /** Null shows the tree from `doc.rootPersonId` again. */
   setViewRoot(id: string | null): void;
   toggleCollapse(personId: string): void;
@@ -501,6 +503,7 @@ export function createEditorStore({
         session?.select(id);
       },
       setDisplayName: (name) => session?.setName(name),
+      syncNow: () => session?.reconnect(),
 
       setViewRoot(id) {
         set({ viewRootId: id, ...relayout(get().doc, { viewRootId: id }) });
