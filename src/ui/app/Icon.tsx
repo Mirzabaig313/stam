@@ -24,8 +24,11 @@ const PATHS = {
   chevronDown: "m4 6 4 4 4-4",
   check: "m3 8.5 3.25 3.25L13 5",
   trash: "M2.5 4.5h11M6 4.5V2.5h4v2M4 4.5l.75 9h6.5l.75-9M6.75 7v4M9.25 7v4",
+  // A gear: the toolbar's menu of tools and settings.
   settings:
-    "M8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5ZM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4",
+    "M12.85 6.79L14.54 7.12L14.54 8.88L12.85 9.21L12.28 10.58L13.25 12L12 13.25L10.58 12.28L9.21 12.85L8.88 14.54L7.12 14.54L6.79 12.85L5.42 12.28L4 13.25L2.75 12L3.72 10.58L3.15 9.21L1.46 8.88L1.46 7.12L3.15 6.79L3.72 5.42L2.75 4L4 2.75L5.42 3.72L6.79 3.15L7.12 1.46L8.88 1.46L9.21 3.15L10.58 3.72L12 2.75L13.25 4L12.28 5.42ZM8 10.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z",
+  // Two sliders: the app's preferences.
+  sliders: "M2.5 4.5h11M2.5 11.5h11M5.5 2.5v4M10.5 9.5v4",
   // Three swatches fanned out: the tree's look (template and sizes).
   look: "M2.5 2.5h4v11h-4zM6.5 5.2l3.4-2 4 6.9-7.4 4.3M6.5 13.5h7v-4h-2.4M4.5 11.5h.01",
   // Card and text toolbars.
@@ -78,6 +81,7 @@ const MIRRORED: ReadonlySet<IconName> = new Set([
 /** Icons whose dots must render as dots: round caps on a zero-length segment. */
 const ROUND: ReadonlySet<IconName> = new Set([
   "more",
+  "settings",
   "chevronDown",
   "check",
   "person",

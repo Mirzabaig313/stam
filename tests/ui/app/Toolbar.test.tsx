@@ -187,7 +187,7 @@ describe("accessibility", () => {
       "Download backup (.json)",
       "Download backup with photos",
       "Look",
-      "Settings",
+      "Appearance",
       "Sign in with Google",
     ]);
     for (const item of items) expect(item.querySelector("svg.icon")).toBeTruthy();

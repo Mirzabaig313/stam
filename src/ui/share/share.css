@@ -181,11 +181,28 @@
 }
 
 /* "My account" in the ⋯ menu (AccountMenuSection.tsx). */
+/* Who is signed in: a disc with their initial beside the name and email, the sync note under. */
 .menu-account {
   display: grid;
-  gap: 2px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 1px;
+  align-items: center;
   padding: var(--space-2, 8px) var(--space-3, 12px);
   font-size: var(--text-sm, 0.875rem);
+}
+
+.menu-account__avatar {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  border-radius: 50%;
+  background: var(--accent-soft, #f3e1ea);
+  color: var(--accent, #7c2a5c);
+  font-weight: 700;
+  font-size: 15px;
 }
 
 .menu-account__name {
@@ -193,7 +210,23 @@
   color: var(--ink-1);
 }
 
+.menu-account__name,
+.menu-account__email {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .menu-account__email,
 .menu-account__note {
   color: var(--ink-2);
+}
+
+.menu-account__note {
+  grid-column: 1 / -1;
+  margin-block-start: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm, 8px);
+  background: var(--surface-sunken, #ebe3de);
+  font-size: 12px;
 }

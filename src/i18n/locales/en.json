@@ -172,7 +172,13 @@
       "selectFirstHint": "Click a card, then add their parent, spouse, child or sibling.",
       "unconnected": "Add someone not connected yet",
       "noneHere": "This view can't add relatives to this person."
-    }
+    },
+    "groups": {
+      "view": "View",
+      "save": "Save and export",
+      "customize": "Customize"
+    },
+    "appearance": "Appearance"
   },
   "saveStatus": {
     "saving": "Saving…",

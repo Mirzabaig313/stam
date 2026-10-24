@@ -29,7 +29,7 @@ export type MoreMenuProps = {
 const FAILED_MS = 6000;
 
 /**
- * "⋯ More": the tools used now and then, each with an icon and a label. Focus mode and the
+ * "More", a gear in the toolbar: the signed-in account at the top, then the tools used now and then, each with an icon and a label. Focus mode and the
  * relationship panel are toggles (menuitemcheckbox); Birthdays opens its panel under the button;
  * Export, the two backups and Settings act at once. A dot on the button says a birthday is near.
  */
@@ -113,7 +113,7 @@ export function MoreMenu({
             aria-expanded={at !== null}
             onClick={() => (at ? setAt(null) : open())}
           >
-            <Icon name="more" />
+            <Icon name="settings" />
             {soon > 0 && <span className="toolbar-more__dot" aria-hidden="true" />}
           </button>
         )}
@@ -126,6 +126,8 @@ export function MoreMenu({
           toggle={trigger}
           onClose={() => setAt(null)}
         >
+          <AccountMenuSection part="header" onDone={() => setAt(null)} />
+          <GroupLabel>{t("toolbar.groups.view")}</GroupLabel>
           <MenuItem
             role="menuitemcheckbox"
             aria-checked={focusMode}
@@ -161,6 +163,7 @@ export function MoreMenu({
             </MenuItem>
           )}
           <MenuSeparator />
+          <GroupLabel>{t("toolbar.groups.save")}</GroupLabel>
           {onSaveToAccount && (
             <MenuItem icon="cloud" onClick={run(onSaveToAccount)}>
               {t("cloud.saveToAccount")}
@@ -181,15 +184,16 @@ export function MoreMenu({
             <span className="menu-item__label">{t("toolbar.downloadBackupPhotos")}</span>
           </MenuItem>
           <MenuSeparator />
+          <GroupLabel>{t("toolbar.groups.customize")}</GroupLabel>
           {onOpenLook && (
             <MenuItem icon="look" onClick={run(onOpenLook)}>
               <span className="menu-item__label">{t("look.button")}</span>
             </MenuItem>
           )}
-          <MenuItem icon="settings" onClick={run(onOpenSettings)}>
-            <span className="menu-item__label">{t("settings.open")}</span>
+          <MenuItem icon="sliders" onClick={run(onOpenSettings)}>
+            <span className="menu-item__label">{t("toolbar.appearance")}</span>
           </MenuItem>
-          <AccountMenuSection onDone={() => setAt(null)} />
+          <AccountMenuSection part="actions" onDone={() => setAt(null)} />
         </Menu>
       )}
       {birthdaysOpen && onShowPerson && (
@@ -207,6 +211,15 @@ export function MoreMenu({
           {t("toolbar.backupFailed")}
         </p>
       )}
+    </div>
+  );
+}
+
+/** A small heading over a group of items; screen readers get the items alone. */
+function GroupLabel({ children }: { children: string }) {
+  return (
+    <div className="menu-group-label" aria-hidden="true">
+      {children}
     </div>
   );
 }

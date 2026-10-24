@@ -194,7 +194,7 @@ describe("where it opens", () => {
     );
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "More" }));
-    await user.click(screen.getByRole("menuitem", { name: "Settings" }));
+    await user.click(screen.getByRole("menuitem", { name: "Appearance" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeTruthy();
     // The menu closed behind it.
     expect(screen.queryByRole("menu")).toBeNull();
