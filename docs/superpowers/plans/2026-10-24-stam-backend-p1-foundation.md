@@ -76,6 +76,11 @@ one commit per area (core, server, client), per the owner's preference.
   - ops per socket: token bucket of 30 per second, burst 60
 - **Close codes:** `4401` link revoked or session gone · `4404` tree deleted · `4413` tree too
   large.
+- **Sign-in is optional (spec D14).** Every v1 flow works signed out and offline. Sign-in is
+  required only for Save to account and Share, never to open a link. A browser that never
+  signed in sends no `/api` requests.
+- **API style (spec D15).** REST + JSON for resources; one WebSocket per open tree for live
+  edits.
 - **Logging.** Only ids, roles and error codes. Never tree content, comment bodies or tokens.
 - **UI strings** go through `t()` with keys in `en.json`, `ur.json` and `ar.json`. Logical CSS
   only. `<bdi>` around names. Visible copy has no em or en dashes.
@@ -781,6 +786,8 @@ test("a hide-living viewer never receives a living person's details", () => { /*
   - `callback with wrong or missing state is 400 and sets no session`
   - `return only accepts same-origin paths`: `//evil.com` and `https://evil.com` fall back to
     `/app`
+  - `callback redirects to return with signedIn=1 added` (the client's has-signed-in flag,
+    spec D14)
   - `/api/me without a cookie is 401`
   - `expired session is 401`
   - `signout deletes the session`
@@ -913,7 +920,12 @@ role checks, header forwarding, photo access.
     - `signOut()`
   - `auth.ts`: a zustand store `authStore` with
     `{status: "unknown" | "signedOut" | "signedIn"; me: Me | null; refresh(): Promise<void>}`.
-    Any `ApiError` with status 401 sets `signedOut`.
+    - Any `ApiError` with status 401 sets `signedOut`.
+    - Spec D14: `refresh()` calls `/api/me` only when `localStorage["stam.hasSignedIn"] === "1"`.
+      That flag is set when the app loads with `?signedIn=1` (the OAuth callback appends it to
+      `return`) and cleared on sign-out. Opening the Share dialog or the account menu calls
+      `refresh({force: true})`.
+    - Without the flag the status is `signedOut` and nothing is fetched.
   - `transport.ts`: `connectRoom(treeId, token?: string, handlers): RoomConnection`.
     - `wsOrigin()` is `ws://localhost:8787` in dev (`process.env.NODE_ENV !== "production"`),
       otherwise the page origin with `wss:`.
@@ -957,6 +969,8 @@ role checks, header forwarding, photo access.
   - `reconnect backoff stays between 1 and 30 seconds and stops on 4404`
   - `openLink stores the tree with its link meta`
   - `openOwnedTree caches an account tree with owner meta`
+  - `a browser that never signed in makes no /api requests` (load the tree list, open, edit and
+    export a local tree with a `fetch` spy: zero calls to `/api`)
   - `a 401 at reconnect reports signedOut and stops retrying until sign-in`
 - [ ] **Step 2: Run** `bun test tests/cloud`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
