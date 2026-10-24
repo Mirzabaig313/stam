@@ -34,14 +34,14 @@ type Outcome =
   | { ok: { doc: TreeDocument; changes: Changes; createdIds: string[] } }
   | { err: { code: string; key?: string } };
 
-const entries = (m: Record<string, unknown>) => Object.keys(m).map((k) => [k, sorted(m[k])]);
+const mapEntries = (m: Record<string, unknown>) => Object.keys(m).map((k) => [k, sorted(m[k])]);
 
 /** Changes as text: map order kept (new keys append), values compared by content. */
 function changesText(c: Changes): string {
   return JSON.stringify({
-    persons: entries(c.persons),
-    unions: entries(c.unions),
-    unionOrder: entries(c.unionOrder),
+    persons: mapEntries(c.persons),
+    unions: mapEntries(c.unions),
+    unionOrder: mapEntries(c.unionOrder),
     tree: sorted(c.tree),
   });
 }
