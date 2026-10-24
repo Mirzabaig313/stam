@@ -76,4 +76,14 @@ biggest trees, move to the Workers Paid plan ($5/month); no code changes.
   cleared. If that clean-up fails, sharing the same tree again clears what is left.
 - **Daily free-plan limits** reset at 00:00 UTC. When one runs out, rooms answer `busy` and
   browsers keep the edits queued until it resets.
-- **Not in P1:** nightly backups (P4), per-IP rate limits on link opening and uploads (P3).
+- **Rate limits.** Each IP gets, per minute and per Cloudflare location: 120 API requests, 600
+  photo downloads or uploads, 30 share-link opens (link users' sockets count here too) and 20
+  sign-in steps (`ratelimits` in `wrangler.jsonc`). Over a limit, the Worker answers 429
+  `RATE_LIMITED`; the app waits and retries, and keeps queued edits. The health check is never
+  limited. If a deploy refuses the `ratelimits` bindings on your plan, remove them: the Worker then
+  runs without limits.
+- **A firewall rule in front (optional, free).** Requests the Worker refuses still count toward
+  the daily 100,000. The free plan has one WAF rate-limiting rule, which blocks before the Worker
+  runs: **Security → WAF → Rate limiting rules**, match path starts with `/api/`, 200 requests per
+  10 seconds per IP, block for 10 seconds. It only catches floods; the Worker's limits do the rest.
+- **Not in P1:** nightly backups (P4).

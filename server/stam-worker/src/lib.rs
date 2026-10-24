@@ -7,6 +7,7 @@ mod auth;
 mod crypto;
 mod db;
 mod headers;
+mod ratelimit;
 mod room_do;
 mod routes;
 mod trees;

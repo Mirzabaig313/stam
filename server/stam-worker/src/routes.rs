@@ -5,7 +5,7 @@ use serde_json::json;
 use worker::{Env, Request, Response, Result, RouteContext, Router};
 
 use crate::headers::{is_dev, security_headers};
-use crate::{auth, trees};
+use crate::{auth, ratelimit, trees};
 
 /// A JSON error body: `{"error": code}`.
 pub fn error(status: u16, code: &str) -> Result<Response> {
@@ -13,6 +13,9 @@ pub fn error(status: u16, code: &str) -> Result<Response> {
 }
 
 pub async fn handle(req: Request, env: Env) -> Result<Response> {
+    if let Some(limited) = ratelimit::check(&req, &env).await? {
+        return Ok(limited);
+    }
     Router::new()
         .get("/api/health", |_, _| {
             Response::from_json(&json!({ "ok": true }))

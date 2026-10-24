@@ -86,6 +86,36 @@ describe("link page", () => {
     expect(await screen.findByText("This link was turned off or doesn't exist.")).toBeDefined();
   });
 
+  test("too many tries says to wait, and keeps the copy this device has", async () => {
+    const env = await makeEditorEnv();
+    const { fetch } = fakeFetch({
+      "GET /api/s/busy": () => json({ error: "RATE_LIMITED" }, 429),
+    });
+    renderApp(
+      <Routes>
+        <Route path="/s/:token" element={<LinkPage api={createApi(fetch)} />} />
+      </Routes>,
+      { repo: env.repo, route: "/s/busy" },
+    );
+    expect(
+      await screen.findByText("Too many tries just now. Wait a minute, then open the link again."),
+    ).toBeDefined();
+
+    const doc = tree("sharedtree3", "Their family");
+    await env.repo.saveTree(doc);
+    await env.repo.setCloud(doc.id, { role: "view", token: "busy", version: 3 });
+    cleanup();
+    renderApp(
+      <Routes>
+        <Route path="/s/:token" element={<LinkPage api={createApi(fetch)} />} />
+        <Route path="/app/t/:treeId" element={<p>Tree page</p>} />
+      </Routes>,
+      { repo: env.repo, route: "/s/busy" },
+    );
+    await screen.findByText("Tree page");
+    expect((await env.repo.getMeta(doc.id))?.cloud?.token).toBe("busy");
+  });
+
   test("a link that was turned off removes the copy this device kept of it", async () => {
     const env = await makeEditorEnv();
     const doc = tree("sharedtree2", "Their family");

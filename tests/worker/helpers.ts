@@ -19,8 +19,18 @@ export function url(path: string): string {
 /** The Worker's own origin, as browsers send it on same-origin requests. */
 export const ORIGIN = WORKER_URL.replace(/\/$/, "");
 
-/** Bun's own fetch: the test preload replaces the global one with happy-dom's browser fetch. */
-export const http: typeof fetch = Bun.fetch;
+/** A made-up client address: the local Worker rate-limits by it (`x-stam-test-ip`, dev only). */
+export const freshIp = () => `10.${[0, 0, 0].map(() => Math.floor(Math.random() * 256)).join(".")}`;
+
+/**
+ * Bun's own fetch (the test preload replaces the global one with happy-dom's browser fetch). Each
+ * request comes from its own address unless it names one, so only the rate-limit tests share one.
+ */
+export const http = ((input: string | URL | Request, init: RequestInit = {}) => {
+  const headers = new Headers(init.headers);
+  if (!headers.has("x-stam-test-ip")) headers.set("x-stam-test-ip", freshIp());
+  return Bun.fetch(input, { ...init, headers });
+}) as typeof fetch;
 
 /** Runs SQL on the test Worker's local D1 (the same files `wrangler dev` uses). */
 export function d1(sql: string): unknown[] {
@@ -125,10 +135,19 @@ export class Socket {
   opened: Promise<boolean>;
   #waiters: (() => void)[] = [];
 
-  constructor(path: string, session?: string, socketOrigin: string = ORIGIN) {
+  constructor(
+    path: string,
+    session?: string,
+    socketOrigin: string = ORIGIN,
+    ip: string = freshIp(),
+  ) {
     this.ws = new WebSocket(url(path).replace(/^http/, "ws"), {
       // Browsers send the page's Origin on WebSocket upgrades; the server checks it.
-      headers: { origin: socketOrigin, ...(session ? { cookie: session } : {}) },
+      headers: {
+        origin: socketOrigin,
+        "x-stam-test-ip": ip,
+        ...(session ? { cookie: session } : {}),
+      },
     });
     this.opened = new Promise((resolve) => {
       this.ws.on("open", () => resolve(true));

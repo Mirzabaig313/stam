@@ -34,7 +34,7 @@ export function LinkPage({
   const { token = "" } = useParams();
   const repo = useRepo();
   const navigate = useNavigate();
-  const [problem, setProblem] = useState<"off" | "offline" | null>(null);
+  const [problem, setProblem] = useState<"off" | "busy" | "offline" | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -42,7 +42,8 @@ export function LinkPage({
       .then(({ treeId }) => current && navigate(`/app/t/${treeId}`, { replace: true }))
       .catch(async (e: unknown) => {
         if (!current) return;
-        const off = e instanceof ApiError && e.status >= 400 && e.status < 500;
+        const busy = e instanceof ApiError && e.status === 429;
+        const off = e instanceof ApiError && e.status >= 400 && e.status < 500 && !busy;
         const cached = (await repo.listTrees().catch(() => [])).find(
           (tree) => tree.cloud?.token === token,
         );
@@ -50,11 +51,12 @@ export function LinkPage({
           // The link is off: the copy this device kept of it goes too.
           if (cached) await repo.deleteTree(cached.id).catch(() => {});
         } else if (cached && current) {
-          // Offline: a copy this device opened before still shows (read-only, spec §5.4).
+          // Offline or too many tries: a copy this device opened before still shows (read-only,
+          // spec §5.4).
           navigate(`/app/t/${cached.id}`, { replace: true });
           return;
         }
-        if (current) setProblem(off ? "off" : "offline");
+        if (current) setProblem(off ? "off" : busy ? "busy" : "offline");
       });
     return () => {
       current = false;
@@ -67,7 +69,7 @@ export function LinkPage({
         <output>{t("linkPage.opening")}</output>
       ) : (
         <>
-          <p role="alert">{problem === "off" ? t("linkPage.off") : t("linkPage.offline")}</p>
+          <p role="alert">{t(`linkPage.${problem}`)}</p>
           <p>
             <Link to="/app">{t("linkPage.back")}</Link>
           </p>

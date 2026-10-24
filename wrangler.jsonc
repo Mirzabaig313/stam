@@ -33,6 +33,14 @@
       "migrations_dir": "server/migrations",
     },
   ],
+  // Per-IP limits per Cloudflare location per 60 s (server/stam-worker/src/ratelimit.rs). Ids must
+  // be unique in the Cloudflare account.
+  "ratelimits": [
+    { "name": "LIMIT_API", "namespace_id": "7101", "simple": { "limit": 120, "period": 60 } },
+    { "name": "LIMIT_PHOTOS", "namespace_id": "7102", "simple": { "limit": 600, "period": 60 } },
+    { "name": "LIMIT_LINKS", "namespace_id": "7103", "simple": { "limit": 30, "period": 60 } },
+    { "name": "LIMIT_AUTH", "namespace_id": "7104", "simple": { "limit": 20, "period": 60 } },
+  ],
   "r2_buckets": [{ "binding": "PHOTOS", "bucket_name": "stam-photos" }],
   "durable_objects": {
     "bindings": [{ "name": "TREE_ROOM", "class_name": "TreeRoom" }],

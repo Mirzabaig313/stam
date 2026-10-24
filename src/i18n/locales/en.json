@@ -777,6 +777,7 @@
   "linkPage": {
     "opening": "Opening the shared tree",
     "off": "This link was turned off or doesn't exist.",
+    "busy": "Too many tries just now. Wait a minute, then open the link again.",
     "offline": "Connect to the internet to open this link.",
     "back": "Go to your trees"
   }
