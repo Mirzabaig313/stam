@@ -14,12 +14,24 @@ const apiOrigin = process.env.API_ORIGIN ?? "http://localhost:8787";
 /** Forwards an /api request to the local Worker (same origin here; production calls it cross-site). */
 async function proxyApi(req: Request): Promise<Response> {
   const url = new URL(req.url);
-  return fetch(new URL(url.pathname + url.search, apiOrigin), {
-    method: req.method,
-    headers: req.headers,
-    body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
-    redirect: "manual",
-  });
+  try {
+    const res = await fetch(new URL(url.pathname + url.search, apiOrigin), {
+      method: req.method,
+      headers: req.headers,
+      body: req.method === "GET" || req.method === "HEAD" ? undefined : await req.arrayBuffer(),
+      redirect: "manual",
+    });
+    // fetch has already unpacked a compressed body: passing its encoding on would make the
+    // browser unpack it again (ERR_CONTENT_DECODING_FAILED).
+    const headers = new Headers(res.headers);
+    headers.delete("content-encoding");
+    headers.delete("content-length");
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  } catch {
+    const hint = `The local API (${apiOrigin}) is not running: start it with \`bun run dev:worker\`.`;
+    console.error(hint);
+    return Response.json({ error: "API_NOT_RUNNING", hint }, { status: 502 });
+  }
 }
 
 // Dev server. The public pages render on the client here; `bun run build` prerenders them.
