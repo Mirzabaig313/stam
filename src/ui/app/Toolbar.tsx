@@ -171,11 +171,15 @@ export function Toolbar({
   const store = useEditorStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   // Back from Google sign-in with `?share=1`: the share dialog opens again where it was.
-  const [sharing, setSharing] = useState<"share" | "account" | null>(() =>
-    typeof location !== "undefined" && new URLSearchParams(location.search).get("share") === "1"
-      ? "share"
-      : null,
-  );
+  const [sharing, setSharing] = useState<"share" | "account" | null>(() => {
+    if (typeof location === "undefined") return null;
+    const url = new URL(location.href);
+    if (url.searchParams.get("share") !== "1") return null;
+    // Once: a reload must not open it again.
+    url.searchParams.delete("share");
+    history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+    return "share";
+  });
   // People who opened a view (or comment) link cannot share the tree on.
   const canShare = useEditor((s) => !s.cloud || s.cloud.role === "owner");
   const canUndo = useEditor((s) => s.canUndo);

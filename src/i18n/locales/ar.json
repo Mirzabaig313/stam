@@ -854,7 +854,7 @@
     "removeConfirmTitle": "إزالة من حسابك؟",
     "removeConfirmBody": "تُحذف النسخة على خادم Stam وروابطها. تبقى الشجرة على هذا الجهاز.",
     "savedChip": "في حسابك",
-    "signedInAs": "مسجّل الدخول باسم {{name}}",
+    "signedInAs": "مسجّل الدخول باسم <name/>",
     "signOut": "تسجيل الخروج",
     "offline_zero": "غير متصل، لا تغييرات بانتظار",
     "offline_one": "غير متصل، تغيير واحد بانتظار",

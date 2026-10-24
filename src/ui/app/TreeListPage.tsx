@@ -269,7 +269,7 @@ export function TreeListPage({
           {hasTrees && newTree}
           {me && (
             <span className="tree-list-account">
-              {t("cloud.signedInAs", { name: me.user.name })}{" "}
+              <Trans i18nKey="cloud.signedInAs" components={{ name: <bdi>{me.user.name}</bdi> }} />{" "}
               <button
                 type="button"
                 className="button button-quiet"

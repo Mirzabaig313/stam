@@ -52,6 +52,20 @@ export function ShareDialog({
     void auth.getState().refresh({ force: true });
   }, [auth]);
 
+  // Photos that did not upload last time are remembered with the tree (Retry below).
+  useEffect(() => {
+    if (!owned || !treeId) return;
+    let current = true;
+    void repo
+      .getMeta(treeId)
+      .then((meta) => current && setFailedPhotos(meta?.cloud?.failedPhotos ?? []))
+      .catch(() => {});
+    return () => {
+      current = false;
+    };
+  }, [repo, owned, treeId]);
+
+  const [linksTry, setLinksTry] = useState(0);
   useEffect(() => {
     if (!owned || !treeId || mode !== "share") return;
     let current = true;
@@ -66,7 +80,15 @@ export function ShareDialog({
     return () => {
       current = false;
     };
-  }, [api, owned, treeId, mode, t]);
+    // `linksTry` is the retry trigger: Retry bumps it to ask for the links again.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
+  }, [api, owned, treeId, mode, t, linksTry]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
   /** Runs a server action with the busy state and one error message for any failure. */
   async function act(work: () => Promise<void>) {
@@ -195,7 +217,7 @@ export function ShareDialog({
                 <Button variant="primary" disabled={busy || !view.url} onClick={() => void copy()}>
                   {t("share.copy")}
                 </Button>
-                {copied && <Chip>{t("share.copied")}</Chip>}
+                <output>{copied && <Chip>{t("share.copied")}</Chip>}</output>
                 <Button disabled={busy} onClick={() => setConfirm("reset")}>
                   {t("share.reset")}
                 </Button>
@@ -249,7 +271,12 @@ export function ShareDialog({
         )}
         {failed && (
           <p className="share-error" role="alert">
-            {failed}
+            {failed}{" "}
+            {owned && links === null && (
+              <Button onClick={() => (setFailed(null), setLinksTry((n) => n + 1))}>
+                {t("share.retry")}
+              </Button>
+            )}
           </p>
         )}
       </div>

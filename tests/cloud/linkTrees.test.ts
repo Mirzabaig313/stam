@@ -152,3 +152,59 @@ describe("uploading", () => {
     expect(await retryPhotos(doc.id, result.failedPhotos, { repo, api })).toEqual([]);
   });
 });
+
+describe("uploading, when things go wrong", () => {
+  test("a failed upload after a re-id leaves the local tree as it was", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    let tries = 0;
+    const { fetch } = fakeFetch({
+      "POST /api/trees": () =>
+        tries++ === 0 ? json({ error: "TREE_ID_TAKEN" }, 409) : json({ error: "DOWN" }, 503),
+    });
+    await expect(uploadAndShare(doc, { repo, api: createApi(fetch) })).rejects.toThrow();
+    expect((await repo.getMeta(doc.id))?.id).toBe(doc.id);
+    expect((await repo.listTrees()).map((t) => t.id)).toEqual([doc.id]);
+  });
+
+  test("ALREADY_SHARED takes the room's tree, keeping a different local copy as its own tree", async () => {
+    const local = { ...famSimple(), name: "Local edits" };
+    await repo.saveTree(local);
+    const roomDoc = { ...famSimple(), name: "In the room" };
+    const { fetch } = fakeFetch({
+      "POST /api/trees": () => json({ error: "ALREADY_SHARED" }, 409),
+    });
+    const { treeId } = await uploadAndShare(local, {
+      repo,
+      api: createApi(fetch),
+      connect: roomWith(roomDoc, 9).connect,
+    });
+    expect(treeId).toBe(local.id);
+    expect((await repo.getTree(local.id))?.doc.name).toBe("In the room");
+    expect(await repo.getConfirmed(local.id)).toMatchObject({ version: 9 });
+    const names = (await repo.listTrees()).map((t) => t.name).toSorted();
+    expect(names).toEqual(["In the room", "Local edits"]);
+  });
+
+  test("failed photos are remembered with the tree, and a retry clears them", async () => {
+    const doc = famSimple();
+    const id = Object.keys(doc.persons)[0]!;
+    const withPhoto = {
+      ...doc,
+      persons: { ...doc.persons, [id]: { ...doc.persons[id]!, photoId: "ph1" } },
+    };
+    await repo.saveTree(withPhoto);
+    await repo.putPhoto("ph1", new Blob(["webp"]));
+    let ok = false;
+    const { fetch } = fakeFetch({
+      "POST /api/trees": () => json({ id: doc.id, version: 0 }, 201),
+      [`PUT /api/trees/${doc.id}/photos/ph1`]: () => new Response(null, { status: ok ? 204 : 500 }),
+    });
+    const api = createApi(fetch);
+    await uploadAndShare(withPhoto, { repo, api });
+    expect((await repo.getMeta(doc.id))?.cloud?.failedPhotos).toEqual(["ph1"]);
+    ok = true;
+    await retryPhotos(doc.id, ["ph1"], { repo, api });
+    expect((await repo.getMeta(doc.id))?.cloud?.failedPhotos).toBeUndefined();
+  });
+});

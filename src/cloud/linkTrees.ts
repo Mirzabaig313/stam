@@ -2,6 +2,7 @@ import { newId } from "@/core/model/ids";
 import type { TreeDocument } from "@/core/model/types";
 import { isSharedId } from "@/io/json/parseTree";
 import type { TreeRepo } from "@/storage/treeRepo";
+import { canonicalJson } from "@/sync/changes";
 import { prepareForUpload } from "@/sync/upload";
 
 import { type Api, ApiError } from "./api";
@@ -54,6 +55,7 @@ export async function openLink(
     token,
   );
   await deps.repo.saveTree(doc);
+  await deps.repo.saveConfirmed(doc.id, doc, version);
   await deps.repo.setCloud(doc.id, { role: link.role, token, hideLiving, version });
   return { treeId: doc.id };
 }
@@ -65,10 +67,14 @@ export async function openOwnedTree(
 ): Promise<void> {
   const { doc, version } = await fetchTree(deps.connect ?? connectRoom, treeId);
   await deps.repo.saveTree(doc);
+  await deps.repo.saveConfirmed(doc.id, doc, version);
   await deps.repo.setCloud(doc.id, { role: "owner", version });
 }
 
-/** Uploads the photos the tree's people use; returns the ids that did not upload. */
+/**
+ * Uploads the given photos; returns the ids that did not upload, and remembers them in the tree's
+ * cloud record so a retry is offered later.
+ */
 export async function retryPhotos(
   treeId: string,
   photoIds: readonly string[],
@@ -83,41 +89,58 @@ export async function retryPhotos(
       failed.push(photoId);
     }
   }
+  const cloud = (await deps.repo.getMeta(treeId))?.cloud;
+  if (cloud) {
+    const { failedPhotos: _old, ...rest } = cloud;
+    await deps.repo.setCloud(treeId, failed.length > 0 ? { ...rest, failedPhotos: failed } : rest);
+  }
   return failed;
 }
 
-/** The same tree under a new id, replacing the local copy (the old id belongs to someone else). */
-async function reId(doc: TreeDocument, repo: TreeRepo): Promise<TreeDocument> {
-  const copy = { ...doc, id: newId() };
-  await repo.saveTree(copy);
-  await repo.deleteTree(doc.id);
-  return copy;
+/** A tree's content, ignoring key order and the time stamps. */
+const contentOf = (d: TreeDocument) =>
+  canonicalJson({ ...d, updatedAt: undefined, createdAt: undefined });
+
+function sameTree(a: TreeDocument, b: TreeDocument): boolean {
+  return contentOf(a) === contentOf(b);
 }
 
 /**
  * Saves a local tree to the owner's account (spec D13, and the first step of sharing): uploads
  * it, then its photos, and marks it as the owner's cloud tree. A tree whose id is taken (or not
- * usable in a shared tree) is uploaded under a new id; the returned id is the one to open.
+ * usable in a shared tree) goes up as a copy under a new id, and the local copy is replaced only
+ * once that upload worked. A tree already in the account takes the room's version; if this
+ * device's copy differs, it is kept as a separate local tree. Returns the id to open.
  */
 export async function uploadAndShare(
   local: TreeDocument,
-  deps: { repo: TreeRepo; api: Api },
+  deps: { repo: TreeRepo; api: Api; connect?: Connect },
 ): Promise<{ treeId: string; failedPhotos: string[] }> {
+  // The device keeps exactly what is uploaded (the editor may not have saved its last edits yet).
   let doc = prepareForUpload(local);
-  if (doc !== local) await deps.repo.saveTree(doc);
-  if (!isSharedId(doc.id)) doc = await reId(doc, deps.repo);
+  await deps.repo.saveTree(doc);
+  if (!isSharedId(doc.id)) doc = { ...doc, id: newId() };
+  let version = 0;
   try {
     await deps.api.uploadTree(doc);
   } catch (e) {
     if (!(e instanceof ApiError)) throw e;
     if (e.code === "TREE_ID_TAKEN") {
-      doc = await reId(doc, deps.repo);
+      doc = { ...doc, id: newId() };
       await deps.api.uploadTree(doc);
-    } else if (e.code !== "ALREADY_SHARED") {
+    } else if (e.code === "ALREADY_SHARED") {
+      const room = await fetchTree(deps.connect ?? connectRoom, doc.id);
+      if (!sameTree(room.doc, doc)) await deps.repo.saveTree({ ...doc, id: newId() });
+      doc = room.doc;
+      version = room.version;
+    } else {
       throw e;
     }
   }
-  await deps.repo.setCloud(doc.id, { role: "owner", version: 0 });
+  if (doc.id !== local.id || doc !== local) await deps.repo.saveTree(doc);
+  if (doc.id !== local.id) await deps.repo.deleteTree(local.id);
+  await deps.repo.saveConfirmed(doc.id, doc, version);
+  await deps.repo.setCloud(doc.id, { role: "owner", version });
   const photoIds = Object.values(doc.persons).flatMap((p) => (p.photoId ? [p.photoId] : []));
   return { treeId: doc.id, failedPhotos: await retryPhotos(doc.id, photoIds, deps) };
 }

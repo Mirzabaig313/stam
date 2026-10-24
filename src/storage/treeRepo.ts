@@ -4,6 +4,7 @@ import { SNAPSHOT_LIMIT } from "@/config";
 import { newId } from "@/core/model/ids";
 import type { TreeDocument } from "@/core/model/types";
 import { parseTreeDocument } from "@/io/json/parseTree";
+import type { PendingOp } from "@/sync/syncClient";
 
 /** A tree that lives in the cloud too (spec §4.4): this browser's copy is its cache. */
 export type CloudMeta = {
@@ -15,6 +16,8 @@ export type CloudMeta = {
   hideLiving?: boolean;
   /** The last version the room confirmed. */
   version: number;
+  /** Photos that did not upload yet (owner): the share dialog offers Retry for them. */
+  failedPhotos?: string[];
 };
 
 export type TreeMeta = {
@@ -92,6 +95,13 @@ export type TreeRepo = {
    */
   deleteTree(id: string): Promise<void>;
   getMeta(id: string): Promise<TreeMeta | undefined>;
+  /** A cloud tree as the room last confirmed it; kept only when `version` is newer. */
+  saveConfirmed(treeId: string, doc: TreeDocument, version: number): Promise<void>;
+  getConfirmed(treeId: string): Promise<{ doc: TreeDocument; version: number } | undefined>;
+  /** This browser's unconfirmed edits to cloud trees, in the order they were made. */
+  addPending(treeId: string, op: PendingOp): Promise<void>;
+  removePending(opIds: readonly string[]): Promise<void>;
+  listPending(treeId: string): Promise<PendingOp[]>;
   /** Marks the tree as a cloud tree (or, with null, local-only again). Saves keep it. */
   setCloud(id: string, cloud: CloudMeta | null): Promise<void>;
   duplicateTree(id: string, name: string): Promise<TreeDocument>;
@@ -179,6 +189,13 @@ export function photoIdsOf(record: unknown): string[] {
 const savedAtOf = (meta: TreeMeta | undefined): number | null =>
   typeof meta?.savedAt === "number" ? meta.savedAt : null;
 
+/** Orders pending edits across tabs: the time, then a counter for the same millisecond. */
+let lastSeq = 0;
+function nextSeq(): number {
+  lastSeq = Math.max(lastSeq + 1, Date.now() * 1000);
+  return lastSeq;
+}
+
 export function createTreeRepo(db: IDBPDatabase): TreeRepo {
   const repo: TreeRepo = {
     async listTrees() {
@@ -233,15 +250,58 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
     },
 
     async deleteTree(id) {
-      await inTransaction(db, ["trees", "meta", "snapshots"], async (tx) => {
-        const snapshots = tx.objectStore("snapshots");
-        const snapshotKeys = await snapshots.index("treeId").getAllKeys(id);
-        await Promise.all([
-          tx.objectStore("trees").delete(id),
-          tx.objectStore("meta").delete(id),
-          ...snapshotKeys.map((key) => snapshots.delete(key)),
-        ]);
+      await inTransaction(
+        db,
+        ["trees", "meta", "snapshots", "cloudConfirmed", "cloudPending"],
+        async (tx) => {
+          const snapshots = tx.objectStore("snapshots");
+          const snapshotKeys = await snapshots.index("treeId").getAllKeys(id);
+          const pending = tx.objectStore("cloudPending");
+          const pendingKeys = await pending.index("treeId").getAllKeys(id);
+          await Promise.all([
+            tx.objectStore("trees").delete(id),
+            tx.objectStore("meta").delete(id),
+            tx.objectStore("cloudConfirmed").delete(id),
+            ...pendingKeys.map((key) => pending.delete(key)),
+            ...snapshotKeys.map((key) => snapshots.delete(key)),
+          ]);
+        },
+      );
+    },
+
+    async saveConfirmed(treeId, doc, version) {
+      await inTransaction(db, ["cloudConfirmed"], async (tx) => {
+        const store = tx.objectStore("cloudConfirmed");
+        const current = (await store.get(treeId)) as { version: number } | undefined;
+        if (current && current.version > version) return;
+        await store.put({ treeId, doc, version });
       });
+    },
+
+    async getConfirmed(treeId) {
+      const row = (await db.get("cloudConfirmed", treeId)) as
+        { doc: TreeDocument; version: number } | undefined;
+      return row && { doc: row.doc, version: row.version };
+    },
+
+    async addPending(treeId, op) {
+      await db.put("cloudPending", { opId: op.opId, treeId, seq: nextSeq(), op });
+    },
+
+    async removePending(opIds) {
+      if (opIds.length === 0) return;
+      await inTransaction(db, ["cloudPending"], async (tx) => {
+        const store = tx.objectStore("cloudPending");
+        await Promise.all(opIds.map((id) => store.delete(id)));
+      });
+    },
+
+    async listPending(treeId) {
+      const rows = (await db.getAllFromIndex("cloudPending", "treeId", treeId)) as {
+        seq: number;
+        op: PendingOp;
+      }[];
+      return rows.toSorted((a, b) => a.seq - b.seq).map((r) => r.op);
     },
 
     async getMeta(id) {

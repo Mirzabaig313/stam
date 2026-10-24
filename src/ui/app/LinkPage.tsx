@@ -8,6 +8,17 @@ import type { connectRoom } from "@/cloud/transport";
 
 import { useRepo } from "./RepoContext";
 
+/** One opening per token at a time (React's StrictMode runs effects twice). */
+const opening = new Map<string, Promise<{ treeId: string }>>();
+function openOnce(token: string, open: () => Promise<{ treeId: string }>) {
+  let pending = opening.get(token);
+  if (!pending) {
+    pending = open().finally(() => opening.delete(token));
+    opening.set(token, pending);
+  }
+  return pending;
+}
+
 /**
  * A share link, `/s/<token>`: opens the shared tree on this device (no sign-in needed) and goes to
  * it, replacing the link in history so Back does not open it again.
@@ -27,11 +38,22 @@ export function LinkPage({
 
   useEffect(() => {
     let current = true;
-    openLink(token, { repo, api, ...(connect ? { connect } : {}) })
+    openOnce(token, () => openLink(token, { repo, api, ...(connect ? { connect } : {}) }))
       .then(({ treeId }) => current && navigate(`/app/t/${treeId}`, { replace: true }))
-      .catch((e: unknown) => {
+      .catch(async (e: unknown) => {
         if (!current) return;
-        setProblem(e instanceof ApiError && e.status >= 400 && e.status < 500 ? "off" : "offline");
+        const off = e instanceof ApiError && e.status >= 400 && e.status < 500;
+        if (!off) {
+          // Offline: a copy this device opened before still shows (read-only, spec §5.4).
+          const cached = (await repo.listTrees().catch(() => [])).find(
+            (tree) => tree.cloud?.token === token,
+          );
+          if (cached && current) {
+            navigate(`/app/t/${cached.id}`, { replace: true });
+            return;
+          }
+        }
+        if (current) setProblem(off ? "off" : "offline");
       });
     return () => {
       current = false;

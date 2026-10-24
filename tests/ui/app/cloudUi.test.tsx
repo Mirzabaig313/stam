@@ -108,7 +108,7 @@ async function setupList(routes: Parameters<typeof fakeFetch>[0] = {}) {
     repo: env.repo,
   });
   await screen.findByText("Local family");
-  await screen.findByText("Signed in as Alice"); // the account has loaded: the list settled
+  (await screen.findByText("Alice")).closest(".tree-list-account"); // the account has loaded
   return { env, calls };
 }
 
@@ -121,7 +121,7 @@ describe("tree list with the cloud", () => {
     const account = await screen.findByRole("region", { name: "In your account" });
     expect(within(account).getByText("Other device family")).toBeDefined();
     expect(within(account).queryByText("Owned family")).toBeNull();
-    expect(screen.getByText("Signed in as Alice")).toBeDefined();
+    expect(screen.getByText("Alice").tagName).toBe("BDI");
   });
 
   test("save to account uploads without a link and marks the card", async () => {

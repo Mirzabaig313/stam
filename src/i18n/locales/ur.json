@@ -766,7 +766,7 @@
     "removeConfirmTitle": "اپنے اکاؤنٹ سے ہٹائیں؟",
     "removeConfirmBody": "Stam کے سرور سے کاپی اور اس کے لنک حذف ہو جائیں گے۔ شجرہ اسی آلے پر رہے گا۔",
     "savedChip": "آپ کے اکاؤنٹ میں",
-    "signedInAs": "{{name}} کے طور پر سائن اِن",
+    "signedInAs": "<name/> کے طور پر سائن اِن",
     "signOut": "سائن آؤٹ",
     "offline_one": "آف لائن، {{count, number}} تبدیلی منتظر",
     "offline_other": "آف لائن، {{count, number}} تبدیلیاں منتظر",

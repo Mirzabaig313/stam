@@ -156,3 +156,55 @@ describe("the editor on a cloud tree", () => {
     expect((await env.repo.getMeta(doc.id))?.cloud?.role).toBe("owner");
   });
 });
+
+describe("cloud trees across a reload", () => {
+  test("unconfirmed edits survive a reload (e.g. the redirect to sign in again) and are sent", async () => {
+    const first = await setup({ role: "owner", version: 0 });
+    // Offline: the edits stay pending.
+    first.store.getState().dispatch({ type: "renameTree", name: "Offline 1" }, "rename");
+    first.store.getState().dispatch({ type: "renameTree", name: "Offline 2" }, "rename");
+    await Bun.sleep(20);
+    first.store.getState().dispose();
+
+    const room = fakeRoom();
+    const api = createApi(fakeFetch().fetch);
+    const auth = createAuthStore({
+      api,
+      storage: { getItem: () => "1", setItem() {}, removeItem() {} },
+    });
+    const store = createEditorStore({
+      repo: first.env.repo,
+      autosaver: first.env.autosaver,
+      now: first.env.now,
+      openCloud: (args) =>
+        createCloudSession({ ...args, repo: first.env.repo, api, auth, connect: room.connect }),
+    });
+    await store.getState().load(first.doc.id);
+    expect(store.getState().doc!.name).toBe("Offline 2");
+    room.open();
+    expect(room.state.sent.map((m) => m.type)).toEqual(["hello", "op", "op"]);
+    expect(room.state.sent[0]).toMatchObject({ lastVersion: 0 });
+  });
+
+  test("a remote edit confirmed just before a reload is not lost", async () => {
+    const first = await setup({ role: "owner", version: 0 });
+    first.room.open();
+    first.room.receive(welcome);
+    const { msg } = remote(first.doc, 1, { type: "renameTree", name: "Remote" });
+    first.room.receive(msg);
+    await Bun.sleep(20); // the autosaver has not run; the confirmed record has
+    first.store.getState().dispose();
+    const confirmed = await first.env.repo.getConfirmed(first.doc.id);
+    expect(confirmed).toMatchObject({ version: 1, doc: { name: "Remote" } });
+  });
+
+  test("a revoked link tree is never saved again by a late autosave", async () => {
+    const { store, room, env, doc } = await setup({ role: "view", token: "tok", version: 0 });
+    room.open();
+    room.closed(4401);
+    await Bun.sleep(20);
+    await env.autosaver.flush();
+    expect(await env.repo.getMeta(doc.id)).toBeUndefined();
+    expect(store.getState().cloud?.closed).toBe(4401);
+  });
+});

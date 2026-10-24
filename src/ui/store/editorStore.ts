@@ -14,7 +14,7 @@ import type { Journal } from "@/storage/journal";
 import type { SaveGuard } from "@/storage/saveGuard";
 import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
 import type { EntityChange } from "@/sync/revert";
-import type { DroppedEdit } from "@/sync/syncClient";
+import type { DroppedEdit, PendingOp } from "@/sync/syncClient";
 
 import {
   clampFanGenerations,
@@ -92,7 +92,10 @@ export type EditorState = {
 export type OpenCloud = (args: {
   treeId: string;
   cloud: CloudMeta;
+  /** The tree as the room last confirmed it, at `version`. */
   doc: TreeDocument;
+  version: number;
+  pending: PendingOp[];
   handlers: CloudSessionHandlers;
 }) => CloudSession;
 
@@ -341,7 +344,13 @@ export function createEditorStore({
       commit(next);
     }
 
-    function startCloud(treeId: string, cloud: CloudMeta, doc: TreeDocument): void {
+    function startCloud(
+      treeId: string,
+      cloud: CloudMeta,
+      doc: TreeDocument,
+      version: number,
+      pending: PendingOp[],
+    ): void {
       const patchCloud = (patch: Partial<NonNullable<EditorState["cloud"]>>) => {
         const current = get().cloud;
         if (current) set({ cloud: { ...current, ...patch } });
@@ -360,6 +369,8 @@ export function createEditorStore({
         treeId,
         cloud,
         doc,
+        version,
+        pending,
         handlers: {
           onView: (next) => {
             if (get().doc) commit(next);
@@ -369,7 +380,11 @@ export function createEditorStore({
             set({ error: "DROPPED" });
           },
           onStatus: (status, pendingCount) => patchCloud({ status, pendingCount }),
-          onClosed: (code) => patchCloud({ closed: code }),
+          onClosed: (code) => {
+            // Nothing may save this tree again: a link tree's copy is being removed.
+            autosaver.stop();
+            patchCloud({ closed: code });
+          },
         },
       });
     }
@@ -413,19 +428,24 @@ export function createEditorStore({
           : undefined;
         if (seq !== loadSeq) return;
         if (cloud) {
-          // A cloud tree: the room holds the truth; this copy is its cache, no journal or guard.
+          // A cloud tree: the room holds the truth. Start from what it last confirmed, with this
+          // browser's unconfirmed edits on top; no journal or guard.
+          const [confirmed, pending] = await Promise.all([
+            repo.getConfirmed(treeId).catch(() => undefined),
+            repo.listPending(treeId).catch(() => [] as PendingOp[]),
+          ]);
+          if (seq !== loadSeq) return;
+          const base = confirmed ?? { doc: found.doc, version: cloud.version };
           set({
             status: "ready",
-            doc: found.doc,
+            doc: base.doc,
             recoveredFromSnapshot: found.recoveredFromSnapshot,
-            ...computeViews(
-              layouts,
-              found.doc,
-              { ...INITIAL, collapsed: INITIAL.collapsed },
-              now(),
-            ),
+            ...computeViews(layouts, base.doc, { ...INITIAL, collapsed: INITIAL.collapsed }, now()),
           });
-          startCloud(treeId, cloud, found.doc);
+          startCloud(treeId, cloud, base.doc, base.version, pending);
+          // startCloud set it; TypeScript still thinks it is the null from the top of load.
+          const view = (session as CloudSession | null)?.view;
+          if (view && view !== base.doc) commit(view);
           return;
         }
         // Edits the last session journaled but never got into IndexedDB come back first.
@@ -544,6 +564,7 @@ export function createEditorStore({
       },
       closeRelation: () => set({ relation: null }),
       dispose() {
+        loadSeq++; // a load still running must not start a session for a closed editor
         session?.stop();
         session = null;
       },

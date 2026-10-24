@@ -10,8 +10,8 @@ import type { ClientMessage, ServerMessage } from "./protocol";
 import { applyRevert, type EntityChange, entityChanges } from "./revert";
 import { encodeCommand } from "./wire";
 
-/** An edit the room has not confirmed yet. */
-type PendingOp =
+/** An edit the room has not confirmed yet (stored as is, so it survives a reload). */
+export type PendingOp =
   | { kind: "op"; opId: string; cmd: Command }
   | { kind: "revert"; opId: string; entries: EntityChange[]; direction: "undo" | "redo" };
 
@@ -27,6 +27,15 @@ export type SyncClientOptions = {
   newOpId?: () => string;
   /** Runs `fn` after `ms` (busy retries); tests pass a manual clock. */
   schedule?: (fn: () => void, ms: number) => void;
+  /**
+   * Keeps what must survive a reload (spec §5.4): each unconfirmed edit, and the confirmed tree
+   * with its version. Without it the client lives in memory only.
+   */
+  persist?: {
+    add(op: PendingOp): void;
+    remove(opIds: string[]): void;
+    confirmed(doc: TreeDocument, version: number): void;
+  };
 };
 
 /**
@@ -36,7 +45,7 @@ export type SyncClientOptions = {
  * longer applies is dropped and reported.
  */
 export class SyncClient {
-  #opts: Required<SyncClientOptions>;
+  #opts: Required<Omit<SyncClientOptions, "persist">> & Pick<SyncClientOptions, "persist">;
   #confirmed!: TreeDocument;
   #version = 0;
   #pending: PendingOp[] = [];
@@ -61,12 +70,33 @@ export class SyncClient {
     };
   }
 
-  /** `hideLiving`: the cached tree was built through a hide-living link. */
-  start(confirmed: TreeDocument, version: number, hideLiving = false): void {
+  /**
+   * `hideLiving`: the cached tree was built through a hide-living link. `pending`: unconfirmed
+   * edits kept from before a reload; they show again at once and go out after `hello`.
+   */
+  start(
+    confirmed: TreeDocument,
+    version: number,
+    hideLiving = false,
+    pending: PendingOp[] = [],
+  ): void {
     this.#confirmed = confirmed;
     this.#version = version;
-    this.#view = confirmed;
     this.#hideLiving = hideLiving;
+    this.#pending = [...pending];
+    this.#view = this.#replay().view;
+  }
+
+  /** Drops pending ops; the persisted copies go too. */
+  #forget(drop: (op: PendingOp) => boolean): void {
+    const removed = this.#pending.filter(drop).map((op) => op.opId);
+    if (removed.length === 0) return;
+    this.#pending = this.#pending.filter((op) => !drop(op));
+    this.#opts.persist?.remove(removed);
+  }
+
+  #saveConfirmed(): void {
+    this.#opts.persist?.confirmed(this.#confirmed, this.#version);
   }
 
   get view(): TreeDocument {
@@ -100,6 +130,7 @@ export class SyncClient {
 
   #queue(op: PendingOp, view: TreeDocument): void {
     this.#pending.push(op);
+    this.#opts.persist?.add(op);
     this.#view = view;
     if (this.#connected) this.#opts.send(this.#message(op));
   }
@@ -147,7 +178,7 @@ export class SyncClient {
         this.#hideLiving = msg.hideLiving;
         // Edits the room already applied are confirmed now, never re-run on a tree holding them.
         const known = new Set(msg.known ?? []);
-        this.#pending = this.#pending.filter((p) => !known.has(p.opId));
+        this.#forget((p) => known.has(p.opId));
         if (msg.doc) this.#confirmed = msg.doc;
         const confirmedIds = new Set<string>();
         for (const op of msg.ops ?? []) {
@@ -156,7 +187,8 @@ export class SyncClient {
           confirmedIds.add(op.opId);
         }
         this.#version = msg.version;
-        this.#pending = this.#pending.filter((p) => !confirmedIds.has(p.opId));
+        this.#saveConfirmed();
+        this.#forget((p) => confirmedIds.has(p.opId));
         this.#rebuild("remote");
         return;
       }
@@ -165,7 +197,7 @@ export class SyncClient {
         if (msg.version <= this.#version) {
           // A late answer to a resend: the confirmed tree already holds this edit.
           if (this.#pending.some((p) => p.opId === msg.opId)) {
-            this.#pending = this.#pending.filter((p) => p.opId !== msg.opId);
+            this.#forget((p) => p.opId === msg.opId);
             this.#rebuild("confirm");
           }
           return;
@@ -177,15 +209,16 @@ export class SyncClient {
         }
         this.#confirmed = applyChanges(this.#confirmed, msg.changes);
         this.#version = msg.version;
+        this.#saveConfirmed();
         const own = this.#pending.some((p) => p.opId === msg.opId);
-        this.#pending = this.#pending.filter((p) => p.opId !== msg.opId);
+        this.#forget((p) => p.opId === msg.opId);
         this.#rebuild(own ? "confirm" : "remote");
         return;
       }
       case "rejected": {
         const op = this.#pending.find((p) => p.opId === msg.opId);
         if (!op) return;
-        this.#pending = this.#pending.filter((p) => p !== op);
+        this.#forget((p) => p === op);
         this.#opts.onDropped([{ ...(op.kind === "op" ? { cmd: op.cmd } : {}), code: msg.code }]);
         this.#rebuild("remote");
         return;
@@ -205,8 +238,8 @@ export class SyncClient {
     }
   }
 
-  /** The view: the confirmed tree with the pending edits re-run on top. */
-  #rebuild(cause: "remote" | "confirm"): void {
+  /** The confirmed tree with the pending edits re-run on top; the ones that no longer apply. */
+  #replay(): { view: TreeDocument; kept: PendingOp[]; dropped: DroppedEdit[] } {
     let view = this.#confirmed;
     const kept: PendingOp[] = [];
     const dropped: DroppedEdit[] = [];
@@ -222,7 +255,12 @@ export class SyncClient {
         dropped.push({ ...(op.kind === "op" ? { cmd: op.cmd } : {}), code: e.code });
       }
     }
-    this.#pending = kept;
+    return { view, kept, dropped };
+  }
+
+  #rebuild(cause: "remote" | "confirm"): void {
+    const { view, kept, dropped } = this.#replay();
+    this.#forget((op) => !kept.includes(op));
     this.#view = view;
     if (dropped.length > 0) this.#opts.onDropped(dropped);
     this.#opts.onView(view, cause);

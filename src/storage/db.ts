@@ -1,6 +1,6 @@
 import { type IDBPDatabase, openDB } from "idb";
 
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /** What can happen to the database because of another tab or the browser. */
 export type DbEvents = {
@@ -30,6 +30,13 @@ export function openStamDb(
         const snapshots = db.createObjectStore("snapshots", { autoIncrement: true });
         snapshots.createIndex("treeId", "treeId");
         db.createObjectStore("settings");
+      }
+      if (oldVersion < 2) {
+        // Cloud trees (spec §4.4): the room's confirmed tree and version, and this browser's
+        // unconfirmed edits, one record each, so tabs never overwrite each other's.
+        db.createObjectStore("cloudConfirmed", { keyPath: "treeId" });
+        const pending = db.createObjectStore("cloudPending", { keyPath: "opId" });
+        pending.createIndex("treeId", "treeId");
       }
     },
     blocked() {

@@ -19,7 +19,13 @@ function setup(doc: TreeDocument = famSimple()) {
   const dropped: DroppedEdit[][] = [];
   let n = 0;
   const timers: { fn: () => void; ms: number }[] = [];
+  const persisted: string[] = [];
   const client = new SyncClient({
+    persist: {
+      add: (op) => persisted.push(`add ${op.opId}`),
+      remove: (ids) => persisted.push(`remove ${ids.join(",")}`),
+      confirmed: (_doc, version) => persisted.push(`confirmed ${version}`),
+    },
     schedule: (fn, ms) => timers.push({ fn, ms }),
     send: (m) => sent.push(m),
     onView: (d, cause) => views.push({ doc: d, cause }),
@@ -33,7 +39,7 @@ function setup(doc: TreeDocument = famSimple()) {
     client.connected();
     client.receive({ type: "welcome", role: "owner", hideLiving: false, version: 0, ops: [] });
   };
-  return { client, sent, views, dropped, doc, online, timers };
+  return { client, sent, views, dropped, doc, online, timers, persisted };
 }
 
 /** What the room would broadcast for `cmd` applied to `doc` as op `opId`. */
@@ -45,6 +51,35 @@ function appliedFor(doc: TreeDocument, cmd: Command, opId: string, version: numb
 const rename = (name: string): Command => ({ type: "renameTree", name });
 
 describe("SyncClient", () => {
+  test("every change to what must survive a reload is handed to persist", () => {
+    const { client, doc, online, persisted } = setup();
+    online();
+    client.submit(rename("Mine"));
+    client.submit(rename("Again"));
+    client.receive(appliedFor(doc, rename("Mine"), "op00000000", 1));
+    client.receive({ type: "rejected", opId: "op00000001", code: "FORBIDDEN" });
+    expect(persisted).toEqual([
+      "confirmed 0",
+      "add op00000000",
+      "add op00000001",
+      "confirmed 1",
+      "remove op00000000",
+      "remove op00000001",
+    ]);
+  });
+
+  test("stored pending edits are shown again and sent after hello", () => {
+    const { client, sent, doc } = setup();
+    client.start(doc, 3, false, [
+      { kind: "op", opId: "storedop01", cmd: { type: "renameTree", name: "Kept" } },
+    ]);
+    expect(client.view.name).toBe("Kept");
+    expect(client.pendingCount).toBe(1);
+    client.connected();
+    expect(sent.map((m) => m.type)).toEqual(["hello", "op"]);
+    expect(sent[0]).toEqual({ type: "hello", lastVersion: 3, pending: ["storedop01"] });
+  });
+
   test("local submit shows at once and stays pending until applied", () => {
     const { client, sent, doc, online } = setup();
     online();

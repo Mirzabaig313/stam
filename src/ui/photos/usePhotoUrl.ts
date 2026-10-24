@@ -17,6 +17,8 @@ export function usePhotoUrl(photoId: string | undefined): string | undefined {
   const repo = useRepo();
   const cloud = useContext(CloudPhotoContext);
   const [loaded, setLoaded] = useState<{ photoId: string; url: string } | null>(null);
+  /** The photo this device does not have (then a cloud tree's comes from the server). */
+  const [missing, setMissing] = useState<string | null>(null);
 
   useEffect(() => {
     if (photoId === undefined) return;
@@ -25,7 +27,11 @@ export function usePhotoUrl(photoId: string | undefined): string | undefined {
     repo
       .getPhoto(photoId)
       .then((blob) => {
-        if (cancelled || !blob) return;
+        if (cancelled) return;
+        if (!blob) {
+          setMissing(photoId);
+          return;
+        }
         url = URL.createObjectURL(blob);
         setLoaded({ photoId, url });
       })
@@ -38,7 +44,7 @@ export function usePhotoUrl(photoId: string | undefined): string | undefined {
   }, [repo, photoId]);
 
   if (loaded !== null && loaded.photoId === photoId) return loaded.url;
-  return photoId !== undefined && cloud
+  return photoId !== undefined && cloud && missing === photoId
     ? api.photoUrl(cloud.treeId, photoId, cloud.token)
     : undefined;
 }

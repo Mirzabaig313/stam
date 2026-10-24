@@ -39,6 +39,7 @@ async function setup(cloud: CloudMeta, routes: Parameters<typeof fakeFetch>[0] =
     treeId: doc.id,
     cloud,
     doc,
+    version: cloud.version,
     repo,
     api,
     auth,
@@ -77,7 +78,7 @@ describe("cloud session", () => {
       changes: diffDocs(doc, next),
     });
     await Bun.sleep(10);
-    expect((await repo.getMeta(doc.id))?.cloud).toEqual({ role: "owner", version: 1 });
+    expect(await repo.getConfirmed(doc.id)).toMatchObject({ version: 1, doc: { name: "New" } });
   });
 
   test("4401 deletes the cached link tree", async () => {

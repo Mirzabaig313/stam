@@ -2,7 +2,7 @@ import type { Command, CommandResult } from "@/core/commands/types";
 import type { TreeDocument } from "@/core/model/types";
 import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
 import type { EntityChange } from "@/sync/revert";
-import { type DroppedEdit, SyncClient } from "@/sync/syncClient";
+import { type DroppedEdit, type PendingOp, SyncClient } from "@/sync/syncClient";
 
 import { type Api, ApiError } from "./api";
 import type { createAuthStore } from "./auth";
@@ -24,6 +24,8 @@ export type CloudSession = {
   readonly canEdit: boolean;
   readonly status: CloudStatus;
   readonly pendingCount: number;
+  /** The tree as shown: confirmed, with the pending edits on top. */
+  readonly view: TreeDocument;
   submit(cmd: Command): CommandResult & { entities: EntityChange[] };
   submitRevert(entries: EntityChange[], direction: "undo" | "redo"): TreeDocument;
   /** Connects again (after signing in again). */
@@ -40,7 +42,11 @@ export type CloudSession = {
 export function createCloudSession(deps: {
   treeId: string;
   cloud: CloudMeta;
+  /** The tree as the room last confirmed it, at `version`. */
   doc: TreeDocument;
+  version: number;
+  /** Unconfirmed edits kept from before a reload. */
+  pending?: PendingOp[];
   repo: TreeRepo;
   api: Api;
   auth: ReturnType<typeof createAuthStore>;
@@ -62,15 +68,21 @@ export function createCloudSession(deps: {
   const sync = new SyncClient({
     send: (msg) => room?.send(msg),
     onView: (doc, cause) => {
-      void repo.setCloud(treeId, { ...cloud, version: sync.version }).catch(() => {}); // the next confirmed edit records it again
       handlers.onView(doc, cause);
       handlers.onStatus(status, sync.pendingCount);
     },
     onDropped: handlers.onDropped,
+    // What survives a reload: every unconfirmed edit, and the confirmed tree with its version
+    // (written together; a write that fails is retried by the next change).
+    persist: {
+      add: (op) => void repo.addPending(treeId, op).catch(() => {}),
+      remove: (ids) => void repo.removePending(ids).catch(() => {}),
+      confirmed: (doc, version) => void repo.saveConfirmed(treeId, doc, version).catch(() => {}),
+    },
     ...(deps.now ? { now: deps.now } : {}),
     ...(deps.newOpId ? { newOpId: deps.newOpId } : {}),
   });
-  sync.start(deps.doc, cloud.version, cloud.hideLiving ?? false);
+  sync.start(deps.doc, deps.version, cloud.hideLiving ?? false, deps.pending ?? []);
 
   /** The room says this browser is done with the tree. */
   async function closed(code: number) {
@@ -151,6 +163,9 @@ export function createCloudSession(deps: {
     },
     get pendingCount() {
       return sync.pendingCount;
+    },
+    get view() {
+      return sync.view;
     },
     submit(cmd) {
       const result = sync.submit(cmd);
