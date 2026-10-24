@@ -37,6 +37,7 @@ Trees that are never shared stay local-only, exactly as in v1. The privacy promi
 | D9 | Merge model | Server-authoritative commands with client rebase (Figma, Linear, tldraw, Replicache) | Yjs CRDT (merges can break tree invariants); one editor at a time |
 | D10 | Version history | In the first release | Later |
 | D11 | Backend language | **Rust**, `workers-rs` (`worker` crate) compiled to WASM, `axum` for routing | TypeScript + Hono (first draft); a Rust core shared with the browser as WASM (would replace the tested TS core and add 200–400 KB to the app) |
+| D13 | Account sync | Any tree can be saved to the owner's account without links (a cloud tree with no links); it syncs live across the owner's devices. Encrypted in transit (TLS) and at rest (Cloudflare storage), but readable by the server, which must run the rules | End-to-end encryption now (see §12 Later: Private vault) |
 | D12 | Two implementations of the edit rules | The browser keeps the TypeScript core. The server gets a Rust port. A **parity property suite** runs both on the same random edits and requires identical results | One shared implementation |
 
 Why D9: Google Docs uses Operational Transformation because text edits are positional. Stam's
@@ -436,6 +437,7 @@ Each phase is deployable on its own.
 | **P3 Comments** | Comment links; threads per person; badges; resolve and reopen; rate limits |
 | **P4 History** | History list and grouping; preview; restore; nightly backups |
 | Later | Email magic-link sign-in; notifications; transferring ownership |
+| Later: Private vault | End-to-end encryption for **unshared** account trees: key from a passphrase plus a recovery key, encrypted photos, an opaque blob on the server, whole-tree "newer version or pick one" instead of live merging. Sharing a vault tree switches it to normal mode. Shared trees stay server-readable by design (D9). E2EE for shared trees would need a sequencer-only server and key rotation on revoke, so it is a redesign, not an add-on |
 
 ## 13. Out of scope
 

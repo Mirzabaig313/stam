@@ -2,8 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** An owner signs in with Google, uploads a tree with its photos, edits it live from any
-device, and shares view-only links (optionally hiding living people's details) whose viewers see
+**Goal:** An owner signs in with Google, saves trees with their photos to their account, edits
+them live from any device, and shares view-only links (optionally hiding living people's details) whose viewers see
 every edit as it happens.
 
 **Architecture:**
@@ -1004,6 +1004,14 @@ role checks, header forwarding, photo access.
     - "In your account": shown when signed in; cloud trees from `/api/me` not on this device,
       each with "Open", which fetches through the owner's `/ws` welcome into a local cache.
     - Account menu: the signed-in name and "Sign out".
+    - **Save to account** (spec D13): a "Save to my account" action in each local tree's card
+      menu and in the editor's More menu.
+      - Signed out, it starts sign-in with a return to the same place.
+      - Signed in, it runs `uploadAndShare` without creating a link, and the card gets a
+        "Saved to account" chip.
+      - The share dialog's "Upload and share" step is skipped for trees already saved.
+      - "Remove from account" in the same menus calls `deleteCloudTree` after a confirm. The
+        local copy stays.
   - **CloudStatus** in the toolbar: a role chip ("Can view") for link trees and a connection
     state ("Live" / "Reconnecting" / "Offline, N changes waiting"). The connection state uses
     `aria-live="polite"`.
@@ -1025,6 +1033,8 @@ role checks, header forwarding, photo access.
   - `link page opens the tree and replaces history`
   - `link page shows LINK_OFF message`
   - `tree list groups mine, shared with me and in your account`
+  - `save to account uploads without a link and marks the card`
+  - `remove from account deletes the cloud copy and keeps the local tree`
   - `view role hides share button, add handles and drag`
   - `locales have every new key in en, ur and ar` (the existing locales test covers this once
     keys exist)
