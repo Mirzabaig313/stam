@@ -81,12 +81,73 @@ describe("cloud session", () => {
     expect(await repo.getConfirmed(doc.id)).toMatchObject({ version: 1, doc: { name: "New" } });
   });
 
+  test("a photo added after sharing is uploaded once the room confirms it", async () => {
+    const { doc, room, session, calls } = await setup(
+      { role: "owner", version: 0 },
+      // Only the first photo uploads; anything else is refused.
+      { [`PUT /api/trees/${famSimple().id}/photos/photo00001`]: () => new Response(null) },
+    );
+    room.open();
+    room.receive({ type: "welcome", role: "owner", hideLiving: false, version: 0, ops: [] });
+    const [personId] = Object.keys(doc.persons);
+    await repo.putPhoto("photo00001", new Blob(["img"]));
+    await repo.putPhoto("photo00002", new Blob(["img"]));
+    const cmd = {
+      type: "updatePerson",
+      personId: personId!,
+      patch: { photoId: "photo00001" },
+    } as const;
+    session.submit(cmd);
+    const next = applyCommand(doc, cmd, { now: NOW }).doc;
+    room.receive({
+      type: "applied",
+      version: 1,
+      opId: "op00000000",
+      author: { kind: "owner", name: "O" },
+      changes: diffDocs(doc, next),
+    });
+    await Bun.sleep(20);
+    const puts = calls.filter((c) => c.method === "PUT").map((c) => c.path);
+    expect(puts).toEqual([`/api/trees/${doc.id}/photos/photo00001`]);
+    // A photo the upload could not send is remembered for a retry.
+    const second = { ...cmd, patch: { photoId: "photo00002" } };
+    session.submit(second);
+    const failing = applyCommand(next, second, { now: NOW }).doc;
+    room.receive({
+      type: "applied",
+      version: 2,
+      opId: "op00000001",
+      author: { kind: "owner", name: "O" },
+      changes: diffDocs(next, failing),
+    });
+    await Bun.sleep(20);
+    expect((await repo.getMeta(doc.id))?.cloud?.failedPhotos).toEqual(["photo00002"]);
+  });
+
   test("4401 deletes the cached link tree", async () => {
     const { doc, room, closed } = await setup({ role: "view", token: "tok", version: 0 });
     room.closed(4401);
     await Bun.sleep(10);
     expect(await repo.getMeta(doc.id)).toBeUndefined();
     expect(closed).toEqual([4401]);
+  });
+
+  test("the editor is told before the cached copy is removed (so nothing saves it again)", async () => {
+    const order: string[] = [];
+    const deleteTree = repo.deleteTree.bind(repo);
+    repo.deleteTree = async (id) => {
+      order.push("delete");
+      await deleteTree(id);
+    };
+    const { room, closed } = await setup({ role: "view", token: "tok", version: 0 });
+    const push = closed.push.bind(closed);
+    closed.push = (...codes) => {
+      order.push("closed");
+      return push(...codes);
+    };
+    room.closed(4401);
+    await Bun.sleep(10);
+    expect(order).toEqual(["closed", "delete"]);
   });
 
   test("a deleted tree (4404) stays on the owner's device as a local tree", async () => {

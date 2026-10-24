@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 
 import { createApi } from "@/cloud/api";
-import { openLink, openOwnedTree, retryPhotos, uploadAndShare } from "@/cloud/linkTrees";
+import {
+  openLink,
+  openOwnedTree,
+  removeFromAccount,
+  retryPhotos,
+  uploadAndShare,
+} from "@/cloud/linkTrees";
 import type { RoomConnection, RoomHandlers } from "@/cloud/transport";
 import type { TreeDocument } from "@/core/model/types";
 import { openStamDb } from "@/storage/db";
@@ -206,5 +212,45 @@ describe("uploading, when things go wrong", () => {
     ok = true;
     await retryPhotos(doc.id, ["ph1"], { repo, api });
     expect((await repo.getMeta(doc.id))?.cloud?.failedPhotos).toBeUndefined();
+  });
+});
+
+describe("removing a tree from the account", () => {
+  function withPhotos() {
+    const doc = famSimple();
+    const [a, b] = Object.keys(doc.persons);
+    doc.persons[a!] = { ...doc.persons[a!]!, photoId: "photo00001" };
+    doc.persons[b!] = { ...doc.persons[b!]!, photoId: "photo00002" };
+    return doc;
+  }
+
+  test("first downloads the photos this device lacks, then keeps the tree as local", async () => {
+    const doc = withPhotos();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 3 });
+    await repo.putPhoto("photo00001", new Blob(["mine"]));
+    const { fetch, calls } = fakeFetch({
+      [`GET /api/trees/${doc.id}/photos/photo00002`]: () => new Response("theirs"),
+      [`DELETE /api/trees/${doc.id}`]: () => new Response(null, { status: 204 }),
+    });
+    await removeFromAccount(doc.id, { repo, api: createApi(fetch) });
+    expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+      `GET /api/trees/${doc.id}/photos/photo00002`,
+      `DELETE /api/trees/${doc.id}`,
+    ]);
+    expect(await repo.getPhoto("photo00002")).toBeDefined();
+    expect((await repo.getMeta(doc.id))?.cloud).toBeUndefined();
+  });
+
+  test("a photo that cannot be downloaded stops the removal", async () => {
+    const doc = withPhotos();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 3 });
+    const { fetch, calls } = fakeFetch({
+      [`GET /api/trees/${doc.id}/photos/photo00001`]: () => new Response("one"),
+    });
+    await expect(removeFromAccount(doc.id, { repo, api: createApi(fetch) })).rejects.toThrow();
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+    expect((await repo.getMeta(doc.id))?.cloud).toEqual({ role: "owner", version: 3 });
   });
 });

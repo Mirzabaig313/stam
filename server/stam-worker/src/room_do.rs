@@ -241,6 +241,17 @@ impl RoomStore for SqlStore {
         self.write_doc(&format!("checkpoint:{version}"), doc_json)
     }
 
+    fn epoch(&self) -> StoreResult<Option<String>> {
+        #[derive(Deserialize)]
+        struct Row {
+            at: String,
+        }
+        Ok(self
+            .rows::<Row>("SELECT at FROM ops WHERE version = 0", vec![])?
+            .pop()
+            .map(|r| r.at))
+    }
+
     fn wipe(&mut self) -> StoreResult<()> {
         for table in ["docs", "meta", "ops", "revoked"] {
             self.exec(&format!("DELETE FROM {table}"), vec![])?;

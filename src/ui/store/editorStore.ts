@@ -95,6 +95,7 @@ export type OpenCloud = (args: {
   /** The tree as the room last confirmed it, at `version`. */
   doc: TreeDocument;
   version: number;
+  epoch?: string;
   pending: PendingOp[];
   handlers: CloudSessionHandlers;
 }) => CloudSession;
@@ -151,6 +152,8 @@ export type EditorActions = {
   lock(reason: "changed" | "deleted"): void;
   /** Ends the tree's cloud session, if any (the editor page closing). */
   dispose(): void;
+  /** Writes any edit the autosaver still holds (before the tree is uploaded or replaced). */
+  flushSaves(): Promise<void>;
 };
 
 export type EditorStore = StoreApi<EditorState & EditorActions>;
@@ -350,6 +353,7 @@ export function createEditorStore({
       doc: TreeDocument,
       version: number,
       pending: PendingOp[],
+      epoch?: string,
     ): void {
       const patchCloud = (patch: Partial<NonNullable<EditorState["cloud"]>>) => {
         const current = get().cloud;
@@ -370,6 +374,7 @@ export function createEditorStore({
         cloud,
         doc,
         version,
+        ...(epoch === undefined ? {} : { epoch }),
         pending,
         handlers: {
           onView: (next) => {
@@ -428,6 +433,8 @@ export function createEditorStore({
           : undefined;
         if (seq !== loadSeq) return;
         if (cloud) {
+          // Another tab saving this tree's cache is not a conflict any more (see `lock`).
+          if (get().locked === "changed") set({ locked: null });
           // A cloud tree: the room holds the truth. Start from what it last confirmed, with this
           // browser's unconfirmed edits on top; no journal or guard.
           const [confirmed, pending] = await Promise.all([
@@ -442,7 +449,7 @@ export function createEditorStore({
             recoveredFromSnapshot: found.recoveredFromSnapshot,
             ...computeViews(layouts, base.doc, { ...INITIAL, collapsed: INITIAL.collapsed }, now()),
           });
-          startCloud(treeId, cloud, base.doc, base.version, pending);
+          startCloud(treeId, cloud, base.doc, base.version, pending, confirmed?.epoch);
           // startCloud set it; TypeScript still thinks it is the null from the top of load.
           const view = (session as CloudSession | null)?.view;
           if (view && view !== base.doc) commit(view);
@@ -568,12 +575,17 @@ export function createEditorStore({
         session?.stop();
         session = null;
       },
+      flushSaves: () => autosaver.flush(),
       startEditing: (editing) => set({ editing }),
       stopEditing: () => set({ editing: null }),
 
       lock(reason) {
-        // Another tab saving a cloud tree's cache is not a conflict: the room keeps them in step.
-        if (session) return;
+        if (session) {
+          // Another tab saving a cloud tree's cache is not a conflict: the room keeps them in step.
+          if (reason === "changed") return;
+          session.stop();
+          session = null;
+        }
         if (get().locked === "deleted") return;
         autosaver.stop();
         journal?.discard();

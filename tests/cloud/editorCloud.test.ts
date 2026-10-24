@@ -146,6 +146,29 @@ describe("the editor on a cloud tree", () => {
     expect(store.getState().locked).toBeNull();
   });
 
+  test("a cloud tree deleted in another tab locks and ends its session", async () => {
+    const { store, room } = await setup({ role: "owner", version: 0 });
+    room.open();
+    store.getState().lock("deleted");
+    expect(store.getState().locked).toBe("deleted");
+    expect(room.state.stopped).toBe(true);
+  });
+
+  test("a tree that becomes a cloud tree drops the lock a second tab's save set", async () => {
+    const { store, env, doc } = await setup(null);
+    store.getState().lock("changed");
+    await env.repo.setCloud(doc.id, { role: "owner", version: 0 });
+    await store.getState().load(doc.id);
+    expect(store.getState().locked).toBeNull();
+  });
+
+  test("flushSaves writes the last edit before the tree is uploaded", async () => {
+    const { store, env, doc } = await setup(null);
+    store.getState().dispatch({ type: "renameTree", name: "Just typed" }, "rename");
+    await store.getState().flushSaves();
+    expect((await env.repo.getTree(doc.id))?.doc.name).toBe("Just typed");
+  });
+
   test("autosave keeps the device copy of a cloud tree", async () => {
     const { store, room, env, doc } = await setup({ role: "owner", version: 0 });
     room.open();

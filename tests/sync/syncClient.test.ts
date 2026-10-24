@@ -68,6 +68,41 @@ describe("SyncClient", () => {
     ]);
   });
 
+  test("a welcome from a new share of the tree starts fresh", () => {
+    const { client, sent, doc, dropped } = setup();
+    client.start(
+      doc,
+      300,
+      false,
+      [{ kind: "op", opId: "oldroomop1", cmd: rename("Old room") }],
+      "epoch-old",
+    );
+    client.connected();
+    sent.length = 0;
+    client.receive({
+      type: "welcome",
+      role: "owner",
+      hideLiving: false,
+      version: 310,
+      epoch: "epoch-new",
+      ops: [],
+    });
+    expect(sent).toEqual([{ type: "hello", pending: [] }]);
+    expect(client.pendingCount).toBe(0);
+    expect(dropped[0]?.[0]?.code).toBe("RESET");
+    const fresh = { ...doc, name: "New room" };
+    client.receive({
+      type: "welcome",
+      role: "owner",
+      hideLiving: false,
+      version: 310,
+      epoch: "epoch-new",
+      doc: fresh,
+    });
+    expect(client.view.name).toBe("New room");
+    expect(client.version).toBe(310);
+  });
+
   test("stored pending edits are shown again and sent after hello", () => {
     const { client, sent, doc } = setup();
     client.start(doc, 3, false, [

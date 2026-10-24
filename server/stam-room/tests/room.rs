@@ -510,3 +510,20 @@ fn open_tells_no_tree_from_broken_storage() {
         Err(stam_room::RoomError::Store(_))
     ));
 }
+
+#[test]
+fn welcome_names_the_room_epoch_which_survives_a_restart() {
+    let mut r = room();
+    let w = parse(&send(&mut r, &owner(), json!({"type": "hello"})).reply[0]);
+    assert_eq!(w["epoch"], NOW);
+    let mut reopened = RoomCore::open(r.into_store()).unwrap();
+    let again = parse(
+        &send(
+            &mut reopened,
+            &owner(),
+            json!({"type": "hello", "lastVersion": 0}),
+        )
+        .reply[0],
+    );
+    assert_eq!(again["epoch"], NOW);
+}

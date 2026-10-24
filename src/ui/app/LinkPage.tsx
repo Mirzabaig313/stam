@@ -43,15 +43,16 @@ export function LinkPage({
       .catch(async (e: unknown) => {
         if (!current) return;
         const off = e instanceof ApiError && e.status >= 400 && e.status < 500;
-        if (!off) {
+        const cached = (await repo.listTrees().catch(() => [])).find(
+          (tree) => tree.cloud?.token === token,
+        );
+        if (off) {
+          // The link is off: the copy this device kept of it goes too.
+          if (cached) await repo.deleteTree(cached.id).catch(() => {});
+        } else if (cached && current) {
           // Offline: a copy this device opened before still shows (read-only, spec §5.4).
-          const cached = (await repo.listTrees().catch(() => [])).find(
-            (tree) => tree.cloud?.token === token,
-          );
-          if (cached && current) {
-            navigate(`/app/t/${cached.id}`, { replace: true });
-            return;
-          }
+          navigate(`/app/t/${cached.id}`, { replace: true });
+          return;
         }
         if (current) setProblem(off ? "off" : "offline");
       });

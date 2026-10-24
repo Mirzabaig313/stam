@@ -1,6 +1,6 @@
 import type { Command, CommandResult } from "@/core/commands/types";
 import type { TreeDocument } from "@/core/model/types";
-import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
+import { type CloudMeta, photoIdsOf, type TreeRepo } from "@/storage/treeRepo";
 import type { EntityChange } from "@/sync/revert";
 import { type DroppedEdit, type PendingOp, SyncClient } from "@/sync/syncClient";
 
@@ -45,6 +45,8 @@ export function createCloudSession(deps: {
   /** The tree as the room last confirmed it, at `version`. */
   doc: TreeDocument;
   version: number;
+  /** The share the confirmed copy belongs to. */
+  epoch?: string;
   /** Unconfirmed edits kept from before a reload. */
   pending?: PendingOp[];
   repo: TreeRepo;
@@ -65,9 +67,44 @@ export function createCloudSession(deps: {
     handlers.onStatus(status, sync.pendingCount);
   };
 
+  const canEdit = cloud.role === "owner" || cloud.role === "edit";
+  /** Photos the room's tree already had, or that this session has tried to upload. */
+  const knownPhotos = new Set(photoIdsOf(deps.doc));
+  let uploads = Promise.resolve();
+
+  /**
+   * Uploads photos this device added that the room has now confirmed (the room only accepts a
+   * photo its tree uses). Photos not on this device were added elsewhere and are skipped; one
+   * that fails to upload is remembered in `failedPhotos` for the retry in the share dialog.
+   */
+  function uploadNewPhotos() {
+    const fresh = photoIdsOf(sync.confirmed).filter((id) => !knownPhotos.has(id));
+    if (fresh.length === 0) return;
+    for (const id of fresh) knownPhotos.add(id);
+    uploads = uploads
+      .then(async () => {
+        const failed: string[] = [];
+        for (const photoId of fresh) {
+          try {
+            const blob = await repo.getPhoto(photoId);
+            if (blob) await api.uploadPhoto(treeId, photoId, blob);
+          } catch {
+            failed.push(photoId);
+          }
+        }
+        if (failed.length === 0) return;
+        const current = (await repo.getMeta(treeId))?.cloud;
+        if (!current) return;
+        const failedPhotos = [...new Set([...(current.failedPhotos ?? []), ...failed])];
+        await repo.setCloud(treeId, { ...current, failedPhotos });
+      })
+      .catch(() => {});
+  }
+
   const sync = new SyncClient({
     send: (msg) => room?.send(msg),
     onView: (doc, cause) => {
+      if (canEdit && cause === "confirm") uploadNewPhotos();
       handlers.onView(doc, cause);
       handlers.onStatus(status, sync.pendingCount);
     },
@@ -77,12 +114,13 @@ export function createCloudSession(deps: {
     persist: {
       add: (op) => void repo.addPending(treeId, op).catch(() => {}),
       remove: (ids) => void repo.removePending(ids).catch(() => {}),
-      confirmed: (doc, version) => void repo.saveConfirmed(treeId, doc, version).catch(() => {}),
+      confirmed: (doc, version, epoch) =>
+        void repo.saveConfirmed(treeId, doc, version, epoch).catch(() => {}),
     },
     ...(deps.now ? { now: deps.now } : {}),
     ...(deps.newOpId ? { newOpId: deps.newOpId } : {}),
   });
-  sync.start(deps.doc, deps.version, cloud.hideLiving ?? false, deps.pending ?? []);
+  sync.start(deps.doc, deps.version, cloud.hideLiving ?? false, deps.pending ?? [], deps.epoch);
 
   /** The room says this browser is done with the tree. */
   async function closed(code: number) {
@@ -96,11 +134,13 @@ export function createCloudSession(deps: {
       return;
     }
     setStatus("closed");
+    // The editor stops saving first, so a late autosave cannot bring the copy back.
+    handlers.onClosed(code);
     try {
       if (cloud.role === "owner") await repo.setCloud(treeId, null);
       else await repo.deleteTree(treeId);
-    } finally {
-      handlers.onClosed(code);
+    } catch {
+      // Storage failed: the next open of the tree meets the same answer and tries again.
     }
   }
 
@@ -154,7 +194,6 @@ export function createCloudSession(deps: {
   }
 
   open();
-  const canEdit = cloud.role === "owner" || cloud.role === "edit";
   return {
     role: cloud.role,
     canEdit,

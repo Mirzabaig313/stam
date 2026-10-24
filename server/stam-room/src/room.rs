@@ -77,6 +77,8 @@ pub struct RoomCore<S: RoomStore> {
     /// The tree as JSON for welcomes, full and cut for hide-living, at the version it was made:
     /// many people joining after one edit cost one serialization.
     welcome_docs: [Option<(u64, String)>; 2],
+    /// Which share of the tree this is (see `RoomStore::epoch`); sent in every welcome.
+    epoch: String,
 }
 
 fn to_json<T: serde::Serialize>(value: &T) -> String {
@@ -132,6 +134,7 @@ impl<S: RoomStore> RoomCore<S> {
         })?;
         store.write_snapshot(&doc_json, 0)?;
         store.write_checkpoint(0, &doc_json)?;
+        let epoch = now.to_owned();
         Ok(Self {
             store,
             doc,
@@ -142,12 +145,14 @@ impl<S: RoomStore> RoomCore<S> {
             over_size: doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
             welcome_docs: [None, None],
+            epoch: epoch.clone(),
         })
     }
 
     /// Loads the snapshot and applies the logged changes after it.
     pub fn open(store: S) -> Result<Self, RoomError> {
         let snap = store.load()?.ok_or(RoomError::NoTree)?;
+        let epoch = store.epoch()?.unwrap_or_default();
         let mut doc: TreeDocument =
             serde_json::from_str(&snap.doc_json).map_err(|e| RoomError::Corrupt(e.to_string()))?;
         let mut version = snap.doc_version;
@@ -167,6 +172,7 @@ impl<S: RoomStore> RoomCore<S> {
             over_size: snap.doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
             welcome_docs: [None, None],
+            epoch: epoch.clone(),
         })
     }
 
@@ -318,6 +324,7 @@ impl<S: RoomStore> RoomCore<S> {
             "role": att.role,
             "hideLiving": att.hide_living,
             "version": self.version,
+            "epoch": self.epoch,
             "known": known,
         });
         let catch_up = last_version

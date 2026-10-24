@@ -96,8 +96,10 @@ export type TreeRepo = {
   deleteTree(id: string): Promise<void>;
   getMeta(id: string): Promise<TreeMeta | undefined>;
   /** A cloud tree as the room last confirmed it; kept only when `version` is newer. */
-  saveConfirmed(treeId: string, doc: TreeDocument, version: number): Promise<void>;
-  getConfirmed(treeId: string): Promise<{ doc: TreeDocument; version: number } | undefined>;
+  saveConfirmed(treeId: string, doc: TreeDocument, version: number, epoch?: string): Promise<void>;
+  getConfirmed(
+    treeId: string,
+  ): Promise<{ doc: TreeDocument; version: number; epoch?: string } | undefined>;
   /** This browser's unconfirmed edits to cloud trees, in the order they were made. */
   addPending(treeId: string, op: PendingOp): Promise<void>;
   removePending(opIds: readonly string[]): Promise<void>;
@@ -269,19 +271,27 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
       );
     },
 
-    async saveConfirmed(treeId, doc, version) {
+    async saveConfirmed(treeId, doc, version, epoch) {
       await inTransaction(db, ["cloudConfirmed"], async (tx) => {
         const store = tx.objectStore("cloudConfirmed");
-        const current = (await store.get(treeId)) as { version: number } | undefined;
-        if (current && current.version > version) return;
-        await store.put({ treeId, doc, version });
+        const current = (await store.get(treeId)) as
+          { version: number; epoch?: string } | undefined;
+        // Only forward within one share; a new share (epoch) of the tree starts over.
+        if (current && current.epoch === epoch && current.version > version) return;
+        await store.put({ treeId, doc, version, ...(epoch === undefined ? {} : { epoch }) });
       });
     },
 
     async getConfirmed(treeId) {
       const row = (await db.get("cloudConfirmed", treeId)) as
-        { doc: TreeDocument; version: number } | undefined;
-      return row && { doc: row.doc, version: row.version };
+        { doc: TreeDocument; version: number; epoch?: string } | undefined;
+      return (
+        row && {
+          doc: row.doc,
+          version: row.version,
+          ...(row.epoch === undefined ? {} : { epoch: row.epoch }),
+        }
+      );
     },
 
     async addPending(treeId, op) {
@@ -309,9 +319,18 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
     },
 
     async setCloud(id, cloud) {
-      await inTransaction(db, ["meta"], async (tx) => {
+      await inTransaction(db, ["meta", "cloudConfirmed", "cloudPending"], async (tx) => {
         const store = tx.objectStore("meta");
         const meta = (await store.get(id)) as TreeMeta | undefined;
+        if (cloud === null) {
+          // Local-only again: the sync state belonged to that share and goes with it.
+          const pending = tx.objectStore("cloudPending");
+          const keys = await pending.index("treeId").getAllKeys(id);
+          await Promise.all([
+            tx.objectStore("cloudConfirmed").delete(id),
+            ...keys.map((key) => pending.delete(key)),
+          ]);
+        }
         if (!meta) return;
         const { cloud: _old, ...rest } = meta;
         await store.put(cloud === null ? rest : { ...rest, cloud });

@@ -7,7 +7,7 @@ import { useStore } from "zustand";
 
 import { type Api, api as defaultApi, ApiError, type Link } from "@/cloud/api";
 import { authStore as defaultAuth } from "@/cloud/auth";
-import { retryPhotos, uploadAndShare } from "@/cloud/linkTrees";
+import { removeFromAccount, retryPhotos, uploadAndShare } from "@/cloud/linkTrees";
 import { ConfirmDialog, Dialog } from "@/ui/app/Dialog";
 import { useRepo } from "@/ui/app/RepoContext";
 import { Button, Chip } from "@/ui/design";
@@ -107,6 +107,8 @@ export function ShareDialog({
   const upload = () =>
     act(async () => {
       if (!doc) return;
+      // A save still waiting must not land after the upload (and bring back a re-id'd tree).
+      await store.getState().flushSaves();
       const result = await uploadAndShare(doc, { repo, api });
       setFailedPhotos(result.failedPhotos);
       if (result.treeId !== doc.id) navigate(`/app/t/${result.treeId}`, { replace: true });
@@ -137,8 +139,7 @@ export function ShareDialog({
   const stopSharing = () =>
     act(async () => {
       if (!treeId) return;
-      await api.deleteCloudTree(treeId);
-      await repo.setCloud(treeId, null);
+      await removeFromAccount(treeId, { repo, api });
       await store.getState().load(treeId);
       onClose();
     });

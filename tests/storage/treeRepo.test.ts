@@ -380,6 +380,28 @@ describe("cloud sync state", () => {
     expect((await repo.listPending(doc.id)).map((p) => p.opId)).toEqual(["bbbbbbbbbb"]);
   });
 
+  test("a new share of the tree (another epoch) replaces the confirmed copy", async () => {
+    const doc = famSimple();
+    await repo.saveConfirmed(doc.id, { ...doc, name: "old" }, 300, "e1");
+    await repo.saveConfirmed(doc.id, { ...doc, name: "new" }, 0, "e2");
+    expect(await repo.getConfirmed(doc.id)).toMatchObject({
+      version: 0,
+      epoch: "e2",
+      doc: { name: "new" },
+    });
+  });
+
+  test("a tree going local-only drops its sync state", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 1 });
+    await repo.saveConfirmed(doc.id, doc, 1, "e1");
+    await repo.addPending(doc.id, op("aaaaaaaaaa"));
+    await repo.setCloud(doc.id, null);
+    expect(await repo.getConfirmed(doc.id)).toBeUndefined();
+    expect(await repo.listPending(doc.id)).toEqual([]);
+  });
+
   test("deleting a tree deletes its sync state", async () => {
     const doc = famSimple();
     await repo.saveTree(doc);

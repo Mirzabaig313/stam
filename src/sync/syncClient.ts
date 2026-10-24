@@ -34,7 +34,7 @@ export type SyncClientOptions = {
   persist?: {
     add(op: PendingOp): void;
     remove(opIds: string[]): void;
-    confirmed(doc: TreeDocument, version: number): void;
+    confirmed(doc: TreeDocument, version: number, epoch?: string): void;
   };
 };
 
@@ -58,6 +58,8 @@ export class SyncClient {
   #awaitingWelcome = false;
   /** Whether the confirmed tree came through a hide-living link (living people's details cut). */
   #hideLiving = false;
+  /** The share of the tree the confirmed copy belongs to (see `welcome.epoch`). */
+  #epoch: string | undefined;
   /** Bumped by every connection change and busy, so a stale retry does nothing. */
   #retryGeneration = 0;
 
@@ -79,7 +81,9 @@ export class SyncClient {
     version: number,
     hideLiving = false,
     pending: PendingOp[] = [],
+    epoch?: string,
   ): void {
+    this.#epoch = epoch;
     this.#confirmed = confirmed;
     this.#version = version;
     this.#hideLiving = hideLiving;
@@ -96,11 +100,16 @@ export class SyncClient {
   }
 
   #saveConfirmed(): void {
-    this.#opts.persist?.confirmed(this.#confirmed, this.#version);
+    this.#opts.persist?.confirmed(this.#confirmed, this.#version, this.#epoch);
   }
 
   get view(): TreeDocument {
     return this.#view;
+  }
+
+  /** The tree as the room last confirmed it. */
+  get confirmed(): TreeDocument {
+    return this.#confirmed;
   }
 
   get version(): number {
@@ -168,6 +177,23 @@ export class SyncClient {
   receive(msg: ServerMessage): void {
     switch (msg.type) {
       case "welcome": {
+        if (msg.epoch !== undefined && this.#epoch !== undefined && msg.epoch !== this.#epoch) {
+          // The tree was unshared and shared again: this copy and these edits belong to the
+          // earlier share. Start over from the new room's tree.
+          const stale = this.#pending.map((op) => ({
+            ...(op.kind === "op" ? { cmd: op.cmd } : {}),
+            code: "RESET",
+          }));
+          this.#forget(() => true);
+          this.#epoch = msg.epoch;
+          this.#version = 0;
+          if (stale.length > 0) this.#opts.onDropped(stale);
+          if (!msg.doc) {
+            this.#hello(true);
+            return;
+          }
+        }
+        if (msg.epoch !== undefined) this.#epoch = msg.epoch;
         if (msg.ops && msg.hideLiving !== this.#hideLiving) {
           // Ops on top of a tree cut for a different link would never bring the cut details
           // back (or would keep ones this link must not show): start over from the whole tree.

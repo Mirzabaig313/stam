@@ -7,7 +7,7 @@ import { useStore } from "zustand";
 
 import { type Api, api as defaultApi } from "@/cloud/api";
 import { authStore } from "@/cloud/auth";
-import { openOwnedTree, uploadAndShare } from "@/cloud/linkTrees";
+import { openOwnedTree, removeFromAccount, uploadAndShare } from "@/cloud/linkTrees";
 import { APP_NAME, TUNED_PEOPLE } from "@/config";
 import { applyCommand } from "@/core/commands/apply";
 import { createTree } from "@/core/model/tree";
@@ -454,8 +454,7 @@ export function TreeListPage({
             const { tree } = dialog;
             setDialog(null);
             void act(async () => {
-              await api.deleteCloudTree(tree.id);
-              await repo.setCloud(tree.id, null);
+              await removeFromAccount(tree.id, { repo, api });
             });
           }}
           onClose={() => setDialog(null)}

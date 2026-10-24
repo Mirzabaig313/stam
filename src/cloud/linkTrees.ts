@@ -1,7 +1,7 @@
 import { newId } from "@/core/model/ids";
 import type { TreeDocument } from "@/core/model/types";
 import { isSharedId } from "@/io/json/parseTree";
-import type { TreeRepo } from "@/storage/treeRepo";
+import { photoIdsOf, type TreeRepo } from "@/storage/treeRepo";
 import { canonicalJson } from "@/sync/changes";
 import { prepareForUpload } from "@/sync/upload";
 
@@ -143,4 +143,29 @@ export async function uploadAndShare(
   await deps.repo.setCloud(doc.id, { role: "owner", version });
   const photoIds = Object.values(doc.persons).flatMap((p) => (p.photoId ? [p.photoId] : []));
   return { treeId: doc.id, failedPhotos: await retryPhotos(doc.id, photoIds, deps) };
+}
+
+/**
+ * Takes the owner's tree out of their account, keeping it on this device as a local tree. Photos
+ * added on other devices exist only on the server, so they are downloaded first; if one cannot
+ * be, nothing is removed (the error is thrown).
+ */
+export async function removeFromAccount(
+  treeId: string,
+  deps: { repo: TreeRepo; api: Api },
+): Promise<void> {
+  const [stored, confirmed] = await Promise.all([
+    deps.repo.getTree(treeId),
+    deps.repo.getConfirmed(treeId),
+  ]);
+  const photoIds = new Set([
+    ...(stored ? photoIdsOf(stored.doc) : []),
+    ...(confirmed ? photoIdsOf(confirmed.doc) : []),
+  ]);
+  for (const photoId of photoIds) {
+    if (await deps.repo.getPhoto(photoId)) continue;
+    await deps.repo.putPhoto(photoId, await deps.api.downloadPhoto(treeId, photoId));
+  }
+  await deps.api.deleteCloudTree(treeId);
+  await deps.repo.setCloud(treeId, null);
 }

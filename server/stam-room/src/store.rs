@@ -51,6 +51,9 @@ pub trait RoomStore {
     fn write_snapshot(&mut self, doc_json: &str, version: u64) -> StoreResult<()>;
     fn write_checkpoint(&mut self, version: u64, doc_json: &str) -> StoreResult<()>;
     fn wipe(&mut self) -> StoreResult<()>;
+    /// When the room was created (its upload op's time): tells this room from an earlier one of
+    /// the same tree, shared, deleted and shared again.
+    fn epoch(&self) -> StoreResult<Option<String>>;
 }
 
 #[derive(Clone, Debug, Default)]
@@ -123,5 +126,14 @@ impl RoomStore for MemoryStore {
     fn wipe(&mut self) -> StoreResult<()> {
         *self = Self::default();
         Ok(())
+    }
+
+    fn epoch(&self) -> StoreResult<Option<String>> {
+        self.check()?;
+        Ok(self
+            .ops
+            .iter()
+            .find(|op| op.version == 0)
+            .map(|op| op.at.clone()))
     }
 }

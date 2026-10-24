@@ -87,6 +87,9 @@ export function createApi(fetchFn: FetchFn = (input, init) => globalThis.fetch(i
       });
       if (!res.ok) throw new ApiError(res.status, "PHOTO_REFUSED");
     },
+    async downloadPhoto(treeId: string, photoId: string): Promise<Blob> {
+      return (await request("GET", `/api/trees/${treeId}/photos/${photoId}`)).blob();
+    },
     /** Where a cloud tree's photo is; link users add their token. */
     photoUrl: (treeId: string, photoId: string, token?: string) =>
       `/api/trees/${treeId}/photos/${photoId}${token ? `?t=${encodeURIComponent(token)}` : ""}`,

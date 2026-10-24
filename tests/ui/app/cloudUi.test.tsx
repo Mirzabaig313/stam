@@ -85,6 +85,22 @@ describe("link page", () => {
     );
     expect(await screen.findByText("This link was turned off or doesn't exist.")).toBeDefined();
   });
+
+  test("a link that was turned off removes the copy this device kept of it", async () => {
+    const env = await makeEditorEnv();
+    const doc = tree("sharedtree2", "Their family");
+    await env.repo.saveTree(doc);
+    await env.repo.setCloud(doc.id, { role: "view", token: "gone", version: 3 });
+    const { fetch } = fakeFetch({ "GET /api/s/gone": () => json({ error: "LINK_OFF" }, 404) });
+    renderApp(
+      <Routes>
+        <Route path="/s/:token" element={<LinkPage api={createApi(fetch)} />} />
+      </Routes>,
+      { repo: env.repo, route: "/s/gone" },
+    );
+    await screen.findByText("This link was turned off or doesn't exist.");
+    expect(await env.repo.getMeta(doc.id)).toBeUndefined();
+  });
 });
 
 async function setupList(routes: Parameters<typeof fakeFetch>[0] = {}) {

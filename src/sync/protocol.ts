@@ -24,6 +24,8 @@ export type ServerMessage =
       role: Role;
       hideLiving: boolean;
       version: number;
+      /** Which share of the tree this room is: a different one means start over. */
+      epoch?: string;
       /** Which of the client's pending op ids the room already applied. */
       known?: string[];
       doc?: TreeDocument;
