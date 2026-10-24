@@ -25,6 +25,8 @@ export type SyncClientOptions = {
   onDropped: (dropped: DroppedEdit[]) => void;
   now?: () => Date;
   newOpId?: () => string;
+  /** Runs `fn` after `ms` (busy retries); tests pass a manual clock. */
+  schedule?: (fn: () => void, ms: number) => void;
 };
 
 /**
@@ -45,16 +47,26 @@ export class SyncClient {
    * not caught up to; the welcome (taken after them, in the room's order) carries them instead.
    */
   #awaitingWelcome = false;
-  #retry: ReturnType<typeof setTimeout> | undefined;
+  /** Whether the confirmed tree came through a hide-living link (living people's details cut). */
+  #hideLiving = false;
+  /** Bumped by every connection change and busy, so a stale retry does nothing. */
+  #retryGeneration = 0;
 
   constructor(opts: SyncClientOptions) {
-    this.#opts = { now: () => new Date(), newOpId: () => nanoid(10), ...opts };
+    this.#opts = {
+      now: () => new Date(),
+      newOpId: () => nanoid(10),
+      schedule: (fn, ms) => void setTimeout(fn, ms),
+      ...opts,
+    };
   }
 
-  start(confirmed: TreeDocument, version: number): void {
+  /** `hideLiving`: the cached tree was built through a hide-living link. */
+  start(confirmed: TreeDocument, version: number, hideLiving = false): void {
     this.#confirmed = confirmed;
     this.#version = version;
     this.#view = confirmed;
+    this.#hideLiving = hideLiving;
   }
 
   get view(): TreeDocument {
@@ -106,12 +118,16 @@ export class SyncClient {
 
   disconnected(): void {
     this.#connected = false;
-    clearTimeout(this.#retry);
+    this.#retryGeneration++;
   }
 
-  #hello(): void {
+  /** `fresh`: ask for the whole tree instead of the ops since this client's version. */
+  #hello(fresh = false): void {
     this.#awaitingWelcome = true;
-    this.#opts.send({ type: "hello", lastVersion: this.#version });
+    const pending = this.#pending.map((p) => p.opId);
+    this.#opts.send(
+      fresh ? { type: "hello", pending } : { type: "hello", lastVersion: this.#version, pending },
+    );
   }
 
   #resend(): void {
@@ -121,7 +137,17 @@ export class SyncClient {
   receive(msg: ServerMessage): void {
     switch (msg.type) {
       case "welcome": {
+        if (msg.ops && msg.hideLiving !== this.#hideLiving) {
+          // Ops on top of a tree cut for a different link would never bring the cut details
+          // back (or would keep ones this link must not show): start over from the whole tree.
+          this.#hello(true);
+          return;
+        }
         this.#awaitingWelcome = false;
+        this.#hideLiving = msg.hideLiving;
+        // Edits the room already applied are confirmed now, never re-run on a tree holding them.
+        const known = new Set(msg.known ?? []);
+        this.#pending = this.#pending.filter((p) => !known.has(p.opId));
         if (msg.doc) this.#confirmed = msg.doc;
         const confirmedIds = new Set<string>();
         for (const op of msg.ops ?? []) {
@@ -135,7 +161,15 @@ export class SyncClient {
         return;
       }
       case "applied": {
-        if (this.#awaitingWelcome || msg.version <= this.#version) return;
+        if (this.#awaitingWelcome) return;
+        if (msg.version <= this.#version) {
+          // A late answer to a resend: the confirmed tree already holds this edit.
+          if (this.#pending.some((p) => p.opId === msg.opId)) {
+            this.#pending = this.#pending.filter((p) => p.opId !== msg.opId);
+            this.#rebuild("confirm");
+          }
+          return;
+        }
         if (msg.version !== this.#version + 1) {
           // A version went missing: ask the room to catch this client up.
           if (this.#connected) this.#hello();
@@ -157,10 +191,12 @@ export class SyncClient {
         return;
       }
       case "busy": {
-        // The room is over a limit for now: everything pending is resent later (resends of edits
-        // it already applied are answered, not applied twice).
-        clearTimeout(this.#retry);
-        this.#retry = setTimeout(() => this.#connected && this.#resend(), msg.retryAfter * 1000);
+        // The room refuses this socket until retryAfter, so nothing after the refused op was
+        // applied: resend everything still pending, in order (ones it did apply are re-acked).
+        const generation = ++this.#retryGeneration;
+        this.#opts.schedule(() => {
+          if (generation === this.#retryGeneration && this.#connected) this.#resend();
+        }, msg.retryAfter * 1000);
         return;
       }
     }

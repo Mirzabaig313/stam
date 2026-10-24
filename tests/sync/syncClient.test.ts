@@ -18,7 +18,9 @@ function setup(doc: TreeDocument = famSimple()) {
   const views: { doc: TreeDocument; cause: string }[] = [];
   const dropped: DroppedEdit[][] = [];
   let n = 0;
+  const timers: { fn: () => void; ms: number }[] = [];
   const client = new SyncClient({
+    schedule: (fn, ms) => timers.push({ fn, ms }),
     send: (m) => sent.push(m),
     onView: (d, cause) => views.push({ doc: d, cause }),
     onDropped: (d) => dropped.push(d),
@@ -31,7 +33,7 @@ function setup(doc: TreeDocument = famSimple()) {
     client.connected();
     client.receive({ type: "welcome", role: "owner", hideLiving: false, version: 0, ops: [] });
   };
-  return { client, sent, views, dropped, doc, online };
+  return { client, sent, views, dropped, doc, online, timers };
 }
 
 /** What the room would broadcast for `cmd` applied to `doc` as op `opId`. */
@@ -106,7 +108,11 @@ describe("SyncClient", () => {
     expect(sent).toEqual([]); // not connected yet
     client.connected();
     expect(sent.map((m) => m.type)).toEqual(["hello", "op", "op"]);
-    expect(sent[0]).toEqual({ type: "hello", lastVersion: 0 });
+    expect(sent[0]).toEqual({
+      type: "hello",
+      lastVersion: 0,
+      pending: ["op00000000", "op00000001"],
+    });
     client.disconnected();
     sent.length = 0;
     client.connected();
@@ -170,7 +176,66 @@ describe("SyncClient", () => {
     sent.length = 0;
     client.receive(appliedFor(doc, rename("Far"), "aaaaaaaaaa", 5));
     expect(client.version).toBe(0);
-    expect(sent).toEqual([{ type: "hello", lastVersion: 0 }]);
+    expect(sent).toEqual([{ type: "hello", lastVersion: 0, pending: [] }]);
+  });
+
+  test("hello lists the pending op ids", () => {
+    const { client, sent } = setup();
+    client.submit(rename("A"));
+    client.connected();
+    expect(sent[0]).toEqual({ type: "hello", lastVersion: 0, pending: ["op00000000"] });
+  });
+
+  test("ops the welcome names as known are confirmed, not re-run", () => {
+    const { client, doc, dropped } = setup();
+    const id = Object.keys(doc.persons)[0]!;
+    const mine = client.submit({ type: "addSpouse", personId: id, spouse: { gender: "female" } });
+    client.connected();
+    // The room applied it long ago and sends the whole tree, which already holds it.
+    client.receive({
+      type: "welcome",
+      role: "owner",
+      hideLiving: false,
+      version: 2000,
+      doc: mine.doc,
+      known: ["op00000000"],
+    });
+    expect(client.pendingCount).toBe(0);
+    expect(dropped).toEqual([]);
+    expect(client.view).toEqual(mine.doc);
+  });
+
+  test("a late re-ack for a pending op confirms it", () => {
+    const { client, doc, online } = setup();
+    online();
+    client.submit(rename("Mine"));
+    client.receive(appliedFor(doc, rename("Other"), "zzzzzzzzzz", 1));
+    client.receive({ ...appliedFor(doc, rename("Mine"), "op00000000", 1) });
+    expect(client.pendingCount).toBe(0);
+  });
+
+  test("busy resends the pending ops in order after retryAfter", () => {
+    const { client, sent, timers, online } = setup();
+    online();
+    client.submit(rename("A"));
+    client.submit(rename("B"));
+    sent.length = 0;
+    client.receive({ type: "busy", retryAfter: 1 });
+    expect(timers.map((t) => t.ms)).toEqual([1000]);
+    timers[0]!.fn();
+    expect(sent.map((m) => (m.type === "op" ? m.opId : m.type))).toEqual([
+      "op00000000",
+      "op00000001",
+    ]);
+  });
+
+  test("a cache built through a hide-living link refetches the whole tree when that changes", () => {
+    const { client, sent } = setup();
+    client.start(famSimple(), 5, true);
+    client.connected();
+    sent.length = 0;
+    client.receive({ type: "welcome", role: "view", hideLiving: false, version: 6, ops: [] });
+    expect(sent).toEqual([{ type: "hello", pending: [] }]);
   });
 
   test("an applied the client already has is ignored", () => {

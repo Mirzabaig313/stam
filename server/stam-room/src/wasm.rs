@@ -39,6 +39,17 @@ impl RoomHarness {
 
     pub fn disconnect(&mut self, socket_id: &str) {
         self.sockets.retain(|s| s.socket_id != socket_id);
+        self.core.on_close(socket_id);
+    }
+
+    /// The Durable Object waking from hibernation: memory is gone, storage stays; sockets survive.
+    pub fn restart(&mut self) {
+        let store = std::mem::take(self.core.store_mut());
+        self.core = RoomCore::open(store).expect("a stored room");
+    }
+
+    pub fn set_catch_up_limit(&mut self, ops: f64) {
+        self.core.set_catch_up_limit(ops as u64);
     }
 
     /// Handles one message; returns `[{to, text}]` for every socket that gets something.

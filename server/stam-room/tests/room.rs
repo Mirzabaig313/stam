@@ -182,6 +182,105 @@ fn redacted_broadcast_hides_details_of_the_living() {
 }
 
 #[test]
+fn busy_blocks_the_socket_until_retry_so_ops_stay_in_order() {
+    let mut r = room();
+    for i in 0..61 {
+        r.on_message(
+            &owner(),
+            &rename(&format!("op{i:08}"), &format!("N{i}")).to_string(),
+            NOW,
+            0.0,
+        );
+    }
+    // Tokens refill between messages, but the socket stays blocked until retryAfter passes.
+    let early = r.on_message(
+        &owner(),
+        &rename("lateopxxxx", "Late").to_string(),
+        NOW,
+        100.0,
+    );
+    assert_eq!(parse(&early.reply[0])["type"], "busy");
+    assert_eq!(r.version(), 60);
+    let after = r.on_message(
+        &owner(),
+        &rename("op00000060", "N60").to_string(),
+        NOW,
+        1100.0,
+    );
+    assert!(after.broadcast.is_some());
+}
+
+#[test]
+fn resends_of_applied_ops_do_not_use_tokens() {
+    let mut r = room();
+    send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+    for _ in 0..100 {
+        let out = send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+        assert_eq!(parse(&out.reply[0])["type"], "applied");
+    }
+}
+
+#[test]
+fn hello_lists_which_pending_ops_the_room_already_has() {
+    let mut r = room();
+    send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+    let w = parse(
+        &send(
+            &mut r,
+            &owner(),
+            json!({"type": "hello", "lastVersion": 0, "pending": ["aaaaaaaaaa", "bbbbbbbbbb"]}),
+        )
+        .reply[0],
+    );
+    assert_eq!(w["known"], json!(["aaaaaaaaaa"]));
+}
+
+#[test]
+fn hide_living_sockets_cannot_edit_or_replay() {
+    let mut r = room();
+    send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+    let hidden_editor = att("s9", Role::Edit, true);
+    let out = send(&mut r, &hidden_editor, rename("aaaaaaaaaa", "New"));
+    assert_eq!(parse(&out.reply[0])["code"], "FORBIDDEN");
+}
+
+#[test]
+fn malformed_op_ids_and_oversized_messages_are_refused() {
+    let mut r = room();
+    for op in ["", "short", "waytoolongopid"] {
+        let out = send(&mut r, &owner(), rename(op, "X"));
+        assert_eq!(parse(&out.reply[0])["code"], "INVALID", "{op}");
+    }
+    let huge = json!({"type": "op", "opId": "aaaaaaaaaa", "cmd": {"type": "renameTree", "name": "x".repeat(300_000)}});
+    let out = send(&mut r, &owner(), huge);
+    assert_eq!(parse(&out.reply[0])["code"], "TOO_LARGE");
+    assert_eq!(r.version(), 0);
+}
+
+#[test]
+fn hello_is_rate_limited_too() {
+    let mut r = room();
+    let viewer = att("s5", Role::View, false);
+    let busy = (0..80)
+        .filter(|_| {
+            parse(&send(&mut r, &viewer, json!({"type": "hello"})).reply[0])["type"] == "busy"
+        })
+        .count();
+    assert!(busy > 0);
+    r.on_close("s5");
+}
+
+#[test]
+fn catch_up_limit_is_configurable() {
+    let mut r = room();
+    r.set_catch_up_limit(1);
+    send(&mut r, &owner(), rename("aaaaaaaaaa", "A"));
+    send(&mut r, &owner(), rename("bbbbbbbbbb", "B"));
+    let w = parse(&send(&mut r, &owner(), json!({"type": "hello", "lastVersion": 0})).reply[0]);
+    assert!(w.get("doc").is_some());
+}
+
+#[test]
 fn rate_limit_returns_busy() {
     let mut r = room();
     let mut busy = 0;

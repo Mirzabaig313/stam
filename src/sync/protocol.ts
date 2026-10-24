@@ -10,7 +10,7 @@ import type { EntityChange } from "./revert";
 export type Role = "owner" | "view" | "comment" | "edit";
 
 export type ClientMessage =
-  | { type: "hello"; lastVersion?: number }
+  | { type: "hello"; lastVersion?: number; pending?: string[] }
   | { type: "op"; opId: string; cmd: unknown }
   | { type: "revert"; opId: string; entries: EntityChange[]; direction: "undo" | "redo" };
 
@@ -24,6 +24,8 @@ export type ServerMessage =
       role: Role;
       hideLiving: boolean;
       version: number;
+      /** Which of the client's pending op ids the room already applied. */
+      known?: string[];
       doc?: TreeDocument;
       ops?: AppliedOp[];
     }

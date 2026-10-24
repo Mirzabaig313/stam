@@ -7,11 +7,11 @@ use std::collections::{HashMap, HashSet};
 use serde_json::{Value, json};
 use stam_core::{
     Applied, Changes, CommandError, Person, TreeDocument, Union, apply_changes, apply_command,
-    apply_privacy, apply_revert, decode_command, is_living_person, photo_owner,
+    apply_privacy, apply_revert, decode_command, is_living_person, is_op_id, photo_owner,
 };
 
 use crate::protocol::{Attachment, Author, ClientMessage, PublicAuthor};
-use crate::ratelimit::Bucket;
+use crate::ratelimit::{Bucket, RETRY_AFTER_MS};
 use crate::store::{OpKind, RoomStore, StoredOp};
 
 /// People allowed in a cloud tree (`TUNED_PEOPLE`).
@@ -22,6 +22,10 @@ pub const CATCH_UP_OPS: u64 = 1000;
 pub const SNAPSHOT_EVERY: u64 = 50;
 /// A whole copy is kept every this many versions, for history.
 pub const CHECKPOINT_EVERY: u64 = 500;
+/// Larger messages are refused before they are parsed.
+pub const MAX_MESSAGE_BYTES: usize = 256 * 1024;
+/// A tree whose JSON grows past this takes no more edits (TOO_LARGE); a Durable Object has 128 MB.
+pub const MAX_TREE_BYTES: usize = 16 * 1024 * 1024;
 
 /// What to send after a message.
 #[derive(Debug, Default)]
@@ -53,6 +57,9 @@ pub struct RoomCore<S: RoomStore> {
     version: u64,
     doc_version: u64,
     max_people: usize,
+    catch_up: u64,
+    /// The tree's JSON passed `MAX_TREE_BYTES` when it was last written.
+    over_size: bool,
     buckets: HashMap<String, Bucket>,
 }
 
@@ -110,6 +117,8 @@ impl<S: RoomStore> RoomCore<S> {
             version: 0,
             doc_version: 0,
             max_people: MAX_PEOPLE,
+            catch_up: CATCH_UP_OPS,
+            over_size: doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
         }
     }
@@ -132,6 +141,8 @@ impl<S: RoomStore> RoomCore<S> {
             version,
             doc_version: snap.doc_version,
             max_people: MAX_PEOPLE,
+            catch_up: CATCH_UP_OPS,
+            over_size: snap.doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
         })
     }
@@ -165,6 +176,16 @@ impl<S: RoomStore> RoomCore<S> {
         self.max_people = limit;
     }
 
+    /// For tests: how far behind a client may be and still get ops instead of the whole tree.
+    pub fn set_catch_up_limit(&mut self, ops: u64) {
+        self.catch_up = ops;
+    }
+
+    /// A socket closed: forget its rate limit.
+    pub fn on_close(&mut self, socket_id: &str) {
+        self.buckets.remove(socket_id);
+    }
+
     /// True when ops arrived since the tree was last written.
     pub fn flush_due(&self) -> bool {
         self.version != self.doc_version
@@ -172,19 +193,32 @@ impl<S: RoomStore> RoomCore<S> {
 
     pub fn flush(&mut self) {
         if self.flush_due() {
-            self.store.write_snapshot(&to_json(&self.doc), self.version);
+            let json = to_json(&self.doc);
+            self.over_size = json.len() > MAX_TREE_BYTES;
+            self.store.write_snapshot(&json, self.version);
             self.doc_version = self.version;
         }
     }
 
     /// `now` is an ISO timestamp from JS; `now_ms` drives the rate limit.
     pub fn on_message(&mut self, att: &Attachment, text: &str, now: &str, now_ms: f64) -> Outbox {
+        if text.len() > MAX_MESSAGE_BYTES {
+            return reply(rejected(None, "TOO_LARGE", None));
+        }
         let msg: ClientMessage = match serde_json::from_str(text) {
             Ok(m) => m,
             Err(_) => return reply(rejected(None, "BAD_MESSAGE", None)),
         };
         let (op_id, kind, payload, outcome) = match msg {
-            ClientMessage::Hello { last_version } => return reply(self.welcome(att, last_version)),
+            ClientMessage::Hello {
+                last_version,
+                pending,
+            } => {
+                if !self.admit(att, now_ms) {
+                    return reply(busy());
+                }
+                return reply(self.welcome(att, last_version, &pending));
+            }
             ClientMessage::Op { op_id, cmd } => {
                 let outcome = self.edit(att, &op_id, now_ms, |doc| {
                     apply_command(doc, &decode_command(&cmd)?, now, &op_id)
@@ -209,21 +243,39 @@ impl<S: RoomStore> RoomCore<S> {
         }
     }
 
-    fn welcome(&self, att: &Attachment, last_version: Option<u64>) -> String {
+    /// The rate limit, for every message a socket sends.
+    fn admit(&mut self, att: &Attachment, now_ms: f64) -> bool {
+        self.buckets
+            .entry(att.socket_id.clone())
+            .or_insert_with(|| Bucket::new(now_ms))
+            .admit(now_ms)
+    }
+
+    fn welcome(&self, att: &Attachment, last_version: Option<u64>, pending: &[String]) -> String {
+        // Which of the client's unconfirmed edits the room already applied: the client drops
+        // them instead of re-running them on a tree that already holds them.
+        let known: Vec<&String> = pending
+            .iter()
+            .take(CATCH_UP_OPS as usize)
+            .filter(|id| {
+                att.role.can_edit() && !att.hide_living && self.store.find_op(id).is_some()
+            })
+            .collect();
         let mut msg = json!({
             "type": "welcome",
             "role": att.role,
             "hideLiving": att.hide_living,
             "version": self.version,
+            "known": known,
         });
         let catch_up = last_version
             .filter(|last| !att.hide_living && *last <= self.version)
-            .filter(|last| self.version - last <= CATCH_UP_OPS);
+            .filter(|last| self.version - last <= self.catch_up);
         match catch_up {
             Some(last) => {
                 let ops: Vec<Value> = self
                     .store
-                    .ops_after(last, CATCH_UP_OPS as u32)
+                    .ops_after(last, self.catch_up as u32)
                     .iter()
                     .map(|op| {
                         json!({
@@ -250,19 +302,25 @@ impl<S: RoomStore> RoomCore<S> {
         now_ms: f64,
         run: impl FnOnce(&TreeDocument) -> Result<Applied, CommandError>,
     ) -> Result<Applied, String> {
-        if !att.role.can_edit() {
+        // Hide-living links only view (spec D7); refusing them here also keeps the full changes
+        // of a replayed op from reaching them.
+        if !att.role.can_edit() || att.hide_living {
             return Err(rejected(Some(op_id), "FORBIDDEN", None));
         }
-        let bucket = self
-            .buckets
-            .entry(att.socket_id.clone())
-            .or_insert_with(|| Bucket::new(now_ms));
-        if !bucket.take(now_ms) {
-            return Err(json!({"type": "busy", "retryAfter": 1}).to_string());
+        if !is_op_id(op_id) {
+            return Err(rejected(Some(op_id), "INVALID", None));
         }
+        // A resend of an applied op is answered without using a token, so a client catching up
+        // after `busy` is not throttled by its own duplicates.
         if let Some(op) = self.store.find_op(op_id) {
             let changes = serde_json::from_str(&op.changes_json).unwrap_or(Value::Null);
             return Err(applied_message(op.version, op_id, &op.author, &changes));
+        }
+        if self.over_size {
+            return Err(rejected(Some(op_id), "TOO_LARGE", None));
+        }
+        if !self.admit(att, now_ms) {
+            return Err(busy());
         }
         let applied =
             run(&self.doc).map_err(|e| rejected(Some(op_id), &code_of(&e), e.key.as_deref()))?;
@@ -321,6 +379,10 @@ impl<S: RoomStore> RoomCore<S> {
     pub fn wipe(&mut self) {
         self.store.wipe();
     }
+}
+
+fn busy() -> String {
+    json!({"type": "busy", "retryAfter": RETRY_AFTER_MS / 1000}).to_string()
 }
 
 fn reply(text: String) -> Outbox {

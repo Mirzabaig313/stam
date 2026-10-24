@@ -10,6 +10,8 @@ import { loadWasm } from "../parity/wasm";
 type Harness = {
   connect(attachment: string): string;
   disconnect(socketId: string): void;
+  restart(): void;
+  set_catch_up_limit(ops: number): void;
   message(socketId: string, text: string, now: string, nowMs: number): string;
   doc_json(): string;
   version(): number;
@@ -41,6 +43,7 @@ export class SimClient {
     readonly spec: ClientSpec,
     start: TreeDocument,
     newOpId: () => string,
+    schedule: (fn: () => void, ms: number) => void,
   ) {
     this.sync = new SyncClient({
       send: (m: ClientMessage) => this.outbox.push(JSON.stringify(m)),
@@ -48,6 +51,7 @@ export class SimClient {
       onDropped: () => {},
       now: () => NOW,
       newOpId,
+      schedule,
     });
     this.sync.start(start, 0);
   }
@@ -68,16 +72,43 @@ export class SimClient {
 export class Simulation {
   room: Harness;
   clients: SimClient[];
+  /** The room's clock, in ms: each served message moves it a little, `tick` a second. */
   #ms = 0;
   #ops = 0;
+  #timers: { at: number; fn: () => void }[] = [];
+  #catchUp: number;
 
-  constructor(start: TreeDocument, specs: ClientSpec[]) {
+  /** `catchUp`: how far behind a client may be and still get ops (small values force whole trees). */
+  constructor(start: TreeDocument, specs: ClientSpec[], catchUp = 1000) {
     this.room = new RoomHarness(JSON.stringify(start), NOW.toISOString());
+    this.#catchUp = catchUp;
+    this.room.set_catch_up_limit(catchUp);
+    const schedule = (fn: () => void, ms: number) => this.#timers.push({ at: this.#ms + ms, fn });
     this.clients = specs.map(
       (spec, i) =>
-        new SimClient(`c${i}`, spec, start, () => `op${String(this.#ops++).padStart(8, "0")}`),
+        new SimClient(
+          `c${i}`,
+          spec,
+          start,
+          () => `op${String(this.#ops++).padStart(8, "0")}`,
+          schedule,
+        ),
     );
     for (const c of this.clients) this.connect(c);
+  }
+
+  /** The Durable Object is evicted and wakes again: memory gone, storage and sockets kept. */
+  restart(): void {
+    this.room.restart();
+    this.room.set_catch_up_limit(this.#catchUp);
+  }
+
+  /** Time passes: due retries run. */
+  tick(ms = 1000): void {
+    this.#ms += ms;
+    const due = this.#timers.filter((t) => t.at <= this.#ms);
+    this.#timers = this.#timers.filter((t) => t.at > this.#ms);
+    for (const t of due) t.fn();
   }
 
   connect(c: SimClient): void {
@@ -100,7 +131,7 @@ export class Simulation {
   serve(c: SimClient): void {
     const text = c.outbox.shift();
     if (text === undefined || !c.socket) return;
-    this.#ms += 1000; // keeps every socket under the rate limit
+    this.#ms += 5; // a burst of messages can run a socket out of tokens (busy)
     const sends = JSON.parse(this.room.message(c.socket, text, NOW.toISOString(), this.#ms)) as {
       to: string;
       text: string;
@@ -145,10 +176,11 @@ export class Simulation {
   settle(): void {
     for (const c of this.clients) this.connect(c);
     for (let round = 0; round < 1000; round++) {
-      const busy = this.clients.some((c) => c.outbox.length > 0 || c.inbox.length > 0);
-      if (!busy) return;
+      const moving = this.clients.some((c) => c.outbox.length > 0 || c.inbox.length > 0);
+      if (!moving && this.#timers.length === 0) return;
       for (const c of this.clients) while (c.outbox.length > 0) this.serve(c);
       for (const c of this.clients) while (c.inbox.length > 0) this.deliver(c);
+      this.tick();
     }
     throw new Error("the simulation did not settle");
   }

@@ -56,6 +56,9 @@ pub enum ClientMessage {
     Hello {
         #[serde(default)]
         last_version: Option<u64>,
+        /// The client's unconfirmed op ids; the welcome names those already applied.
+        #[serde(default)]
+        pending: Vec<String>,
     },
     Op {
         op_id: String,
