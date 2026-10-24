@@ -1,0 +1,43 @@
+import type { TreeDocument } from "@/core/model/types";
+
+import type { Changes } from "./changes";
+import type { EntityChange } from "./revert";
+
+// The messages on a tree's WebSocket (spec §5.3, P1 subset). The Rust room
+// (`server/stam-room/src/protocol.rs`) is the other side; the protocol and convergence suites run
+// this client against it, compiled to WASM.
+
+export type Role = "owner" | "view" | "comment" | "edit";
+
+export type ClientMessage =
+  | { type: "hello"; lastVersion?: number }
+  | { type: "op"; opId: string; cmd: unknown }
+  | { type: "revert"; opId: string; entries: EntityChange[]; direction: "undo" | "redo" };
+
+export type PublicAuthor = { kind: "owner" | "link"; name: string };
+
+export type AppliedOp = { version: number; opId: string; author: PublicAuthor; changes: Changes };
+
+export type ServerMessage =
+  | {
+      type: "welcome";
+      role: Role;
+      hideLiving: boolean;
+      version: number;
+      doc?: TreeDocument;
+      ops?: AppliedOp[];
+    }
+  | ({ type: "applied" } & AppliedOp)
+  | { type: "rejected"; opId?: string; code: string; key?: string }
+  | { type: "busy"; retryAfter: number };
+
+const TYPES = new Set(["welcome", "applied", "rejected", "busy"]);
+
+/** Reads a message from the room; throws on anything that is not one. */
+export function parseServerMessage(text: string): ServerMessage {
+  const msg = JSON.parse(text) as { type?: unknown };
+  if (typeof msg !== "object" || msg === null || !TYPES.has(msg.type as string)) {
+    throw new Error(`Unknown message from the room: ${text.slice(0, 80)}`);
+  }
+  return msg as ServerMessage;
+}

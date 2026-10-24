@@ -134,6 +134,16 @@ fn each_issue_code_is_found() {
 }
 
 #[test]
+fn index_shaped_ids_are_not_safe() {
+    for id in ["0", "7", "123", "4294967294"] {
+        assert!(!stam_core::is_safe_id(id), "{id}");
+    }
+    for id in ["07", "4294967295", "12345678901", "a7", "I7"] {
+        assert!(stam_core::is_safe_id(id), "{id}");
+    }
+}
+
+#[test]
 fn issue_codes_serialize_as_in_typescript() {
     assert_eq!(
         serde_json::to_value(IssueCode::MultipleBioParents).unwrap(),
@@ -188,6 +198,13 @@ fn parse_refuses_bad_documents() {
     });
     refuse(&|d| d["persons"]["constructor"] = json!({"id": "constructor"}));
     refuse(&|d| d["settings"]["direction"] = json!("up"));
+    // Array-index ids order first in JS objects but not in Rust maps.
+    refuse(&|d| {
+        let p = first_person(d);
+        let mut person = d["persons"][&p].clone();
+        person["id"] = json!("7");
+        d["persons"]["7"] = person;
+    });
     assert!(parse_tree_document("[]").is_err());
     assert!(parse_tree_document("not json").is_err());
 }

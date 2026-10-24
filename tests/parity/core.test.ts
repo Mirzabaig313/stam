@@ -6,6 +6,7 @@ import { applyCommand } from "@/core/commands/apply";
 import { CommandError } from "@/core/commands/errors";
 import type { TreeDocument } from "@/core/model/types";
 import { validate } from "@/core/model/validate";
+import { parseTreeDocument } from "@/io/json/parseTree";
 import { type Changes, diffDocs } from "@/sync/changes";
 import { applyRevert, entityChanges } from "@/sync/revert";
 import { decodeCommand, encodeCommand } from "@/sync/wire";
@@ -21,6 +22,7 @@ import {
 } from "../fixtures/arbitraries";
 import { canonicalDoc, sorted } from "../fixtures/canonical";
 import { allFamilies } from "../fixtures/families";
+import { arbMutation, mutateAt } from "./mutate";
 import { loadCore } from "./wasm";
 
 const core = loadCore();
@@ -167,6 +169,7 @@ describe("TS and Rust cores agree", () => {
           const applied = cmd && tryApply(before, cmd);
           if (!applied) return;
           const entries = entityChanges(diffDocs(before, applied.doc), before);
+          if (entries.length === 0) return;
           // Someone else's edit in between, sometimes; redo is tried on the unreverted document.
           let doc = applied.doc;
           const other = theirs && resolveOp(doc, theirs);
@@ -182,6 +185,72 @@ describe("TS and Rust cores agree", () => {
             ),
           );
           expectSame(rust, () => applyRevert(doc, entries, direction, LATER));
+        },
+      ),
+      { numRuns: runs() },
+    );
+  });
+
+  test("on damaged commands", () => {
+    fc.assert(
+      fc.property(
+        fc.array(arbOp(ALL_KINDS, TIES), { maxLength: 20 }),
+        arbOp(ALL_KINDS, TIES),
+        arbMutation,
+        (ops, op, m) => {
+          const doc = buildFamily(ops);
+          const cmd = resolveOp(doc, op);
+          if (!cmd) return;
+          const wire = JSON.stringify(mutateAt(encodeCommand(cmd), m));
+          const now = STAMP.toISOString();
+          const rust = JSON.parse(core.apply_command_json(JSON.stringify(doc), wire, now, opId(0)));
+          expectSame(rust, () => {
+            const r = applyCommand(doc, decodeCommand(JSON.parse(wire)), {
+              now: STAMP,
+              opId: opId(0),
+            });
+            return { doc: r.doc, changes: diffDocs(doc, r.doc), createdIds: r.createdIds };
+          });
+        },
+      ),
+      { numRuns: runs() },
+    );
+  });
+
+  test("on damaged revert entries: the room accepts only what the client would", () => {
+    fc.assert(
+      fc.property(
+        fc.array(arbOp(ALL_KINDS, TIES), { maxLength: 20 }),
+        arbOp(ALL_KINDS, TIES),
+        arbMutation,
+        (ops, mine, m) => {
+          const before = buildFamily(ops);
+          const cmd = resolveOp(before, mine);
+          const applied = cmd && tryApply(before, cmd);
+          if (!applied) return;
+          const entries = mutateAt(entityChanges(diffDocs(before, applied.doc), before), m);
+          const rust = JSON.parse(
+            core.apply_revert_json(
+              JSON.stringify(applied.doc),
+              JSON.stringify(entries),
+              "undo",
+              LATER.toISOString(),
+            ),
+          );
+          let ts: TreeDocument | null = null;
+          try {
+            ts = applyRevert(applied.doc, entries as never, "undo", LATER).doc;
+          } catch {
+            // refused (or the damage broke it): the room must refuse too
+          }
+          // The room checks every written value like an upload; the client trusts its own
+          // entries. So the room may refuse more, never less, and agrees when both accept.
+          if ("ok" in rust) {
+            expect(ts).not.toBeNull();
+            // Unknown fields the client kept are dropped by the room, as by an upload.
+            const kept = { ...parseTreeDocument(ts), rootPersonId: ts!.rootPersonId }; // a revert never fills the root
+            expect(canonicalDoc(rust.ok.doc)).toBe(canonicalDoc(kept));
+          }
         },
       ),
       { numRuns: runs() },

@@ -2,7 +2,7 @@ import { CommandError } from "@/core/commands/errors";
 import type { Command } from "@/core/commands/types";
 import type { FuzzyDate } from "@/core/dates/fuzzy";
 import type { ChildType, Person, PersonInput, Union, UnionStatus } from "@/core/model/types";
-import { isSafeId } from "@/io/json/parseTree";
+import { isSharedId } from "@/io/json/parseTree";
 
 // Commands travel as JSON, which has no `undefined`. In a patch, "remove this field" is
 // `undefined`, so it is sent as `null` and read back as `undefined`. The Rust room reads the same
@@ -37,7 +37,7 @@ function obj(value: unknown, what: string): Obj {
 }
 
 function id(value: unknown, what: string): string {
-  if (!isSafeId(value)) throw bad(what);
+  if (!isSharedId(value)) throw bad(what);
   return value;
 }
 

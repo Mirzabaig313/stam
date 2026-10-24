@@ -68,6 +68,11 @@ export function applyRevert(
     unions: {},
     unionOrder: {},
   };
+  // An empty revert would only touch updatedAt; a key twice would make the two sides disagree on
+  // map order (the Rust room applies entries one by one).
+  if (entries.length === 0 || new Set(entries.map((e) => e.key)).size !== entries.length) {
+    throw new CommandError("INVALID", "A revert needs distinct entries");
+  }
   let next: TreeDocument = { ...doc, updatedAt: now.toISOString() };
   for (const entry of entries) {
     const expected = direction === "undo" ? entry.after : entry.before;

@@ -278,6 +278,25 @@ fn revert_refuses_malformed_entries() {
 }
 
 #[test]
+fn revert_refuses_empty_and_repeated_entries() {
+    let doc = remarriage();
+    let p = first_person(&doc);
+    assert_eq!(
+        apply_revert(&doc, &json!([]), "undo", LATER)
+            .unwrap_err()
+            .code,
+        ErrorCode::Invalid
+    );
+    let same =
+        json!({"key": format!("persons/{p}"), "before": doc.persons[&p], "after": doc.persons[&p]});
+    let twice = json!([same, same]);
+    assert_eq!(
+        apply_revert(&doc, &twice, "undo", LATER).unwrap_err().code,
+        ErrorCode::Invalid
+    );
+}
+
+#[test]
 fn privacy_keeps_only_names_of_living_people() {
     let mut doc = remarriage();
     let p = first_person(&doc);

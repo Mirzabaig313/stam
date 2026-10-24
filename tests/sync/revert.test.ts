@@ -23,6 +23,7 @@ describe("revert", () => {
         const result = cmd && tryApply(before, cmd);
         if (!result) return;
         const entries = entityChanges(diffDocs(before, result.doc), before);
+        if (entries.length === 0) return; // nothing but updatedAt changed: nothing to undo
         const undone = applyRevert(result.doc, entries, "undo", LATER);
         expect(contentOf(undone.doc)).toBe(contentOf(before));
         expect(undone.doc.updatedAt).toBe(LATER.toISOString());

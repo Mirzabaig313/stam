@@ -37,9 +37,21 @@ const PROTOTYPE_NAMES: &[&str] = &[
     "__lookupSetter__",
 ];
 
-/// `^[A-Za-z0-9_-]{1,64}$` and not a built-in property name.
+/// A key JS objects order before all others ("7"); Rust maps keep insertion order, so shared
+/// trees never use one. Mirrors `isIndexKey` in `parseTree.ts`.
+pub fn is_index_key(value: &str) -> bool {
+    let digits = value.len() <= 10 && value.bytes().all(|b| b.is_ascii_digit());
+    digits
+        && (value == "0" || !value.starts_with('0'))
+        && value.parse::<u64>().is_ok_and(|n| n <= 4_294_967_294)
+}
+
+/// `^[A-Za-z0-9_-]{1,64}$`, not a built-in property name, and not an array index (see
+/// `is_index_key`). The TS `isSharedId`.
 pub fn is_safe_id(value: &str) -> bool {
-    (1..=64).contains(&value.len())
+    !value.is_empty()
+        && !is_index_key(value)
+        && (1..=64).contains(&value.len())
         && value
             .bytes()
             .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')

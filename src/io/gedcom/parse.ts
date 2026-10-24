@@ -11,7 +11,7 @@ import type {
 } from "@/core/model/types";
 import { validate } from "@/core/model/validate";
 import { ImportError } from "@/io/json/errors";
-import { isSafeId, parseTreeDocument } from "@/io/json/parseTree";
+import { isSharedId, parseTreeDocument } from "@/io/json/parseTree";
 
 import type { CharsetWarning } from "./charset";
 import { parseGedcomDate } from "./dates";
@@ -240,7 +240,7 @@ export function parseGedcom(text: string, opts: ParseGedcomOptions = {}): Gedcom
     if (candidate !== undefined && fromStam && candidate.startsWith(prefix)) {
       candidate = candidate.slice(1);
     }
-    if (candidate === undefined || !isSafeId(candidate) || used.has(candidate)) {
+    if (candidate === undefined || !isSharedId(candidate) || used.has(candidate)) {
       do candidate = newId();
       while (used.has(candidate));
     }

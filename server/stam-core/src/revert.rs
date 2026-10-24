@@ -72,6 +72,15 @@ pub fn apply_revert(
     let Some(entries) = entries.as_array() else {
         return invalid();
     };
+    // An empty revert would only touch updatedAt; a key twice would reorder the map here while
+    // the TS (which gathers writes per key first) keeps it in place.
+    let keys: std::collections::HashSet<_> = entries
+        .iter()
+        .map(|e| e.get("key").and_then(Value::as_str))
+        .collect();
+    if entries.is_empty() || keys.len() != entries.len() {
+        return invalid();
+    }
 
     // Writes go into the document as JSON, then the whole document is checked like an upload.
     let mut next = serde_json::to_value(doc).map_err(|_| CommandError::new(ErrorCode::Invalid))?;

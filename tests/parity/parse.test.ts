@@ -4,18 +4,39 @@ import { join } from "node:path";
 
 import * as fc from "fast-check";
 
-import { parseTreeDocument } from "@/io/json/parseTree";
+import type { TreeDocument } from "@/core/model/types";
+import { isIndexKey, parseTreeDocument } from "@/io/json/parseTree";
 
 import { ALL_KINDS, arbOp, buildFamily, runs } from "../fixtures/arbitraries";
 import { canonicalDoc } from "../fixtures/canonical";
+import { arbMutation, mutateAt } from "./mutate";
 import { loadCore } from "./wasm";
 
 const core = loadCore();
 const FIXTURES = join(import.meta.dir, "..", "..", "server", "stam-core", "tests", "fixtures");
 
+/** Shared trees refuse array-index ids (`isSharedId`), which local trees still allow. */
+function hasIndexId(doc: TreeDocument): boolean {
+  const ids = [
+    doc.rootPersonId ?? "",
+    ...Object.keys(doc.persons),
+    ...Object.keys(doc.unionOrder),
+    ...Object.values(doc.unionOrder).flat(),
+    ...Object.values(doc.persons).map((p) => p.photoId ?? ""),
+    ...Object.values(doc.unions).flatMap((u) => [
+      u.id,
+      ...u.partners,
+      ...u.children.map((c) => c.personId),
+    ]),
+  ];
+  return ids.some(isIndexKey);
+}
+
 function tsParse(text: string): string | null {
   try {
-    return canonicalDoc(parseTreeDocument(JSON.parse(text)));
+    const doc = parseTreeDocument(JSON.parse(text));
+    if (hasIndexId(doc)) return null;
+    return canonicalDoc(doc);
   } catch {
     return null;
   }
@@ -24,45 +45,6 @@ function tsParse(text: string): string | null {
 function rustParse(text: string): string | null {
   const out = JSON.parse(core.parse_tree_json(text));
   return "ok" in out ? canonicalDoc(out.ok) : null;
-}
-
-/** Every path to a value in a JSON tree. */
-function paths(value: unknown, at: (string | number)[] = []): (string | number)[][] {
-  if (value === null || typeof value !== "object") return [at];
-  const keys = Array.isArray(value) ? value.map((_, i) => i) : Object.keys(value);
-  return [
-    at,
-    ...keys.flatMap((k) => paths((value as Record<string, unknown>)[k as string], [...at, k])),
-  ];
-}
-
-/** Whole numbers stay within ±2^53 (see the Task 4 ruling); everything else is fair game. */
-const REPLACEMENTS: unknown[] = [
-  "x",
-  "",
-  1.5,
-  0,
-  1990,
-  -3,
-  null,
-  [],
-  {},
-  true,
-  "a/b",
-  "constructor",
-  ["p"],
-];
-
-function mutate(doc: unknown, path: (string | number)[], how: number): unknown {
-  const copy = structuredClone(doc) as Record<string, unknown>;
-  if (path.length === 0) return REPLACEMENTS[how % REPLACEMENTS.length];
-  let parent: Record<string | number, unknown> = copy;
-  for (const key of path.slice(0, -1)) parent = parent[key] as Record<string | number, unknown>;
-  const last = path.at(-1)!;
-  if (how === REPLACEMENTS.length) delete parent[last];
-  else if (how === REPLACEMENTS.length + 1 && !Array.isArray(parent)) parent["extra"] = 1;
-  else parent[last] = REPLACEMENTS[how % REPLACEMENTS.length];
-  return copy;
 }
 
 describe("TS and Rust parsers agree", () => {
@@ -74,19 +56,21 @@ describe("TS and Rust parsers agree", () => {
 
   test("on random damage to a valid tree", () => {
     fc.assert(
-      fc.property(
-        fc.array(arbOp(ALL_KINDS), { maxLength: 20 }),
-        fc.nat(10_000),
-        fc.nat(REPLACEMENTS.length + 1),
-        (ops, pick, how) => {
-          const doc = JSON.parse(JSON.stringify(buildFamily(ops)));
-          const all = paths(doc);
-          const text = JSON.stringify(mutate(doc, all[pick % all.length]!, how));
-          expect(rustParse(text)).toBe(tsParse(text));
-        },
-      ),
+      fc.property(fc.array(arbOp(ALL_KINDS), { maxLength: 20 }), arbMutation, (ops, m) => {
+        const doc = JSON.parse(JSON.stringify(buildFamily(ops)));
+        const text = JSON.stringify(mutateAt(doc, m));
+        expect(rustParse(text)).toBe(tsParse(text));
+      }),
       { numRuns: runs() },
     );
+  });
+
+  test("on a tree with an array-index id, which shared trees refuse", () => {
+    const doc = JSON.parse(JSON.stringify(buildFamily([])));
+    const id = Object.keys(doc.persons)[0]!;
+    const text = JSON.stringify(doc).replaceAll(id, "7");
+    expect(rustParse(text)).toBeNull();
+    expect(tsParse(text)).toBeNull();
   });
 
   test("on text that is not a tree", () => {
