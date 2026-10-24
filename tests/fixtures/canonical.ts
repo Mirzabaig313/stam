@@ -1,13 +1,13 @@
 import type { TreeDocument } from "@/core/model/types";
 
 /** Plain JSON with sorted object keys and no undefined values; arrays keep their order. */
-function sorted(value: unknown): unknown {
+export function sorted(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sorted);
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(
       Object.keys(value)
         .filter((k) => (value as Record<string, unknown>)[k] !== undefined)
-        .sort()
+        .toSorted()
         .map((k) => [k, sorted((value as Record<string, unknown>)[k])]),
     );
   }

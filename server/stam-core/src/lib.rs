@@ -12,6 +12,8 @@ pub mod privacy;
 pub mod revert;
 pub mod tree;
 pub mod validate;
+#[cfg(feature = "wasm")]
+mod wasm;
 
 pub use changes::{Changes, TreeChanges, apply_changes, diff_docs};
 pub use commands::{Applied, Command, apply_command, decode_command};

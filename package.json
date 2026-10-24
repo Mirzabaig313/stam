@@ -12,7 +12,10 @@
     "lint": "oxlint",
     "test": "bun test",
     "bench": "bun run scripts/bench-layout.ts",
-    "verify": "bun check && bun fmt --check && bun run lint && PROPERTY_RUNS=10000 bun test"
+    "verify": "bun run wasm && bun check && bun fmt --check && bun run lint && PROPERTY_RUNS=10000 bun test",
+    "wasm": "wasm-pack build server/stam-core --target nodejs --out-dir ../../.wasm/stam-core --release --no-pack -- --features wasm",
+    "test:parity": "bun run wasm && PROPERTY_RUNS=10000 bun test tests/parity",
+    "verify:server": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

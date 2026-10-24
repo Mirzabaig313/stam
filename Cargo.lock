@@ -575,6 +575,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "thiserror",
+ "wasm-bindgen",
 ]
 
 [[package]]
