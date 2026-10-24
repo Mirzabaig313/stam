@@ -5,6 +5,8 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
+import { GOOGLE_MOCK_PORT, startGoogleMock } from "./google-mock";
+
 const root = join(import.meta.dir, "..");
 const PORT = Number(process.env.WORKER_TEST_PORT ?? 8788);
 const origin = `http://localhost:${PORT}`;
@@ -15,9 +17,12 @@ const VARS: Record<string, string> = {
   ENVIRONMENT: "dev",
   SITE_ORIGIN: origin,
   SESSION_SECRET: "test-session-secret-test-session-secret",
-  LINK_KEY: "dGVzdC1saW5rLWtleS10ZXN0LWxpbmsta2V5LTMyYg==",
+  LINK_KEY: "c3RhbS10ZXN0LWxpbmsta2V5LTMyLWJ5dGVzLWxvbmc=",
   GOOGLE_CLIENT_ID: "test-client",
   GOOGLE_CLIENT_SECRET: "test-secret",
+  GOOGLE_AUTH_URL: `http://localhost:${GOOGLE_MOCK_PORT}/auth`,
+  GOOGLE_TOKEN_URL: `http://localhost:${GOOGLE_MOCK_PORT}/token`,
+  GOOGLE_USERINFO_URL: `http://localhost:${GOOGLE_MOCK_PORT}/userinfo`,
   ...JSON.parse(process.env.WORKER_TEST_VARS ?? "{}"),
 };
 
@@ -30,6 +35,7 @@ if (!existsSync(join(root, "dist", "app.html"))) run(["bun", "run", "build"]);
 rmSync(state, { recursive: true, force: true });
 run(["bunx", "wrangler", "d1", "migrations", "apply", "stam", "--local", "--persist-to", state]);
 
+const google = startGoogleMock();
 const varArgs = Object.entries(VARS).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 const worker = Bun.spawn(
   ["bunx", "wrangler", "dev", "--port", String(PORT), "--persist-to", state, ...varArgs],
@@ -50,7 +56,12 @@ try {
   }
   const tests = Bun.spawn(["bun", "test", ...process.argv.slice(2), "tests/worker"], {
     cwd: root,
-    env: { ...process.env, WORKER_URL: origin },
+    env: {
+      ...process.env,
+      WORKER_URL: origin,
+      WORKER_STATE: state,
+      GOOGLE_MOCK_URL: `http://localhost:${GOOGLE_MOCK_PORT}`,
+    },
     stdout: "inherit",
     stderr: "inherit",
   });
@@ -58,5 +69,6 @@ try {
 } finally {
   worker.kill();
   await worker.exited;
+  void google.stop(true);
 }
 process.exit(code);

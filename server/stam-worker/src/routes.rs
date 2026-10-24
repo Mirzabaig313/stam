@@ -4,6 +4,7 @@
 use serde_json::json;
 use worker::{Env, Request, Response, Result, RouteContext, Router};
 
+use crate::auth;
 use crate::headers::{is_dev, security_headers};
 
 /// A JSON error body: `{"error": code}`.
@@ -16,6 +17,10 @@ pub async fn handle(req: Request, env: Env) -> Result<Response> {
         .get("/api/health", |_, _| {
             Response::from_json(&json!({ "ok": true }))
         })
+        .get_async("/api/auth/google", auth::sign_in)
+        .get_async("/api/auth/google/callback", auth::callback)
+        .post_async("/api/auth/signout", auth::sign_out)
+        .get_async("/api/me", auth::me)
         .get_async("/app", serve_app)
         .get_async("/app/*path", serve_app)
         .get_async("/s/*path", serve_app)

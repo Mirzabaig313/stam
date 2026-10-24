@@ -3,6 +3,9 @@
 
 use worker::{Context, Env, Request, Response, Result, event};
 
+mod auth;
+mod crypto;
+mod db;
 mod headers;
 mod room_do;
 mod routes;
