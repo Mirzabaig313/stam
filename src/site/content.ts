@@ -4,11 +4,12 @@
 // Assumptions (mirrored in the M5 report):
 // - The sample family (Linden, Haddad, ...) is invented and labelled as a sample on the page.
 // - Hosting facts on /privacy assume Cloudflare Pages with no extra logging or analytics.
-// - No contact address or source link is published yet; the footer has none.
+// - The contact address is stam@mirzalabs.in; no source link is published yet.
 
 import { APP_NAME } from "@/config";
 
 export const SITE_URL = "https://stam.mirzalabs.in";
+export const CONTACT_EMAIL = "stam@mirzalabs.in";
 export const APP_PATH = "/app";
 
 export const site = {
@@ -22,6 +23,7 @@ export const site = {
     { label: "Privacy", href: "/privacy" },
   ],
   homeLabel: `${APP_NAME}, home`,
+  theme: { toDark: "Switch to dark theme", toLight: "Switch to light theme" },
 };
 
 export type PageMeta = {
@@ -211,6 +213,7 @@ export const footer = {
     { label: "Start your tree", href: APP_PATH },
     { label: "How it builds", href: "/#chapters" },
     { label: "Privacy", href: "/privacy" },
+    { label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}` },
   ],
 };
 

@@ -647,6 +647,75 @@ dd {
   }
 }
 
+/* The light/dark switch: a round ink button; the icon shows the theme it switches to. */
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 40px;
+  block-size: 40px;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background-color 0.3s var(--ease),
+    color 0.3s var(--ease),
+    scale 0.25s var(--ease);
+}
+
+.theme-toggle svg {
+  grid-area: 1 / 1;
+  inline-size: 18px;
+  block-size: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.theme-toggle__sun {
+  display: none;
+}
+
+:root[data-theme="dark"] .theme-toggle__sun {
+  display: block;
+}
+
+:root[data-theme="dark"] .theme-toggle__moon {
+  display: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .theme-toggle__sun {
+    display: block;
+  }
+
+  :root:not([data-theme]) .theme-toggle__moon {
+    display: none;
+  }
+}
+
+@media (hover: hover) {
+  .theme-toggle:hover {
+    background: var(--ink);
+    color: var(--ground);
+  }
+}
+
+.theme-toggle:active {
+  scale: 0.94;
+}
+
+@media (max-width: 600px) {
+  .theme-toggle {
+    inline-size: 36px;
+    block-size: 36px;
+  }
+}
+
 /* Very narrow phones: the section link goes; the footer and the hero still link to it. */
 /* Phones: the header keeps the wordmark, Privacy and the CTA; the section link is in the hero
    and the footer. */

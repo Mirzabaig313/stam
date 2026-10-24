@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { APP_PATH, footer, site } from "@/site/content";
 
+import { ThemeToggle } from "./ThemeToggle";
+
 export type PageName = "home" | "privacy" | "notFound";
 
 /**
@@ -60,6 +62,7 @@ function Header({ page }: { page: PageName }) {
           })}
         </ul>
       </nav>
+      <ThemeToggle />
       <ActionLink href={APP_PATH} variant="small">
         {site.cta}
       </ActionLink>

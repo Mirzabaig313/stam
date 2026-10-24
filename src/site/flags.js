@@ -5,10 +5,14 @@ var root = document.documentElement;
 root.classList.add("js");
 // The theme chosen in the app's settings (cached by src/ui/settings/settings.ts): the public pages
 // have light and dark only. Only a theme the user picked counts (themeChosen), not the app's
-// default. No choice, no attribute: site.css follows prefers-color-scheme.
+// default. The header's switch (src/site/theme.ts) wins over both. No choice, no attribute:
+// site.css follows prefers-color-scheme.
 try {
+  var siteTheme = localStorage.getItem("stam:site-theme");
   var chosen = JSON.parse(localStorage.getItem("stam:settings") || "null");
-  if (chosen && chosen.themeChosen === true && typeof chosen.theme === "string") {
+  if (siteTheme === "dark" || siteTheme === "light") {
+    root.setAttribute("data-theme", siteTheme);
+  } else if (chosen && chosen.themeChosen === true && typeof chosen.theme === "string") {
     root.setAttribute("data-theme", chosen.theme === "dark" ? "dark" : "light");
   }
 } catch {

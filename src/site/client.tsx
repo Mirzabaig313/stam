@@ -10,6 +10,7 @@ import { PAGE_META } from "./head";
 import { startMotion } from "./motion";
 import { prefersReducedMotion } from "./motion/env";
 import { type PageName, SitePage } from "./pages";
+import { storedTheme } from "./theme";
 
 function pageFromPath(path: string): PageName {
   const clean = path.replace(/\/+$/, "") || "/";
@@ -41,7 +42,9 @@ if (el.firstElementChild) {
     const chosen = JSON.parse(localStorage.getItem("stam:settings") ?? "null") as {
       theme?: unknown;
     } | null;
-    if (typeof chosen?.theme === "string") {
+    const siteTheme = storedTheme();
+    if (siteTheme) root.setAttribute("data-theme", siteTheme);
+    else if (typeof chosen?.theme === "string") {
       root.setAttribute("data-theme", chosen.theme === "dark" ? "dark" : "light");
     }
   } catch {
