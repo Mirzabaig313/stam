@@ -142,6 +142,18 @@ export function compareFuzzyDate(a?: FuzzyDate, b?: FuzzyDate): number {
   return 0;
 }
 
+/** Same date by value: field by field, so key order and undefined fields do not matter. */
+export function sameFuzzyDate(a?: FuzzyDate, b?: FuzzyDate): boolean {
+  if (!a || !b) return a === b;
+  return (
+    a.qualifier === b.qualifier &&
+    a.year === b.year &&
+    a.month === b.month &&
+    a.day === b.day &&
+    a.toYear === b.toYear
+  );
+}
+
 function yearLabel(d: FuzzyDate): string {
   return formatFuzzyDate({ ...d, month: undefined, day: undefined });
 }

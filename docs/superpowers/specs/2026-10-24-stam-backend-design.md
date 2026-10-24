@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | Approved design, spec for review |
+| **Status** | Approved; P1 built (2026-10-24). §2.1 lists what changed while building it |
 | **Date** | 2026-10-24 |
 | **Owner** | Mirza |
 | **Builds on** | `stam-prd.md` (v1). This spec moves "accounts, cloud sync, share links, real-time collaboration" out of PRD §16 (Later) and changes the PRD's "no backend" assumption (§18) |
@@ -36,7 +36,7 @@ Trees that are never shared stay local-only, exactly as in v1. The privacy promi
 | D8 | Offline editors | Keep editing; queued edits sync on reconnect | Read-only when offline |
 | D9 | Merge model | Server-authoritative commands with client rebase (Figma, Linear, tldraw, Replicache) | Yjs CRDT (merges can break tree invariants); one editor at a time |
 | D10 | Version history | In the first release | Later |
-| D11 | Backend language | **Rust**, `workers-rs` (`worker` crate) compiled to WASM, `axum` for routing | TypeScript + Hono (first draft); a Rust core shared with the browser as WASM (would replace the tested TS core and add 200–400 KB to the app) |
+| D11 | Backend language | **Rust**, `workers-rs` (`worker` crate) compiled to WASM, its own `Router` for routing (see §2.1) | TypeScript + Hono (first draft); a Rust core shared with the browser as WASM (would replace the tested TS core and add 200–400 KB to the app) |
 | D14 | Sign-in is optional | Stam works fully without an account, as in v1. Sign-in is needed only to save to the account or to share; opening a share link never needs it. A browser that has never signed in makes **no** requests to `/api` (the app checks the session only after a sign-in on that browser, or when Share or the account menu opens) | Login wall; checking the session on every app start |
 | D15 | API style | REST (HTTPS + JSON) for auth, account, trees, links and photos; one WebSocket per open tree for live edits (later comments and presence) | Polling REST for edits (slow, costs free-plan requests); GraphQL or tRPC (not needed at this size) |
 | D13 | Account sync | Any tree can be saved to the owner's account without links (a cloud tree with no links); it syncs live across the owner's devices. Encrypted in transit (TLS) and at rest (Cloudflare storage), but readable by the server, which must run the rules | End-to-end encryption now (see §12 Later: Private vault) |
@@ -49,12 +49,47 @@ and `validate` keeps refusing any result that would break the tree.
 Why D12 matters: the server re-runs every edit to stay the referee, so the Rust port must behave
 exactly like the TypeScript core. The parity suite (§11) is a merge gate, not an optional test.
 
+### 2.1 Changes made while building P1
+
+The sections below are updated to match; this list says what changed and why.
+
+1. **Routing:** workers-rs's own `Router` instead of `axum`. axum needs every Cloudflare binding
+   (which are not `Send`) wrapped; the built-in router takes them as they are.
+2. **No `ts-rs`.** The protocol types are written by hand in `src/sync/protocol.ts`. Drift is
+   caught because the TS client runs against the real Rust room, compiled to WASM, in the
+   protocol and convergence suites. `ts-rs` could not import the TS-owned model types.
+3. **The sync engine is in P1:** `SyncClient` with rebase, collaborative undo and the convergence
+   suite. An owner on two devices is already two writers.
+4. **Link tokens** are stored as a hash (lookup) and AES-GCM encrypted with `LINK_KEY`, so the
+   owner can copy a link again later.
+5. **Upload id collisions:** a tree id another owner holds is refused (409 `TREE_ID_TAKEN`) and
+   the client uploads a copy under a new id.
+6. **Ids in shared trees** never look like array indexes (`"7"`): JS orders those keys first,
+   Rust does not. The client re-ids such a tree before upload; the server refuses them.
+7. **Reverts** need distinct, non-empty entries (a repeated key would reorder the server's map).
+8. **Protocol additions:** `hello.pending` and `welcome.known` (the room says which of a client's
+   unconfirmed edits it already applied, so they are never re-run); a `closed` message before
+   close codes 4401/4404, because a close frame does not always reach the client; after
+   connecting, a client ignores `applied` until its `welcome`, and a version gap makes it ask
+   again.
+9. **Busy keeps order:** a refused socket stays refused until `retryAfter`; resent ops the room
+   already has are answered without using a token.
+10. **Hide-living sockets cannot edit** (so they never receive an op's full changes).
+11. **Storage errors** never stop a room: they answer `busy` (or HTTP 503) and the edit waits.
+12. **Size limits:** messages over 256 KB are refused; a tree whose JSON passes 16 MB takes no
+    more edits.
+13. **Security:** the sign-in `return` path allows only plain URL characters; the WebSocket
+    upgrade checks `Origin`; production cookies use the `__Host-` prefix; `/api/me` renews the
+    session cookie; only the custom domain serves the app.
+14. **Nicknames** stay visible for living people under hide-living (a nickname is a name, as in
+    the export privacy mode).
+
 ## 3. Architecture
 
 ```
 Browser (existing TS app)                  Cloudflare (Rust → WASM)
 ┌───────────────────────────┐    HTTPS   ┌─────────────────────────────────────┐
-│ editor UI (React/Zustand) │──/api/*──▶│ Worker "stam" (workers-rs + axum)   │
+│ editor UI (React/Zustand) │──/api/*──▶│ Worker "stam" (workers-rs)          │
 │ src/core   (TS rules)     │            │  ├ serves dist/ (static assets)     │
 │ src/cloud/ API, auth      │            │  ├ /api/auth/*  Google OAuth        │
 │ src/sync/  SyncClient     │◀──WS────▶│  ├ /api/trees, /links, /s/:token    │
@@ -70,7 +105,7 @@ Browser (existing TS app)                  Cloudflare (Rust → WASM)
 
 - **One Worker** serves `dist/` as static assets and the API on `stam.mirzalabs.in`: one deploy,
   same-origin cookies, no CORS. This replaces the Cloudflare Pages plan (PRD §13).
-- **Rust:** the `worker` crate with the `http` and `d1` features; `axum` for routes; `serde`
+- **Rust:** the `worker` crate with the `d1` feature and its own router; `serde`
   for JSON. Release builds use `opt-level = "z"`, LTO and `wasm-opt -Oz` to stay under the
   free plan's 3 MB compressed Worker limit.
 - **One `TreeRoom` Durable Object per shared tree** (SQLite-backed, which the free plan
@@ -90,8 +125,8 @@ Browser (existing TS app)                  Cloudflare (Rust → WASM)
 | `src/cloud/` (TS, new) | API client, auth state, WebSocket transport, IndexedDB pending queue and cloud tree cache | `src/sync`, `src/storage` |
 | `server/` (new) | Cargo workspace | — |
 | `server/stam-core` | Rust port of `src/core/model`, `commands`, `validate`, the fuzzy-date pieces the commands need, deterministic ids and the privacy filter. Pure Rust with no I/O; also builds to WASM via `wasm-bindgen` for the parity suite | `serde` |
-| `server/stam-room` | `RoomCore`: room logic as plain Rust with a storage trait: apply ops, roles, revert, restore, history, comments, privacy view, rate limits. Protocol message types use `ts-rs` to generate `src/sync/protocol.gen.ts`. Also builds to WASM for the convergence suite | `stam-core` |
-| `server/stam-worker` | workers-rs: axum routes, Google OAuth, sessions, D1 queries, the `TreeRoom` adapter (SQL storage, sockets, alarms, R2), cron backup | `stam-room` |
+| `server/stam-room` | `RoomCore`: room logic as plain Rust with a storage trait: apply ops, roles, revert, restore, history, comments, privacy view, rate limits. Also builds to WASM (`RoomHarness`) for the protocol and convergence suites | `stam-core` |
+| `server/stam-worker` | workers-rs: routes, Google OAuth, sessions, D1 queries, the `TreeRoom` adapter (SQL storage, sockets, alarms, R2), cron backup | `stam-room` |
 | `wrangler.jsonc` | Bindings: `ASSETS`, `DB` (D1), `PHOTOS` (R2), `TREE_ROOM` (DO); cron trigger | — |
 | `src/ui/` | Share dialog, role chip, presence, connection state, comments, history panel | `src/cloud` |
 
@@ -107,7 +142,7 @@ adapts it to Durable Object storage, sockets and alarms.
 | `user` | `id`, `google_sub` unique, `email`, `name`, `avatar_url`, `created_at` |
 | `session` | `token_hash` PK, `user_id`, `created_at`, `expires_at` (30 days, sliding) |
 | `tree` | `id` (the tree's existing id), `owner_id`, `name`, `created_at`, `deleted_at` |
-| `share_link` | `id`, `tree_id`, `role` (`view` \| `comment` \| `edit`), `hide_living` (view only), `token_hash` unique, `created_at`, `revoked_at` |
+| `share_link` | `id`, `tree_id`, `role` (`view` \| `comment` \| `edit`), `hide_living` (view only), `token_hash` unique, `token_cipher` (AES-GCM, `LINK_KEY`), `created_at`, `revoked_at` |
 
 - At most one active link per tree and role. "Reset link" revokes the old link and creates a
   new one.
@@ -194,8 +229,8 @@ produce and read the same simple shape:
 
 ### 5.3 Protocol (JSON over one WebSocket per open tree)
 
-Rust message types generate `src/sync/protocol.gen.ts` with `ts-rs`. CI fails if the generated
-file is out of date.
+The TS side (`src/sync/protocol.ts`) is checked against the Rust room by the protocol and
+convergence suites (§2.1, item 2).
 
 | Direction | Message | Meaning |
 |---|---|---|
@@ -265,7 +300,7 @@ Because ids are deterministic, the client's optimistic result for its own op equ
 - For each `applied`, these sockets get the touched entities taken from the redacted document.
 - Photos of living people answer 404 for these links.
 - A property test asserts that no message to such a socket ever contains a living person's birth,
-  death, notes, nickname or photo id.
+  death, notes or photo id.
 
 ## 6. Roles
 
@@ -424,7 +459,7 @@ All strings go through `t()` in `en`, `ur` and `ar`, and all layouts must work r
 
 **Scripts:**
 - `bun run verify:server` runs `cargo fmt --check`, `cargo clippy -D warnings`, `cargo test`,
-  the `ts-rs` freshness check, and the parity and convergence suites.
+  and the local Worker suite (`bun run test:worker`).
 - Per the project's merge rule, merge checks are `verify`, `verify:server` and `build`. E2E runs
   at the end of each phase.
 
@@ -435,7 +470,7 @@ Each phase is deployable on its own.
 | Phase | Contents |
 |---|---|
 | **P1 Foundation** | Cargo workspace; `stam-core` port with the **parity suite green**; deterministic ids and clock in the TS core; single Worker with static assets and custom domain; D1 schema; Google OAuth and sessions; `RoomCore` + `TreeRoom` with snapshot, ops and checkpoints; upload tree and photos; **view links** with hide-living; live updates while the owner edits; share dialog (view row); "Shared with me" and "In your account"; CPU and size measurement; privacy copy |
-| **P2 Co-editing** | Edit links; name prompt; `SyncClient` rebase; collaborative undo (`revert`); presence; connection state; offline pending queue; convergence suite |
+| **P2 Co-editing** | Edit links; name prompt; presence; the offline pending queue saved in IndexedDB. (`SyncClient`, collaborative undo, connection state and the convergence suite were built in P1, §2.1) |
 | **P3 Comments** | Comment links; threads per person; badges; resolve and reopen; rate limits |
 | **P4 History** | History list and grouping; preview; restore; nightly backups |
 | Later | Email magic-link sign-in; notifications; transferring ownership |

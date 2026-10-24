@@ -88,8 +88,14 @@ const WEIGHTS: Record<OpKind, number> = {
   renameTree: 1,
 };
 
-/** Picks op kinds by weight, so deletes do not dominate. */
-export function arbOp(kinds: readonly OpKind[] = BUILD_KINDS): fc.Arbitrary<FamilyOp> {
+/**
+ * Picks op kinds by weight, so deletes do not dominate. A narrow `years` range makes equal dates
+ * (ties in sibling and union order) common.
+ */
+export function arbOp(
+  kinds: readonly OpKind[] = BUILD_KINDS,
+  years: { min: number; max: number } = { min: 1900, max: 2000 },
+): fc.Arbitrary<FamilyOp> {
   const kind = fc.oneof(
     ...kinds.map((k) => ({ weight: WEIGHTS[k], arbitrary: fc.constant<OpKind>(k) })),
   );
@@ -99,7 +105,7 @@ export function arbOp(kinds: readonly OpKind[] = BUILD_KINDS): fc.Arbitrary<Fami
     b: fc.nat(1000),
     c: fc.nat(1000),
     flag: fc.boolean(),
-    year: fc.option(fc.integer({ min: 1900, max: 2000 }), { nil: undefined }),
+    year: fc.option(fc.integer(years), { nil: undefined }),
   });
 }
 

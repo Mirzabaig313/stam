@@ -7,6 +7,7 @@ import { StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
+import { authStore } from "@/cloud/auth";
 import { i18n } from "@/i18n";
 import { registerShellWorker } from "@/offline/register";
 import { openStamDb } from "@/storage/db";
@@ -70,6 +71,14 @@ if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
     reload: () => window.location.reload(),
   });
 }
+
+// Back from Google sign-in: note it (so the account is asked about from now on) and tidy the URL.
+const returned = authStore
+  .getState()
+  .noteReturn(location.pathname + location.search + location.hash);
+if (returned !== null) history.replaceState(history.state, "", returned);
+// Only a browser that has signed in before asks the server anything (spec D14).
+void authStore.getState().refresh();
 
 const repo = await openRepo();
 // What the repo holds wins over the cache (another device's cache, or a cleared one).

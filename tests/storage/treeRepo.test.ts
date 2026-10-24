@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test } from "bun:test";
 import { type IDBPDatabase, openDB } from "idb";
 
 import { SNAPSHOT_LIMIT } from "@/config";
-import { openStamDb } from "@/storage/db";
+import { DB_VERSION, openStamDb } from "@/storage/db";
 import { createTreeRepo, StaleWriteError, type TreeRepo } from "@/storage/treeRepo";
 
 import { famHalfSiblings, famSimple } from "../fixtures/families";
@@ -63,9 +63,9 @@ describe("openStamDb", () => {
     let blocking = 0;
     const old = await openStamDb(name, { onBlocking: () => blocking++ });
     // Without the close, this upgrade would wait for the old tab forever.
-    const newer = await openDB(name, 2);
+    const newer = await openDB(name, DB_VERSION + 1);
     expect(blocking).toBe(1);
-    expect(newer.version).toBe(2);
+    expect(newer.version).toBe(DB_VERSION + 1);
     expect(() => old.transaction("trees")).toThrow();
     newer.close();
   });
@@ -86,8 +86,10 @@ describe("openStamDb", () => {
     upgraded.close();
   });
 
-  test("creates the v1 stores", () => {
+  test("creates the v1 stores and v2's cloud stores", () => {
     expect([...db.objectStoreNames].toSorted()).toEqual([
+      "cloudConfirmed",
+      "cloudPending",
       "meta",
       "photos",
       "settings",
@@ -329,5 +331,84 @@ describe("treeRepo", () => {
     expect(await repo.getSetting("x")).toBeUndefined();
     await repo.setSetting("x", { a: [1, 2] });
     expect(await repo.getSetting<{ a: number[] }>("x")).toEqual({ a: [1, 2] });
+  });
+});
+
+describe("cloud trees", () => {
+  test("setCloud records the cloud record, saves keep it, null removes it", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 3 });
+    expect((await repo.getMeta(doc.id))?.cloud).toEqual({ role: "owner", version: 3 });
+    await repo.saveTree({ ...doc, name: "Renamed" });
+    const meta = (await repo.listTrees()).find((m) => m.id === doc.id)!;
+    expect(meta.cloud).toEqual({ role: "owner", version: 3 });
+    expect(meta.name).toBe("Renamed");
+    await repo.setCloud(doc.id, null);
+    expect((await repo.getMeta(doc.id))?.cloud).toBeUndefined();
+  });
+
+  test("getMeta of an unknown tree is undefined", async () => {
+    expect(await repo.getMeta("nope")).toBeUndefined();
+  });
+});
+
+describe("cloud sync state", () => {
+  const op = (opId: string) => ({
+    kind: "op" as const,
+    opId,
+    cmd: { type: "renameTree" as const, name: opId },
+  });
+
+  test("the confirmed tree and its version only move forward", async () => {
+    const doc = famSimple();
+    await repo.saveConfirmed(doc.id, { ...doc, name: "v5" }, 5);
+    await repo.saveConfirmed(doc.id, { ...doc, name: "v3" }, 3); // a slower tab: ignored
+    expect(await repo.getConfirmed(doc.id)).toMatchObject({ version: 5, doc: { name: "v5" } });
+  });
+
+  test("pending edits are kept per op, in order, from every tab", async () => {
+    const doc = famSimple();
+    await repo.addPending(doc.id, op("aaaaaaaaaa"));
+    await repo.addPending(doc.id, op("bbbbbbbbbb"));
+    await repo.addPending("other", op("cccccccccc"));
+    expect((await repo.listPending(doc.id)).map((p) => p.opId)).toEqual([
+      "aaaaaaaaaa",
+      "bbbbbbbbbb",
+    ]);
+    await repo.removePending(["aaaaaaaaaa"]);
+    expect((await repo.listPending(doc.id)).map((p) => p.opId)).toEqual(["bbbbbbbbbb"]);
+  });
+
+  test("a new share of the tree (another epoch) replaces the confirmed copy", async () => {
+    const doc = famSimple();
+    await repo.saveConfirmed(doc.id, { ...doc, name: "old" }, 300, "e1");
+    await repo.saveConfirmed(doc.id, { ...doc, name: "new" }, 0, "e2");
+    expect(await repo.getConfirmed(doc.id)).toMatchObject({
+      version: 0,
+      epoch: "e2",
+      doc: { name: "new" },
+    });
+  });
+
+  test("a tree going local-only drops its sync state", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 1 });
+    await repo.saveConfirmed(doc.id, doc, 1, "e1");
+    await repo.addPending(doc.id, op("aaaaaaaaaa"));
+    await repo.setCloud(doc.id, null);
+    expect(await repo.getConfirmed(doc.id)).toBeUndefined();
+    expect(await repo.listPending(doc.id)).toEqual([]);
+  });
+
+  test("deleting a tree deletes its sync state", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    await repo.saveConfirmed(doc.id, doc, 1);
+    await repo.addPending(doc.id, op("aaaaaaaaaa"));
+    await repo.deleteTree(doc.id);
+    expect(await repo.getConfirmed(doc.id)).toBeUndefined();
+    expect(await repo.listPending(doc.id)).toEqual([]);
   });
 });

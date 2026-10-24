@@ -2,10 +2,30 @@ import { applyPatches, enablePatches, type Patch } from "immer";
 
 import { UNDO_LIMIT } from "@/config";
 import type { TreeDocument } from "@/core/model/types";
+import type { EntityChange } from "@/sync/revert";
 
 enablePatches();
 
-export type HistoryEntry = { label: string; patches: Patch[]; inversePatches: Patch[] };
+export type HistoryEntry = {
+  label: string;
+  patches: Patch[];
+  inversePatches: Patch[];
+  /**
+   * Cloud trees: what the edit did, entity by entity, for undo through the room (a revert, see
+   * `src/sync/revert`). Patches cannot be used there: others' edits come in between.
+   */
+  entities?: EntityChange[];
+};
+
+/** Two edits as one: each entity's value before the first and after the last. */
+function joinEntities(first: EntityChange[] = [], then: EntityChange[] = []): EntityChange[] {
+  const joined = new Map(first.map((e) => [e.key, { ...e }]));
+  for (const e of then) {
+    const earlier = joined.get(e.key);
+    joined.set(e.key, earlier ? { ...earlier, after: e.after } : { ...e });
+  }
+  return [...joined.values()];
+}
 
 /** Undo/redo as stacks of immer patches. It never holds a document, only the way between them. */
 export class History {
@@ -45,6 +65,9 @@ export class History {
       patches: [...last.patches, ...entry.patches],
       // Undo replays newest first: the amendment is reverted before the original edit.
       inversePatches: [...entry.inversePatches, ...last.inversePatches],
+      ...(last.entities || entry.entities
+        ? { entities: joinEntities(last.entities, entry.entities) }
+        : {}),
     });
   }
 
@@ -67,6 +90,20 @@ export class History {
     this.#redoStack.pop();
     this.#undoStack.push(entry);
     return next;
+  }
+
+  /** The entry an undo (or redo) would use, without using it. */
+  peek(move: "undo" | "redo"): HistoryEntry | null {
+    return (move === "undo" ? this.#undoStack : this.#redoStack).at(-1) ?? null;
+  }
+
+  /** Moves that entry to the other stack, without applying anything (cloud trees revert it). */
+  shift(move: "undo" | "redo"): HistoryEntry | null {
+    const [from, to] =
+      move === "undo" ? [this.#undoStack, this.#redoStack] : [this.#redoStack, this.#undoStack];
+    const entry = from.pop();
+    if (entry) to.push(entry);
+    return entry ?? null;
   }
 
   /** Forgets everything that could be redone, e.g. after cancelling an add. */

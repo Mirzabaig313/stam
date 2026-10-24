@@ -3,7 +3,11 @@ import "./treeList.css";
 import { type ChangeEvent, useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
+import { useStore } from "zustand";
 
+import { type Api, api as defaultApi } from "@/cloud/api";
+import { authStore } from "@/cloud/auth";
+import { openOwnedTree, removeFromAccount, uploadAndShare } from "@/cloud/linkTrees";
 import { APP_NAME, TUNED_PEOPLE } from "@/config";
 import { applyCommand } from "@/core/commands/apply";
 import { createTree } from "@/core/model/tree";
@@ -35,13 +39,20 @@ const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
 const GEDCOM_START = /^\uFEFF?\s*0[ \t]+HEAD\b/i;
 
 type DialogState =
-  { kind: "new" } | { kind: "rename"; tree: TreeMeta } | { kind: "delete"; tree: TreeMeta };
+  | { kind: "new" }
+  | { kind: "rename"; tree: TreeMeta }
+  | { kind: "delete"; tree: TreeMeta }
+  | { kind: "removeFromAccount"; tree: TreeMeta };
 
 export function TreeListPage({
   afterImport: afterImportProp,
+  api = defaultApi,
+  auth = authStore,
 }: {
   /** Runs after an imported GEDCOM tree is saved; by default, the unused-photo clean-up. */
   afterImport?: () => Promise<void>;
+  api?: Api;
+  auth?: typeof authStore;
 } = {}) {
   const { t } = useTranslation();
   const repo = useRepo();
@@ -61,6 +72,12 @@ export function TreeListPage({
   const [gedcomImport, setGedcomImport] = useState<{ treeId: string; report: GedcomReport } | null>(
     null,
   );
+
+  const me = useStore(auth, (s) => s.me);
+  // Asks the server only when this browser has signed in before (spec D14).
+  useEffect(() => {
+    void auth.getState().refresh();
+  }, [auth]);
 
   const [version, setVersion] = useState(0);
   const refresh = () => setVersion((v) => v + 1);
@@ -184,13 +201,37 @@ export function TreeListPage({
 
   const defaultName = t("treeList.defaultName");
 
+  /** Saves a local tree to the account; signs in first when nobody is (back to the list). */
+  function saveToAccount(tree: TreeMeta) {
+    if (auth.getState().status !== "signedIn") {
+      location.assign(api.signInUrl("/app"));
+      return;
+    }
+    void act(async () => {
+      const found = await repo.getTree(tree.id);
+      if (!found) throw new Error("tree is gone");
+      const { failedPhotos } = await uploadAndShare(found.doc, { repo, api });
+      if (failedPhotos.length > 0)
+        setMessage(t("share.photosFailed", { count: failedPhotos.length }));
+    });
+  }
+
   function onAction(action: TreeAction, tree: TreeMeta) {
-    if (action === "rename" || action === "delete") setDialog({ kind: action, tree });
+    if (action === "saveToAccount") saveToAccount(tree);
+    else if (action === "rename" || action === "delete" || action === "removeFromAccount")
+      setDialog({ kind: action, tree });
     else if (action === "backup") void onBackup(tree);
     else void act(() => repo.duplicateTree(tree.id, t("treeList.copyName", { name: tree.name })));
   }
 
   const hasTrees = trees !== null && trees.length > 0;
+  // Mine (local, or saved to my account) apart from trees others shared with me by a link, and
+  // account trees this browser does not have yet.
+  const mine = (trees ?? []).filter((tree) => !tree.cloud || tree.cloud.role === "owner");
+  const shared = (trees ?? []).filter((tree) => tree.cloud && tree.cloud.role !== "owner");
+  const inAccount = (me?.trees ?? []).filter(
+    (tree) => !trees?.some((local) => local.id === tree.id),
+  );
   const newTree = (
     <Button variant="primary" icon="plus" onClick={() => setDialog({ kind: "new" })}>
       {t("treeList.newTree")}
@@ -226,6 +267,18 @@ export function TreeListPage({
           />
           {hasTrees && importButton}
           {hasTrees && newTree}
+          {me && (
+            <span className="tree-list-account">
+              <Trans i18nKey="cloud.signedInAs" components={{ name: <bdi>{me.user.name}</bdi> }} />{" "}
+              <button
+                type="button"
+                className="button button-quiet"
+                onClick={() => void auth.getState().signOut()}
+              >
+                {t("cloud.signOut")}
+              </button>
+            </span>
+          )}
         </div>
       </header>
 
@@ -256,12 +309,52 @@ export function TreeListPage({
         </EmptyState>
       )}
 
-      {hasTrees && (
+      {hasTrees && mine.length > 0 && (
         <ul className="tree-grid">
-          {trees.map((tree) => (
+          {mine.map((tree) => (
             <TreeCard key={tree.id} tree={tree} onAction={onAction} />
           ))}
         </ul>
+      )}
+
+      {shared.length > 0 && (
+        <section aria-labelledby="shared-with-me">
+          <h2 className="page-subtitle" id="shared-with-me">
+            {t("treeList.sharedWithMe")}
+          </h2>
+          <ul className="tree-grid">
+            {shared.map((tree) => (
+              <TreeCard key={tree.id} tree={tree} onAction={onAction} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {inAccount.length > 0 && (
+        <section aria-labelledby="in-your-account">
+          <h2 className="page-subtitle" id="in-your-account">
+            {t("treeList.inAccount")}
+          </h2>
+          <ul className="tree-account-list">
+            {inAccount.map((tree) => (
+              <li key={tree.id}>
+                <bdi>{tree.name}</bdi>{" "}
+                <button
+                  type="button"
+                  className="button"
+                  onClick={() =>
+                    void act(async () => {
+                      await openOwnedTree(tree.id, { repo });
+                      void navigate(`/app/t/${tree.id}`);
+                    })
+                  }
+                >
+                  {t("treeList.open")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
@@ -347,6 +440,21 @@ export function TreeListPage({
               announceTreeChange(tree.id, "deleted");
               // Its photos go too, unless another tree uses them. A failure here is harmless.
               await cleanUpUnusedPhotos(repo).catch(() => {});
+            });
+          }}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "removeFromAccount" && (
+        <ConfirmDialog
+          title={t("cloud.removeConfirmTitle")}
+          message={t("cloud.removeConfirmBody")}
+          confirmLabel={t("cloud.removeFromAccount")}
+          onConfirm={() => {
+            const { tree } = dialog;
+            setDialog(null);
+            void act(async () => {
+              await removeFromAccount(tree.id, { repo, api });
             });
           }}
           onClose={() => setDialog(null)}

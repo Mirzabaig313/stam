@@ -64,6 +64,19 @@ export function isSafeId(value: unknown): value is string {
   return typeof value === "string" && ID_PATTERN.test(value) && !(value in Object.prototype);
 }
 
+/**
+ * A key JS objects order before all others, in numeric order ("7", "123"), whatever the insertion
+ * order. Rust keeps insertion order, so shared trees and commands never use such ids.
+ */
+export function isIndexKey(value: string): boolean {
+  return /^(0|[1-9][0-9]{0,9})$/.test(value) && Number(value) <= 4294967294;
+}
+
+/** An id that may be used in a shared (cloud) tree: safe, and ordered the same in JS and Rust. */
+export function isSharedId(value: unknown): value is string {
+  return isSafeId(value) && !isIndexKey(value);
+}
+
 function invalid(message: string): ImportError {
   return new ImportError("INVALID_TREE", message);
 }

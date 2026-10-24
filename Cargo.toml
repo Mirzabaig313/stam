@@ -1,0 +1,15 @@
+[workspace]
+members = ["server/*"]
+exclude = ["server/migrations"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "UNLICENSED"
+publish = false
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"

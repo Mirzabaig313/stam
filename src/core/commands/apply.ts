@@ -1,10 +1,12 @@
 import { enablePatches, produceWithPatches } from "immer";
 import type { Draft } from "immer";
 
+import { newId } from "@/core/model/ids";
 import type { TreeDocument } from "@/core/model/types";
 import { validate } from "@/core/model/validate";
 
 import { CommandError } from "./errors";
+import { opIdSource } from "./opIds";
 import { addPerson, renameTree, setRoot, updatePerson, updateUnion } from "./people";
 import {
   addChild,
@@ -17,7 +19,7 @@ import {
 } from "./relations";
 import { relinkAsChild, relinkAsParent, relinkAsSpouse } from "./relink";
 import { deletePerson } from "./remove";
-import type { Command, CommandResult, HandlerContext } from "./types";
+import type { ApplyOptions, Command, CommandResult, HandlerContext } from "./types";
 
 enablePatches();
 
@@ -68,9 +70,14 @@ function dispatch(draft: Draft<TreeDocument>, cmd: Command, ctx: HandlerContext)
 export function applyCommand(
   doc: TreeDocument,
   cmd: Command,
-  now: Date = new Date(),
+  opts: ApplyOptions | Date = {},
 ): CommandResult {
-  const ctx: HandlerContext = { created: [] };
+  // A bare Date is the older form of `{ now }`, still used by many callers and tests.
+  const { now = new Date(), opId } = opts instanceof Date ? { now: opts } : opts;
+  const ctx: HandlerContext = {
+    created: [],
+    newId: opId === undefined ? newId : opIdSource(opId),
+  };
   const [next, patches, inversePatches] = produceWithPatches(doc, (draft) => {
     dispatch(draft, cmd, ctx);
     draft.updatedAt = now.toISOString();

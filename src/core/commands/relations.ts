@@ -1,7 +1,6 @@
 import type { Draft } from "immer";
 
 import { compareFuzzyDate } from "@/core/dates/fuzzy";
-import { newId } from "@/core/model/ids";
 import { parentUnionOf, unionsOf } from "@/core/model/tree";
 import type { ChildType, PersonInput, TreeDocument, Union, UnionStatus } from "@/core/model/types";
 
@@ -20,7 +19,8 @@ export function createUnion(
   doc: Doc,
   partners: [string] | [string, string],
   status: UnionStatus,
-  children: Union["children"] = [],
+  children: Union["children"],
+  newId: () => string,
 ): Draft<Union> {
   const id = newId();
   doc.unions[id] = { id, partners, status, children };
@@ -39,7 +39,12 @@ function childInsertIndex(doc: Doc, union: Draft<Union>, childId: string): numbe
   return later < 0 ? union.children.length : later;
 }
 
-function resolveParentUnion(doc: Doc, parentId: string, unionId?: string): Draft<Union> {
+function resolveParentUnion(
+  doc: Doc,
+  parentId: string,
+  unionId: string | undefined,
+  newId: () => string,
+): Draft<Union> {
   if (unionId !== undefined) {
     const union = requireUnion(doc, unionId);
     if (!(union.partners as string[]).includes(parentId)) {
@@ -48,7 +53,7 @@ function resolveParentUnion(doc: Doc, parentId: string, unionId?: string): Draft
     return union;
   }
   const unions = unionsOf(doc, parentId) as Draft<Union>[];
-  if (unions.length === 0) return createUnion(doc, [parentId], "partner");
+  if (unions.length === 0) return createUnion(doc, [parentId], "partner", [], newId);
   if (unions.length === 1) return unions[0]!;
   throw new CommandError("AMBIGUOUS_UNION", `${parentId} has several unions: choose one`);
 }
@@ -59,11 +64,12 @@ export function linkChild(
   parentId: string,
   unionId: string | undefined,
   childId: string,
-  type: ChildType = "biological",
+  type: ChildType,
+  newId: () => string,
 ): Draft<Union> {
   requirePerson(doc, parentId);
   requirePerson(doc, childId);
-  const union = resolveParentUnion(doc, parentId, unionId);
+  const union = resolveParentUnion(doc, parentId, unionId, newId);
   // Every partner of the union becomes a parent, so none may be the child or descend from it.
   if (!unionAcceptsChild(doc, union.partners, childId)) {
     throw new CommandError("CYCLE", "A person cannot be a child of their own descendant");
@@ -84,6 +90,7 @@ export function linkSpouse(
   spouseId: string,
   status: UnionStatus,
   fillSingleParentUnion: boolean,
+  newId: () => string,
 ): void {
   const single = fillSingleParentUnion
     ? (unionsOf(doc, personId) as Draft<Union>[]).find((u) => u.partners.length === 1)
@@ -93,7 +100,7 @@ export function linkSpouse(
     single.status = status;
     insertUnionInOrder(doc, spouseId, single.id);
   } else {
-    createUnion(doc, [personId, spouseId], status);
+    createUnion(doc, [personId, spouseId], status, [], newId);
   }
 }
 
@@ -103,7 +110,7 @@ export function moveRootUp(doc: Doc, childId: string, union: Draft<Union>): void
 }
 
 /** Makes an existing person a biological parent of `childId`. */
-export function linkParent(doc: Doc, childId: string, parentId: string): void {
+export function linkParent(doc: Doc, childId: string, parentId: string, newId: () => string): void {
   requirePerson(doc, childId);
   requirePerson(doc, parentId);
   if (!parentCanJoin(doc, childId, parentId)) {
@@ -111,7 +118,13 @@ export function linkParent(doc: Doc, childId: string, parentId: string): void {
   }
   let union = parentUnionOf(doc, childId) as Draft<Union> | undefined;
   if (!union) {
-    union = createUnion(doc, [parentId], "partner", [{ personId: childId, type: "biological" }]);
+    union = createUnion(
+      doc,
+      [parentId],
+      "partner",
+      [{ personId: childId, type: "biological" }],
+      newId,
+    );
   } else {
     if ((union.partners as string[]).includes(parentId)) {
       throw new CommandError("ALREADY_LINKED", `${parentId} is already a parent of ${childId}`);
@@ -127,7 +140,7 @@ export function linkParent(doc: Doc, childId: string, parentId: string): void {
 }
 
 function addNewPerson(doc: Doc, input: PersonInput, ctx: HandlerContext): string {
-  const person = buildPerson(input);
+  const person = buildPerson(input, ctx.newId());
   doc.persons[person.id] = person;
   ctx.created.push(person.id);
   return person.id;
@@ -136,19 +149,19 @@ function addNewPerson(doc: Doc, input: PersonInput, ctx: HandlerContext): string
 export const addChild: Handler<"addChild"> = (doc, cmd, ctx) => {
   requirePerson(doc, cmd.parentId);
   const childId = addNewPerson(doc, cmd.child, ctx);
-  linkChild(doc, cmd.parentId, cmd.unionId, childId, cmd.childType ?? "biological");
+  linkChild(doc, cmd.parentId, cmd.unionId, childId, cmd.childType ?? "biological", ctx.newId);
 };
 
 export const addSpouse: Handler<"addSpouse"> = (doc, cmd, ctx) => {
   requirePerson(doc, cmd.personId);
   const spouseId = addNewPerson(doc, cmd.spouse, ctx);
-  linkSpouse(doc, cmd.personId, spouseId, cmd.status ?? "married", true);
+  linkSpouse(doc, cmd.personId, spouseId, cmd.status ?? "married", true, ctx.newId);
 };
 
 export const addParent: Handler<"addParent"> = (doc, cmd, ctx) => {
   requirePerson(doc, cmd.childId);
   const parentId = addNewPerson(doc, cmd.parent, ctx);
-  linkParent(doc, cmd.childId, parentId);
+  linkParent(doc, cmd.childId, parentId, ctx.newId);
 };
 
 export const insertParent: Handler<"insertParent"> = (doc, cmd, ctx) => {
@@ -164,7 +177,7 @@ export const insertParent: Handler<"insertParent"> = (doc, cmd, ctx) => {
   // No parents yet (the root, for one): there is nothing to go between, so it is addParent.
   if (!union) {
     const parentId = addNewPerson(doc, cmd.parent, ctx);
-    linkParent(doc, cmd.childId, parentId);
+    linkParent(doc, cmd.childId, parentId, ctx.newId);
     return;
   }
   const link = union.children[index]!;
@@ -174,7 +187,13 @@ export const insertParent: Handler<"insertParent"> = (doc, cmd, ctx) => {
   }
   const parentId = addNewPerson(doc, cmd.parent, ctx);
   union.children[index] = { personId: parentId, type: link.type };
-  createUnion(doc, [parentId], "partner", [{ personId: cmd.childId, type: "biological" }]);
+  createUnion(
+    doc,
+    [parentId],
+    "partner",
+    [{ personId: cmd.childId, type: "biological" }],
+    ctx.newId,
+  );
 };
 
 export const addSibling: Handler<"addSibling"> = (doc, cmd, ctx) => {
@@ -189,10 +208,16 @@ export const addSibling: Handler<"addSibling"> = (doc, cmd, ctx) => {
   const placeholder = { isPlaceholder: true, isLiving: true } as const;
   const fatherId = addNewPerson(doc, { ...placeholder, gender: "male" }, ctx);
   const motherId = addNewPerson(doc, { ...placeholder, gender: "female" }, ctx);
-  const created = createUnion(doc, [fatherId, motherId], "married", [
-    { personId: cmd.personId, type: "biological" },
-    { personId: siblingId, type: "biological" },
-  ]);
+  const created = createUnion(
+    doc,
+    [fatherId, motherId],
+    "married",
+    [
+      { personId: cmd.personId, type: "biological" },
+      { personId: siblingId, type: "biological" },
+    ],
+    ctx.newId,
+  );
   moveRootUp(doc, cmd.personId, created);
 };
 

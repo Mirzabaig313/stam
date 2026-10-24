@@ -1,0 +1,119 @@
+/* Share dialog (spec §9). Logical properties only: the layout mirrors in RTL. */
+
+.share-body {
+  display: grid;
+  gap: var(--space-3, 12px);
+  max-inline-size: 34rem;
+}
+
+.share-lead {
+  margin: 0;
+  color: var(--ink-2);
+}
+
+.share-row {
+  display: grid;
+  gap: var(--space-2, 8px);
+  padding-block: var(--space-3, 12px);
+  border-block-start: 1px solid var(--line);
+}
+
+.share-row__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2, 8px);
+}
+
+.share-row__head h3 {
+  margin: 0;
+  font-size: var(--text-md, 1rem);
+  color: var(--ink);
+}
+
+.share-row__head p,
+.share-note {
+  margin: 0;
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--ink-3);
+}
+
+.share-row--soon {
+  opacity: 0.7;
+}
+
+.share-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  color: var(--ink);
+}
+
+.share-link {
+  display: grid;
+  gap: var(--space-2, 8px);
+}
+
+.share-link__url {
+  inline-size: 100%;
+  font-size: var(--text-sm, 0.875rem);
+  direction: ltr; /* a URL reads left to right in every interface language */
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2, 8px);
+}
+
+.share-danger {
+  padding-block-start: var(--space-3, 12px);
+  border-block-start: 1px solid var(--line);
+}
+
+.share-warning {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm);
+  background: var(--tint);
+  color: var(--ink);
+}
+
+.share-error {
+  margin: 0;
+  color: var(--danger, var(--ink));
+}
+
+/* Toolbar: who you are on this tree and how the connection is. */
+.cloud-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2, 8px);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--ink-2);
+}
+
+.cloud-status__dot {
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+
+.cloud-status[data-status="live"] .cloud-status__dot {
+  background: var(--accent);
+}
+
+.cloud-notice {
+  display: block;
+  margin: var(--space-2, 8px);
+  padding: var(--space-2, 8px) var(--space-3, 12px);
+  border-radius: var(--radius-sm);
+  background: var(--tint);
+  color: var(--ink);
+}

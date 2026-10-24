@@ -1,0 +1,688 @@
+{
+  "id": "deep",
+  "name": "Deep family",
+  "schemaVersion": 1,
+  "rootPersonId": "p0",
+  "persons": {
+    "p0": {
+      "id": "p0",
+      "firstName": "p0",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p1": {
+      "id": "p1",
+      "firstName": "p1",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p2": {
+      "id": "p2",
+      "firstName": "p2",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p3": {
+      "id": "p3",
+      "firstName": "p3",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p4": {
+      "id": "p4",
+      "firstName": "p4",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p5": {
+      "id": "p5",
+      "firstName": "p5",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p6": {
+      "id": "p6",
+      "firstName": "p6",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p7": {
+      "id": "p7",
+      "firstName": "p7",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p8": {
+      "id": "p8",
+      "firstName": "p8",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p9": {
+      "id": "p9",
+      "firstName": "p9",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p10": {
+      "id": "p10",
+      "firstName": "p10",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p11": {
+      "id": "p11",
+      "firstName": "p11",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p12": {
+      "id": "p12",
+      "firstName": "p12",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p13": {
+      "id": "p13",
+      "firstName": "p13",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p14": {
+      "id": "p14",
+      "firstName": "p14",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p15": {
+      "id": "p15",
+      "firstName": "p15",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p16": {
+      "id": "p16",
+      "firstName": "p16",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p17": {
+      "id": "p17",
+      "firstName": "p17",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p18": {
+      "id": "p18",
+      "firstName": "p18",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p19": {
+      "id": "p19",
+      "firstName": "p19",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p20": {
+      "id": "p20",
+      "firstName": "p20",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p21": {
+      "id": "p21",
+      "firstName": "p21",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p22": {
+      "id": "p22",
+      "firstName": "p22",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p23": {
+      "id": "p23",
+      "firstName": "p23",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p24": {
+      "id": "p24",
+      "firstName": "p24",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p25": {
+      "id": "p25",
+      "firstName": "p25",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p26": {
+      "id": "p26",
+      "firstName": "p26",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p27": {
+      "id": "p27",
+      "firstName": "p27",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p28": {
+      "id": "p28",
+      "firstName": "p28",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p29": {
+      "id": "p29",
+      "firstName": "p29",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p30": {
+      "id": "p30",
+      "firstName": "p30",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p31": {
+      "id": "p31",
+      "firstName": "p31",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p32": {
+      "id": "p32",
+      "firstName": "p32",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    },
+    "p33": {
+      "id": "p33",
+      "firstName": "p33",
+      "lastName": "",
+      "gender": "male",
+      "isLiving": true
+    },
+    "p34": {
+      "id": "p34",
+      "firstName": "p34",
+      "lastName": "",
+      "gender": "female",
+      "isLiving": true
+    }
+  },
+  "unions": {
+    "u0": {
+      "id": "u0",
+      "partners": ["p0", "p1"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p2",
+          "type": "biological"
+        },
+        {
+          "personId": "p3",
+          "type": "biological"
+        },
+        {
+          "personId": "p4",
+          "type": "biological"
+        },
+        {
+          "personId": "p5",
+          "type": "biological"
+        }
+      ]
+    },
+    "u1": {
+      "id": "u1",
+      "partners": ["p0"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p6",
+          "type": "biological"
+        }
+      ]
+    },
+    "u2": {
+      "id": "u2",
+      "partners": ["p2", "p7"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p8",
+          "type": "biological"
+        },
+        {
+          "personId": "p9",
+          "type": "biological"
+        },
+        {
+          "personId": "p10",
+          "type": "biological"
+        }
+      ]
+    },
+    "u3": {
+      "id": "u3",
+      "partners": ["p8", "p11"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p13",
+          "type": "biological"
+        },
+        {
+          "personId": "p14",
+          "type": "biological"
+        },
+        {
+          "personId": "p15",
+          "type": "biological"
+        },
+        {
+          "personId": "p16",
+          "type": "biological"
+        },
+        {
+          "personId": "p17",
+          "type": "biological"
+        }
+      ]
+    },
+    "u4": {
+      "id": "u4",
+      "partners": ["p8", "p12"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p18",
+          "type": "biological"
+        }
+      ]
+    },
+    "u5": {
+      "id": "u5",
+      "partners": ["p13", "p17"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "biological"
+        },
+        {
+          "personId": "p20",
+          "type": "biological"
+        },
+        {
+          "personId": "p21",
+          "type": "biological"
+        }
+      ]
+    },
+    "u6": {
+      "id": "u6",
+      "partners": ["p19", "p22"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p24",
+          "type": "biological"
+        },
+        {
+          "personId": "p25",
+          "type": "biological"
+        },
+        {
+          "personId": "p26",
+          "type": "biological"
+        },
+        {
+          "personId": "p27",
+          "type": "biological"
+        },
+        {
+          "personId": "p28",
+          "type": "biological"
+        }
+      ]
+    },
+    "u7": {
+      "id": "u7",
+      "partners": ["p19", "p23"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p29",
+          "type": "biological"
+        }
+      ]
+    },
+    "u8": {
+      "id": "u8",
+      "partners": ["p24", "p30"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "biological"
+        },
+        {
+          "personId": "p32",
+          "type": "biological"
+        },
+        {
+          "personId": "p33",
+          "type": "biological"
+        }
+      ]
+    },
+    "u9": {
+      "id": "u9",
+      "partners": ["p31", "p34"],
+      "status": "married",
+      "children": []
+    },
+    "u10": {
+      "id": "u10",
+      "partners": ["p31", "p32"],
+      "status": "married",
+      "children": []
+    },
+    "u11": {
+      "id": "u11",
+      "partners": ["p32"],
+      "status": "married",
+      "children": []
+    },
+    "u12": {
+      "id": "u12",
+      "partners": ["p33"],
+      "status": "married",
+      "children": []
+    },
+    "u13": {
+      "id": "u13",
+      "partners": ["p25"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u14": {
+      "id": "u14",
+      "partners": ["p26"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u15": {
+      "id": "u15",
+      "partners": ["p27"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u16": {
+      "id": "u16",
+      "partners": ["p28"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u17": {
+      "id": "u17",
+      "partners": ["p29"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p31",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u18": {
+      "id": "u18",
+      "partners": ["p20"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p24",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u19": {
+      "id": "u19",
+      "partners": ["p21"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p24",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u20": {
+      "id": "u20",
+      "partners": ["p14"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u21": {
+      "id": "u21",
+      "partners": ["p15"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u22": {
+      "id": "u22",
+      "partners": ["p16"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u23": {
+      "id": "u23",
+      "partners": ["p17"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u24": {
+      "id": "u24",
+      "partners": ["p18"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p19",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u25": {
+      "id": "u25",
+      "partners": ["p9"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p13",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u26": {
+      "id": "u26",
+      "partners": ["p10"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p13",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u27": {
+      "id": "u27",
+      "partners": ["p3"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p8",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u28": {
+      "id": "u28",
+      "partners": ["p4"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p8",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u29": {
+      "id": "u29",
+      "partners": ["p5"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p8",
+          "type": "adopted"
+        }
+      ]
+    },
+    "u30": {
+      "id": "u30",
+      "partners": ["p6"],
+      "status": "married",
+      "children": [
+        {
+          "personId": "p8",
+          "type": "adopted"
+        }
+      ]
+    }
+  },
+  "unionOrder": {
+    "p0": ["u0", "u1"],
+    "p1": ["u0"],
+    "p2": ["u2"],
+    "p7": ["u2"],
+    "p8": ["u3", "u4"],
+    "p11": ["u3"],
+    "p12": ["u4"],
+    "p13": ["u5"],
+    "p17": ["u5", "u23"],
+    "p19": ["u6", "u7"],
+    "p22": ["u6"],
+    "p23": ["u7"],
+    "p24": ["u8"],
+    "p30": ["u8"],
+    "p31": ["u9", "u10"],
+    "p34": ["u9"],
+    "p32": ["u10", "u11"],
+    "p33": ["u12"],
+    "p25": ["u13"],
+    "p26": ["u14"],
+    "p27": ["u15"],
+    "p28": ["u16"],
+    "p29": ["u17"],
+    "p20": ["u18"],
+    "p21": ["u19"],
+    "p14": ["u20"],
+    "p15": ["u21"],
+    "p16": ["u22"],
+    "p18": ["u24"],
+    "p9": ["u25"],
+    "p10": ["u26"],
+    "p3": ["u27"],
+    "p4": ["u28"],
+    "p5": ["u29"],
+    "p6": ["u30"]
+  },
+  "settings": {
+    "theme": "default",
+    "colorMode": "light",
+    "direction": "ltr"
+  },
+  "createdAt": "2026-01-01T00:00:00.000Z",
+  "updatedAt": "2026-01-01T00:00:00.000Z"
+}
