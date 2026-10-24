@@ -125,9 +125,10 @@ export class Socket {
   opened: Promise<boolean>;
   #waiters: (() => void)[] = [];
 
-  constructor(path: string, session?: string) {
+  constructor(path: string, session?: string, socketOrigin: string = ORIGIN) {
     this.ws = new WebSocket(url(path).replace(/^http/, "ws"), {
-      headers: session ? { cookie: session } : {},
+      // Browsers send the page's Origin on WebSocket upgrades; the server checks it.
+      headers: { origin: socketOrigin, ...(session ? { cookie: session } : {}) },
     });
     this.opened = new Promise((resolve) => {
       this.ws.on("open", () => resolve(true));

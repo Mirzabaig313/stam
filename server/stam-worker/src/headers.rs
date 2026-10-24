@@ -16,7 +16,7 @@ pub fn content_security_policy(dev: bool) -> String {
     format!(
         "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; \
          img-src 'self' blob: data:; font-src 'self'; connect-src {connect}; object-src 'none'; \
-         base-uri 'self'; frame-ancestors 'none'"
+         base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     )
 }
 

@@ -56,6 +56,27 @@ describeWorker("shared trees and view links", () => {
     expect((await post("/api/trees", session, { doc: 7 })).status).toBe(400);
   });
 
+  test("a tree id outside the id rule is refused", async () => {
+    const session = await signIn("tina");
+    for (const id of ["a/b", "x".repeat(65), "7"]) {
+      expect((await post("/api/trees", session, { doc: { ...newTree(), id } })).status).toBe(400);
+    }
+  });
+
+  test("a deleted tree can be shared again, starting from the new upload", async () => {
+    const owner = await signIn("bo");
+    const doc = await upload(owner, newTree("First"));
+    expect((await api(`/api/trees/${doc.id}`, { method: "DELETE", session: owner })).status).toBe(
+      204,
+    );
+    const again = await post("/api/trees", owner, { doc: { ...doc, name: "Second" } });
+    expect(again.status).toBe(201);
+    const me = (await (await api("/api/me", { session: owner })).json()) as {
+      trees: { name: string }[];
+    };
+    expect(me.trees.map((t) => t.name)).toEqual(["Second"]);
+  });
+
   test("upload over 5000 people is 413", async () => {
     const session = await signIn("tina");
     const doc = newTree();

@@ -10,4 +10,4 @@ pub use room::{
     Broadcast, CATCH_UP_OPS, CHECKPOINT_EVERY, MAX_PEOPLE, Outbox, PhotoAccess, RoomCore,
     RoomError, SNAPSHOT_EVERY,
 };
-pub use store::{MemoryStore, OpKind, RoomStore, Snapshot, StoredOp};
+pub use store::{MemoryStore, OpKind, RoomStore, Snapshot, StoreError, StoreResult, StoredOp};

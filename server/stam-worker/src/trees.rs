@@ -11,7 +11,7 @@ use worker::{Env, Headers, Method, Request, RequestInit, Response, Result, Route
 use crate::auth::{current_user, iso, now_ms, same_origin, secret};
 use crate::crypto::{decrypt, encrypt, random_id, random_token, sha256_b64};
 use crate::db::{self, User};
-use crate::room_do::ATTACHMENT_HEADER;
+use crate::room_do::{ATTACHMENT_HEADER, MAX_PHOTO_BYTES};
 use crate::routes::error;
 
 fn room(env: &Env, tree_id: &str) -> Result<Stub> {
@@ -105,6 +105,10 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
     let Ok(doc) = parse_tree_value(&body["doc"]) else {
         return error(400, "INVALID_TREE");
     };
+    // The tree id names its room, its photos' folder and its URLs: it must follow the id rule.
+    if !stam_core::is_safe_id(&doc.id) {
+        return error(400, "INVALID_TREE");
+    }
     if doc.persons.len() > MAX_PEOPLE {
         return error(413, "TOO_LARGE");
     }
@@ -114,23 +118,23 @@ pub async fn create(mut req: Request, ctx: RouteContext<()>) -> Result<Response>
         Some(t) if t.deleted_at.is_none() => return error(409, "ALREADY_SHARED"),
         _ => {}
     }
-    let now = iso(now_ms());
-    db::put_tree(&db, &doc.id, &user.id, &doc.name, &now).await?;
+    // The room first: the tree is listed only once it exists. A room left from a deleted share
+    // of this tree (its clean-up failed) is cleared and created again.
     let author = Author {
         kind: AuthorKind::Owner,
         id: user.id.clone(),
         name: user.name.clone(),
     };
-    let init = room_json(
-        env,
-        &doc.id,
-        "/init",
-        &json!({ "doc": doc, "author": author, "treeId": doc.id }),
-    )
-    .await?;
-    if init.status_code() != 201 {
-        return error(500, "ROOM_FAILED");
+    let init_body = json!({ "doc": doc, "author": author, "treeId": doc.id });
+    let mut init = room_json(env, &doc.id, "/init", &init_body).await?;
+    if init.status_code() == 409 {
+        room_json(env, &doc.id, "/destroy", &json!({})).await?;
+        init = room_json(env, &doc.id, "/init", &init_body).await?;
     }
+    if init.status_code() != 201 {
+        return error(503, "ROOM_UNAVAILABLE");
+    }
+    db::put_tree(&db, &doc.id, &user.id, &doc.name, &iso(now_ms())).await?;
     Ok(Response::from_json(&json!({ "id": doc.id, "version": 0 }))?.with_status(201))
 }
 
@@ -143,8 +147,10 @@ pub async fn delete(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     if let Err(refused) = owner_of(&req, &ctx.env, &id).await? {
         return Ok(refused);
     }
-    room_json(&ctx.env, &id, "/destroy", &json!({})).await?;
+    // Access ends first (the tree and its links in D1); then the room, its storage and photos
+    // go. If that clean-up fails, sharing the tree again clears what is left.
     db::delete_tree(&ctx.env.d1("DB")?, &id, &iso(now_ms())).await?;
+    let _ = room_json(&ctx.env, &id, "/destroy", &json!({})).await;
     Ok(Response::empty()?.with_status(204))
 }
 
@@ -155,12 +161,16 @@ fn link_url(env: &Env, token: &str) -> Result<String> {
 }
 
 fn link_json(env: &Env, link: &db::LinkRow) -> Result<Value> {
-    let token = decrypt(&link.token_cipher, &secret(env, "LINK_KEY")?).unwrap_or_default();
+    // A link sealed with an older LINK_KEY cannot be shown again: `url` is null (reset it).
+    let url = match decrypt(&link.token_cipher, &secret(env, "LINK_KEY")?) {
+        Some(token) => Value::String(link_url(env, &token)?),
+        None => Value::Null,
+    };
     Ok(json!({
         "id": link.id,
         "role": link.role,
         "hideLiving": link.hide_living != 0,
-        "url": link_url(env, &token)?,
+        "url": url,
         "createdAt": link.created_at,
     }))
 }
@@ -334,6 +344,11 @@ pub async fn socket(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     if !upgrade.is_some_and(|u| u.eq_ignore_ascii_case("websocket")) {
         return error(426, "WEBSOCKET_ONLY");
     }
+    // An owner socket edits, so it must come from the site: other pages (another subdomain is
+    // same-site for cookies) cannot open it with the owner's cookie.
+    if !same_origin(&req) {
+        return error(403, "FORBIDDEN");
+    }
     let id = param(&ctx, "id").to_owned();
     let Some(att) = attachment_for(&req, &ctx.env, &id).await? else {
         return error(401, "NO_ACCESS");
@@ -360,6 +375,13 @@ pub async fn photo(mut req: Request, ctx: RouteContext<()>) -> Result<Response> 
         return error(401, "NO_ACCESS");
     };
     let body = if put {
+        let declared = req.headers().get("content-length").ok().flatten();
+        if declared
+            .and_then(|l| l.parse::<usize>().ok())
+            .is_some_and(|l| l > MAX_PHOTO_BYTES)
+        {
+            return error(413, "TOO_LARGE");
+        }
         let bytes = req.bytes().await?;
         Some(js_sys::Uint8Array::from(bytes.as_slice()).into())
     } else {

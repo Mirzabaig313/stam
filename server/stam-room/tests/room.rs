@@ -44,7 +44,7 @@ fn owner() -> Attachment {
 }
 
 fn room() -> RoomCore<MemoryStore> {
-    RoomCore::create(MemoryStore::default(), family(), owner().author, NOW)
+    RoomCore::create(MemoryStore::default(), family(), owner().author, NOW).unwrap()
 }
 
 fn send(room: &mut RoomCore<MemoryStore>, who: &Attachment, msg: Value) -> Outbox {
@@ -159,7 +159,7 @@ fn hide_living_welcome_is_redacted() {
     person.is_living = true;
     person.death = None;
     person.notes = Some("secret".into());
-    let mut r = RoomCore::create(MemoryStore::default(), doc, owner().author, NOW);
+    let mut r = RoomCore::create(MemoryStore::default(), doc, owner().author, NOW).unwrap();
     let viewer = att("s2", Role::View, true);
     let w = parse(&send(&mut r, &viewer, json!({"type": "hello", "lastVersion": 0})).reply[0]);
     assert!(w["doc"]["persons"][&p].get("notes").is_none());
@@ -353,12 +353,12 @@ fn snapshot_every_50_and_checkpoint_every_500() {
         );
     }
     let store = r.store();
-    assert_eq!(store.load().unwrap().doc_version, 500);
+    assert_eq!(store.load().unwrap().unwrap().doc_version, 500);
     assert!(store.checkpoints.contains_key(&500));
     assert!(store.checkpoints.contains_key(&0));
     assert!(r.flush_due());
     r.flush();
-    assert_eq!(r.store().load().unwrap().doc_version, 501);
+    assert_eq!(r.store().load().unwrap().unwrap().doc_version, 501);
     assert!(!r.flush_due());
 }
 
@@ -413,7 +413,7 @@ fn photo_of_living_person_hidden_from_hide_living() {
     person.is_living = true;
     person.death = None;
     person.photo_id = Some("ph1".into());
-    let r = RoomCore::create(MemoryStore::default(), doc, owner().author, NOW);
+    let r = RoomCore::create(MemoryStore::default(), doc, owner().author, NOW).unwrap();
     assert_eq!(
         r.photo_access(&att("s", Role::View, false), "ph1"),
         PhotoAccess::Allowed
@@ -466,4 +466,47 @@ mod properties {
             }
         }
     }
+}
+
+#[test]
+fn a_store_that_cannot_write_answers_busy_and_applies_nothing() {
+    let mut r = room();
+    r.store_mut().failing = true;
+    let out = send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+    assert!(out.broadcast.is_none());
+    assert_eq!(parse(&out.reply[0])["type"], "busy");
+    assert_eq!(r.version(), 0);
+    assert_ne!(r.doc().name, "New");
+    // Once storage works again the same op goes through.
+    r.store_mut().failing = false;
+    assert!(
+        send(&mut r, &owner(), rename("aaaaaaaaaa", "New"))
+            .broadcast
+            .is_some()
+    );
+}
+
+#[test]
+fn a_failed_flush_stays_due() {
+    let mut r = room();
+    send(&mut r, &owner(), rename("aaaaaaaaaa", "New"));
+    r.store_mut().failing = true;
+    r.flush();
+    assert!(r.flush_due());
+    let w = send(&mut r, &owner(), json!({"type": "hello", "lastVersion": 0}));
+    assert_eq!(parse(&w.reply[0])["type"], "busy");
+}
+
+#[test]
+fn open_tells_no_tree_from_broken_storage() {
+    assert!(matches!(
+        RoomCore::open(MemoryStore::default()),
+        Err(stam_room::RoomError::NoTree)
+    ));
+    let mut store = room().into_store();
+    store.failing = true;
+    assert!(matches!(
+        RoomCore::open(store),
+        Err(stam_room::RoomError::Store(_))
+    ));
 }

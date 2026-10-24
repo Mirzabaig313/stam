@@ -24,7 +24,7 @@ impl RoomHarness {
             name: "Owner".into(),
         };
         RoomHarness {
-            core: RoomCore::create(MemoryStore::default(), doc, owner, now),
+            core: RoomCore::create(MemoryStore::default(), doc, owner, now).expect("memory store"),
             sockets: vec![],
         }
     }

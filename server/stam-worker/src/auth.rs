@@ -15,6 +15,8 @@ use crate::routes::error;
 
 const SESSION_COOKIE: &str = "stam_session";
 const OAUTH_COOKIE: &str = "stam_oauth";
+/// Secrets that sign or encrypt must be long enough to resist guessing.
+const MIN_SECRET_BYTES: usize = 32;
 const DAY_MS: f64 = 24.0 * 60.0 * 60.0 * 1000.0;
 /// Sessions last 30 days, renewed when fewer than 15 remain.
 const SESSION_DAYS: f64 = 30.0;
@@ -40,6 +42,27 @@ pub fn secret(env: &Env, name: &str) -> Result<String> {
     Ok(env.secret(name).or_else(|_| env.var(name))?.to_string())
 }
 
+/// The key that signs the OAuth cookie: refused when missing or short, never used weak.
+fn signing_secret(env: &Env) -> Result<String> {
+    let key = secret(env, "SESSION_SECRET")?;
+    if key.len() < MIN_SECRET_BYTES {
+        return Err(worker::Error::RustError(
+            "SESSION_SECRET is too short".into(),
+        ));
+    }
+    Ok(key)
+}
+
+/// In production cookies carry the `__Host-` prefix, so no other subdomain can set them; a
+/// `__Host-` cookie needs `Secure`, which plain-http development cannot have.
+fn cookie_name(env: &Env, base: &str) -> String {
+    if is_dev(env) {
+        base.to_owned()
+    } else {
+        format!("__Host-{base}")
+    }
+}
+
 /// A cookie's value from the request.
 pub fn read_cookie(req: &Request, name: &str) -> Option<String> {
     let header = req.headers().get("cookie").ok()??;
@@ -49,15 +72,19 @@ pub fn read_cookie(req: &Request, name: &str) -> Option<String> {
     })
 }
 
-fn set_cookie(env: &Env, name: &str, value: &str, path: &str, max_age: u32) -> String {
+fn set_cookie(env: &Env, base: &str, value: &str, max_age: u32) -> String {
+    let name = cookie_name(env, base);
     let secure = if is_dev(env) { "" } else { "; Secure" };
-    format!("{name}={value}; Path={path}; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}")
+    format!("{name}={value}; Path=/; Max-Age={max_age}; HttpOnly; SameSite=Lax{secure}")
 }
 
-/// A same-site path to come back to after sign-in; anything else goes to `/app`.
+/// A path on this site to come back to after sign-in; anything else goes to `/app`. Only plain
+/// URL characters pass: browsers drop tabs and newlines and read `\` as `/`, which would turn
+/// `/<tab>/evil.com` into `//evil.com`.
 fn safe_return(path: Option<&str>) -> String {
+    let plain = |c: char| c.is_ascii_alphanumeric() || "/-._~%?=&+,:@!$'()*;#".contains(c);
     match path {
-        Some(p) if p.starts_with('/') && !p.starts_with("//") && !p.starts_with("/\\") => {
+        Some(p) if p.starts_with('/') && !p.starts_with("//") && p.chars().all(plain) => {
             p.to_owned()
         }
         _ => "/app".to_owned(),
@@ -103,7 +130,7 @@ pub async fn sign_in(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         return_to: safe_return(return_to.as_deref()),
     };
     let encoded = URL_SAFE_NO_PAD.encode(serde_json::to_vec(&payload)?);
-    let cookie_value = sign(&encoded, &secret(env, "SESSION_SECRET")?);
+    let cookie_value = sign(&encoded, &signing_secret(env)?);
 
     let mut google = worker::Url::parse(&var(env, "GOOGLE_AUTH_URL")?)?;
     google
@@ -122,7 +149,7 @@ pub async fn sign_in(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let res = redirect(google.as_str())?;
     res.headers().append(
         "Set-Cookie",
-        &set_cookie(env, OAUTH_COOKIE, &cookie_value, "/api/auth", OAUTH_SECONDS),
+        &set_cookie(env, OAUTH_COOKIE, &cookie_value, OAUTH_SECONDS),
     )?;
     Ok(res)
 }
@@ -193,8 +220,8 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
             .find(|(k, _)| k == name)
             .map(|(_, v)| v.into_owned())
     };
-    let stored = read_cookie(&req, OAUTH_COOKIE)
-        .and_then(|c| verify(&c, &secret(env, "SESSION_SECRET").ok()?))
+    let stored = read_cookie(&req, &cookie_name(env, OAUTH_COOKIE))
+        .and_then(|c| verify(&c, &signing_secret(env).ok()?))
         .and_then(|encoded| URL_SAFE_NO_PAD.decode(encoded).ok())
         .and_then(|bytes| serde_json::from_slice::<OAuthState>(&bytes).ok());
     let (Some(stored), Some(code), Some(state)) = (stored, query("code"), query("state")) else {
@@ -238,18 +265,16 @@ pub async fn callback(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let max_age = (SESSION_DAYS * 24.0 * 3600.0) as u32;
     res.headers().append(
         "Set-Cookie",
-        &set_cookie(env, SESSION_COOKIE, &token, "/", max_age),
+        &set_cookie(env, SESSION_COOKIE, &token, max_age),
     )?;
-    res.headers().append(
-        "Set-Cookie",
-        &set_cookie(env, OAUTH_COOKIE, "", "/api/auth", 0),
-    )?;
+    res.headers()
+        .append("Set-Cookie", &set_cookie(env, OAUTH_COOKIE, "", 0))?;
     Ok(res)
 }
 
 /// The signed-in user, renewing the session when it has fewer than 15 days left.
 pub async fn current_user(req: &Request, env: &Env) -> Result<Option<User>> {
-    let Some(token) = read_cookie(req, SESSION_COOKIE) else {
+    let Some(token) = read_cookie(req, &cookie_name(env, SESSION_COOKIE)) else {
         return Ok(None);
     };
     let db = env.d1("DB")?;
@@ -269,14 +294,12 @@ pub async fn sign_out(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     if !same_origin(&req) {
         return error(403, "FORBIDDEN");
     }
-    if let Some(token) = read_cookie(&req, SESSION_COOKIE) {
+    if let Some(token) = read_cookie(&req, &cookie_name(&ctx.env, SESSION_COOKIE)) {
         db::delete_session(&ctx.env.d1("DB")?, &sha256_b64(&token)).await?;
     }
     let res = Response::empty()?.with_status(204);
-    res.headers().append(
-        "Set-Cookie",
-        &set_cookie(&ctx.env, SESSION_COOKIE, "", "/", 0),
-    )?;
+    res.headers()
+        .append("Set-Cookie", &set_cookie(&ctx.env, SESSION_COOKIE, "", 0))?;
     Ok(res)
 }
 
@@ -286,5 +309,15 @@ pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
         return error(401, "SIGNED_OUT");
     };
     let trees = db::user_trees(&ctx.env.d1("DB")?, &user.id).await?;
-    Response::from_json(&json!({ "user": user, "trees": trees }))
+    let res = Response::from_json(&json!({ "user": user, "trees": trees }))?;
+    // The app asks this on every start: renew the cookie too, or the browser would drop it 30
+    // days after sign-in however active the user is (the server side slides in current_user).
+    if let Some(token) = read_cookie(&req, &cookie_name(&ctx.env, SESSION_COOKIE)) {
+        let max_age = (SESSION_DAYS * 24.0 * 3600.0) as u32;
+        res.headers().append(
+            "Set-Cookie",
+            &set_cookie(&ctx.env, SESSION_COOKIE, &token, max_age),
+        )?;
+    }
+    Ok(res)
 }

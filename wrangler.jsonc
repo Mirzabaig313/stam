@@ -4,6 +4,9 @@
   "name": "stam",
   "main": "server/stam-worker/build/index.js",
   "compatibility_date": "2026-10-01",
+  // Only the custom domain serves the app: no workers.dev or preview hosts beside it.
+  "workers_dev": false,
+  "preview_urls": false,
   "build": {
     "command": "cd server/stam-worker && worker-build --release",
   },

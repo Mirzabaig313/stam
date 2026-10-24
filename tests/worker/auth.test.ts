@@ -25,7 +25,7 @@ describeWorker("Google sign-in and sessions", () => {
     const raw = res.headers.getSetCookie().find((c) => c.startsWith("stam_oauth="))!;
     expect(raw).toContain("HttpOnly");
     expect(raw).toContain("SameSite=Lax");
-    expect(raw).toContain("Path=/api/auth");
+    expect(raw).toContain("Path=/");
   });
 
   test("callback with matching state creates the user and a session", async () => {
@@ -86,7 +86,14 @@ describeWorker("Google sign-in and sessions", () => {
   });
 
   test("return only accepts same-origin paths", async () => {
-    for (const evil of ["//evil.com", "https://evil.com", "/\\evil.com", "javascript:alert(1)"]) {
+    for (const evil of [
+      "//evil.com",
+      "https://evil.com",
+      "/\\evil.com",
+      "javascript:alert(1)",
+      "/\t/evil.com",
+      "/\n/evil.com",
+    ]) {
       const { location, oauth } = await startSignIn(evil);
       const res = await http(
         url(`/api/auth/google/callback?code=alice&state=${location.searchParams.get("state")}`),
@@ -94,6 +101,14 @@ describeWorker("Google sign-in and sessions", () => {
       );
       expect(res.headers.get("location")).toBe("/app?signedIn=1");
     }
+  });
+
+  test("/api/me renews the session cookie, so an active user stays signed in", async () => {
+    const session = await signIn("greta");
+    const res = await api("/api/me", { session });
+    const raw = res.headers.getSetCookie().find((c) => c.startsWith("stam_session="))!;
+    expect(raw).toContain(`${session};`);
+    expect(raw).toContain("Max-Age=2592000");
   });
 
   test("/api/me without a session is 401", async () => {

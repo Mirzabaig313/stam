@@ -12,7 +12,7 @@ use stam_core::{
 
 use crate::protocol::{Attachment, Author, ClientMessage, PublicAuthor};
 use crate::ratelimit::{Bucket, RETRY_AFTER_MS};
-use crate::store::{OpKind, RoomStore, StoredOp};
+use crate::store::{OpKind, RoomStore, StoreError, StoredOp};
 
 /// People allowed in a cloud tree (`TUNED_PEOPLE`).
 pub const MAX_PEOPLE: usize = 5000;
@@ -49,7 +49,20 @@ pub enum PhotoAccess {
 }
 
 #[derive(Debug)]
-pub struct RoomError(pub String);
+pub enum RoomError {
+    /// Nothing stored: no tree here (never uploaded, or deleted).
+    NoTree,
+    /// Storage failed; try again later.
+    Store(String),
+    /// What is stored does not read back (a bug, not the client's doing).
+    Corrupt(String),
+}
+
+impl From<StoreError> for RoomError {
+    fn from(e: StoreError) -> Self {
+        RoomError::Store(e.0)
+    }
+}
 
 pub struct RoomCore<S: RoomStore> {
     store: S,
@@ -98,7 +111,12 @@ fn code_of(e: &CommandError) -> String {
 
 impl<S: RoomStore> RoomCore<S> {
     /// A new room for an uploaded tree: version 0, snapshot and checkpoint 0.
-    pub fn create(mut store: S, doc: TreeDocument, author: Author, now: &str) -> Self {
+    pub fn create(
+        mut store: S,
+        doc: TreeDocument,
+        author: Author,
+        now: &str,
+    ) -> Result<Self, RoomError> {
         let doc_json = to_json(&doc);
         store.append_op(&StoredOp {
             version: 0,
@@ -108,10 +126,10 @@ impl<S: RoomStore> RoomCore<S> {
             payload_json: "null".into(),
             changes_json: "null".into(),
             at: now.to_owned(),
-        });
-        store.write_snapshot(&doc_json, 0);
-        store.write_checkpoint(0, &doc_json);
-        Self {
+        })?;
+        store.write_snapshot(&doc_json, 0)?;
+        store.write_checkpoint(0, &doc_json)?;
+        Ok(Self {
             store,
             doc,
             version: 0,
@@ -120,18 +138,18 @@ impl<S: RoomStore> RoomCore<S> {
             catch_up: CATCH_UP_OPS,
             over_size: doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
-        }
+        })
     }
 
     /// Loads the snapshot and applies the logged changes after it.
     pub fn open(store: S) -> Result<Self, RoomError> {
-        let snap = store.load().ok_or_else(|| RoomError("no tree".into()))?;
+        let snap = store.load()?.ok_or(RoomError::NoTree)?;
         let mut doc: TreeDocument =
-            serde_json::from_str(&snap.doc_json).map_err(|e| RoomError(e.to_string()))?;
+            serde_json::from_str(&snap.doc_json).map_err(|e| RoomError::Corrupt(e.to_string()))?;
         let mut version = snap.doc_version;
-        for op in store.ops_after(snap.doc_version, u32::MAX) {
-            let changes: Changes =
-                serde_json::from_str(&op.changes_json).map_err(|e| RoomError(e.to_string()))?;
+        for op in store.ops_after(snap.doc_version, u32::MAX)? {
+            let changes: Changes = serde_json::from_str(&op.changes_json)
+                .map_err(|e| RoomError::Corrupt(e.to_string()))?;
             apply_changes(&mut doc, &changes);
             version = op.version;
         }
@@ -191,13 +209,18 @@ impl<S: RoomStore> RoomCore<S> {
         self.version != self.doc_version
     }
 
-    pub fn flush(&mut self) {
-        if self.flush_due() {
-            let json = to_json(&self.doc);
-            self.over_size = json.len() > MAX_TREE_BYTES;
-            self.store.write_snapshot(&json, self.version);
-            self.doc_version = self.version;
+    /// Writes the tree; false when storage failed (it stays due, for the next alarm).
+    pub fn flush(&mut self) -> bool {
+        if !self.flush_due() {
+            return true;
         }
+        let json = to_json(&self.doc);
+        self.over_size = json.len() > MAX_TREE_BYTES;
+        if self.store.write_snapshot(&json, self.version).is_err() {
+            return false;
+        }
+        self.doc_version = self.version;
+        true
     }
 
     /// `now` is an ISO timestamp from JS; `now_ms` drives the rate limit.
@@ -217,7 +240,10 @@ impl<S: RoomStore> RoomCore<S> {
                 if !self.admit(att, now_ms) {
                     return reply(busy());
                 }
-                return reply(self.welcome(att, last_version, &pending));
+                return reply(
+                    self.welcome(att, last_version, &pending)
+                        .unwrap_or_else(|_| busy_for(STORE_RETRY_S)),
+                );
             }
             ClientMessage::Op { op_id, cmd } => {
                 let outcome = self.edit(att, &op_id, now_ms, |doc| {
@@ -251,16 +277,22 @@ impl<S: RoomStore> RoomCore<S> {
             .admit(now_ms)
     }
 
-    fn welcome(&self, att: &Attachment, last_version: Option<u64>, pending: &[String]) -> String {
+    fn welcome(
+        &self,
+        att: &Attachment,
+        last_version: Option<u64>,
+        pending: &[String],
+    ) -> Result<String, StoreError> {
         // Which of the client's unconfirmed edits the room already applied: the client drops
         // them instead of re-running them on a tree that already holds them.
-        let known: Vec<&String> = pending
-            .iter()
-            .take(CATCH_UP_OPS as usize)
-            .filter(|id| {
-                att.role.can_edit() && !att.hide_living && self.store.find_op(id).is_some()
-            })
-            .collect();
+        let mut known: Vec<&String> = vec![];
+        if att.role.can_edit() && !att.hide_living {
+            for id in pending.iter().take(CATCH_UP_OPS as usize) {
+                if self.store.find_op(id)?.is_some() {
+                    known.push(id);
+                }
+            }
+        }
         let mut msg = json!({
             "type": "welcome",
             "role": att.role,
@@ -275,7 +307,7 @@ impl<S: RoomStore> RoomCore<S> {
             Some(last) => {
                 let ops: Vec<Value> = self
                     .store
-                    .ops_after(last, self.catch_up as u32)
+                    .ops_after(last, self.catch_up as u32)?
                     .iter()
                     .map(|op| {
                         json!({
@@ -291,7 +323,7 @@ impl<S: RoomStore> RoomCore<S> {
             None if att.hide_living => msg["doc"] = json!(apply_privacy(&self.doc)),
             None => msg["doc"] = json!(self.doc),
         }
-        msg.to_string()
+        Ok(msg.to_string())
     }
 
     /// Checks role, rate and idempotence, then runs the edit. `Err` is the reply to send instead.
@@ -312,7 +344,11 @@ impl<S: RoomStore> RoomCore<S> {
         }
         // A resend of an applied op is answered without using a token, so a client catching up
         // after `busy` is not throttled by its own duplicates.
-        if let Some(op) = self.store.find_op(op_id) {
+        let stored = self
+            .store
+            .find_op(op_id)
+            .map_err(|_| busy_for(STORE_RETRY_S))?;
+        if let Some(op) = stored {
             let changes = serde_json::from_str(&op.changes_json).unwrap_or(Value::Null);
             return Err(applied_message(op.version, op_id, &op.author, &changes));
         }
@@ -339,11 +375,10 @@ impl<S: RoomStore> RoomCore<S> {
         applied: Applied,
         now: &str,
     ) -> Outbox {
-        let before = std::mem::replace(&mut self.doc, applied.doc);
-        self.version += 1;
         let changes = serde_json::to_value(&applied.changes).expect("serialisable");
-        self.store.append_op(&StoredOp {
-            version: self.version,
+        // Logged first: if storage refuses, nothing changed and the client tries again later.
+        let logged = self.store.append_op(&StoredOp {
+            version: self.version + 1,
             op_id: op_id.to_owned(),
             author: att.author.clone(),
             kind,
@@ -351,11 +386,18 @@ impl<S: RoomStore> RoomCore<S> {
             changes_json: changes.to_string(),
             at: now.to_owned(),
         });
+        if logged.is_err() {
+            return reply(busy_for(STORE_RETRY_S));
+        }
+        let before = std::mem::replace(&mut self.doc, applied.doc);
+        self.version += 1;
         if self.version - self.doc_version >= SNAPSHOT_EVERY {
             self.flush();
         }
         if self.version.is_multiple_of(CHECKPOINT_EVERY) {
-            self.store
+            // Only history uses checkpoints; a failed one is skipped, not fatal.
+            let _ = self
+                .store
                 .write_checkpoint(self.version, &to_json(&self.doc));
         }
         let redacted = serde_json::to_value(redacted_changes(&before, &self.doc, &applied.changes))
@@ -376,13 +418,20 @@ impl<S: RoomStore> RoomCore<S> {
         }
     }
 
-    pub fn wipe(&mut self) {
-        self.store.wipe();
+    pub fn wipe(&mut self) -> Result<(), StoreError> {
+        self.store.wipe()
     }
 }
 
+/// Seconds a client waits when storage failed (the free plan's daily limit resets at 00:00 UTC).
+const STORE_RETRY_S: u64 = 30;
+
 fn busy() -> String {
-    json!({"type": "busy", "retryAfter": RETRY_AFTER_MS / 1000}).to_string()
+    busy_for(RETRY_AFTER_MS / 1000)
+}
+
+fn busy_for(seconds: u64) -> String {
+    json!({"type": "busy", "retryAfter": seconds}).to_string()
 }
 
 fn reply(text: String) -> Outbox {

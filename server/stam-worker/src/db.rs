@@ -158,7 +158,8 @@ pub async fn put_tree(
     db.prepare(
         "INSERT INTO tree (id, owner_id, name, created_at) VALUES (?1, ?2, ?3, ?4)
          ON CONFLICT (id) DO UPDATE SET name = excluded.name, created_at = excluded.created_at,
-           deleted_at = NULL",
+           deleted_at = NULL
+         WHERE tree.owner_id = excluded.owner_id",
     )
     .bind(&[text(id), text(owner_id), text(name), text(now)])?
     .run()

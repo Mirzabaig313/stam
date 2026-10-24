@@ -74,6 +74,13 @@ describeWorker("live tree rooms", () => {
     v.close();
   });
 
+  test("a socket opened from another site is refused, even with the owner's cookie", async () => {
+    const owner = await signIn("eli");
+    const doc = await upload(owner);
+    const evil = new Socket(`/api/trees/${doc.id}/ws`, owner, "https://evil.mirzalabs.in");
+    expect(await evil.opened).toBe(false);
+  });
+
   test("no session and no link, or another tree's link, cannot connect", async () => {
     const owner = await signIn("ella");
     const doc = await upload(owner);
