@@ -11,6 +11,7 @@ import { createTabSync } from "@/storage/multitab";
 import { createSaveGuard } from "@/storage/saveGuard";
 import { StaleWriteError } from "@/storage/treeRepo";
 import { CloudNotice } from "@/ui/app/CloudStatus";
+import { DisplayNamePrompt, PresenceRings } from "@/ui/share/Presence";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
 import { useTreeDir } from "@/ui/canvas/treeDirection";
 import { ExportDialog } from "@/ui/export/ExportDialog";
@@ -398,6 +399,8 @@ function EditorFrame({
         </div>
       )}
       <CloudNotice />
+      <PresenceRings />
+      <DisplayNamePrompt />
       {locked === "changed" && (
         <div className="banner banner-warn">
           <output>{t("banner.otherTab")}</output>

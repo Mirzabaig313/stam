@@ -55,17 +55,21 @@ try {
     }
     await Bun.sleep(500);
   }
-  const tests = Bun.spawn(["bun", "test", ...process.argv.slice(2), "tests/worker"], {
-    cwd: root,
-    env: {
-      ...process.env,
-      WORKER_URL: origin,
-      WORKER_STATE: state,
-      GOOGLE_MOCK_URL: `http://localhost:${GOOGLE_MOCK_PORT}`,
+  // A fresh Worker answers its first requests slowly (cold start): give each test 20 s.
+  const tests = Bun.spawn(
+    ["bun", "test", "--timeout", "20000", ...process.argv.slice(2), "tests/worker"],
+    {
+      cwd: root,
+      env: {
+        ...process.env,
+        WORKER_URL: origin,
+        WORKER_STATE: state,
+        GOOGLE_MOCK_URL: `http://localhost:${GOOGLE_MOCK_PORT}`,
+      },
+      stdout: "inherit",
+      stderr: "inherit",
     },
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  );
   code = await tests.exited;
 } finally {
   worker.kill();

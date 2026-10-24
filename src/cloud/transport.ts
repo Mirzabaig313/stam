@@ -79,9 +79,10 @@ export function connectRoom(opts: {
   }
 
   function connect() {
-    // A link socket is the link's; the owner's carries the session token, read at each connect
-    // (it changes when they sign in again).
-    const s = createSocket(url, socketProtocols(opts.token ? null : session.get()));
+    // The session token, read at each connect (it changes when the user signs in again): the
+    // owner's socket is theirs by it; a link socket's role is the link's, and the session only
+    // names a signed-in user from their account.
+    const s = createSocket(url, socketProtocols(session.get()));
     socket = s;
     let opened = false;
     s.addEventListener("open", () => {

@@ -10,7 +10,7 @@ use stam_core::{
     apply_privacy, apply_revert, decode_command, is_living_person, is_op_id, photo_owner,
 };
 
-use crate::protocol::{Attachment, Author, ClientMessage, PublicAuthor};
+use crate::protocol::{Attachment, Author, AuthorKind, ClientMessage, PublicAuthor};
 use crate::ratelimit::{Bucket, RETRY_AFTER_MS};
 use crate::store::{OpKind, RoomStore, StoreError, StoredOp};
 
@@ -33,6 +33,70 @@ pub struct Outbox {
     /// Only to the socket that sent the message.
     pub reply: Vec<String>,
     pub broadcast: Option<Broadcast>,
+    /// The socket's attachment changed (name, clientId, selection): store it with the socket.
+    pub attachment: Option<Attachment>,
+    /// Who is here changed: send everyone the list (`presence_message`).
+    pub presence: bool,
+}
+
+/// Longest display name kept, in characters.
+pub const MAX_NAME_CHARS: usize = 40;
+/// People listed in a presence message, at most.
+pub const MAX_PRESENCE: usize = 50;
+
+/// A display name as people typed it: no control characters, single spaces, at most 40 characters.
+fn clean_name(name: &str) -> String {
+    let words: Vec<&str> = name
+        .split(|c: char| c.is_whitespace() || c.is_control())
+        .filter(|w| !w.is_empty())
+        .collect();
+    words
+        .join(" ")
+        .chars()
+        .take(MAX_NAME_CHARS)
+        .collect::<String>()
+        .trim_end()
+        .to_owned()
+}
+
+/// Whether a socket's user names themselves: an anonymous link user. The owner, and anyone who
+/// opened a link while signed in (the Worker sets their account id), keep their account's name.
+fn typed_name_allowed(att: &Attachment) -> bool {
+    att.author.kind == AuthorKind::Link && att.author.id.is_empty()
+}
+
+/// A socket's id as others see it in presence: made by the server, so nobody can take another's.
+pub fn presence_id(socket_id: &str) -> &str {
+    &socket_id[..socket_id.len().min(12)]
+}
+
+/// Who is in the room, as `viewer` sees it: every socket that said hello, without the viewer's own
+/// and without the sockets `leaving`. One entry per socket (each tab is a person on its own).
+pub fn presence_message<'a>(
+    sockets: impl Iterator<Item = &'a Attachment>,
+    viewer: &str,
+    leaving: &[&str],
+) -> String {
+    let mut people = vec![];
+    for att in sockets {
+        let id = att.socket_id.as_str();
+        if !att.joined || id == viewer || leaving.contains(&id) {
+            continue;
+        }
+        if people.len() >= MAX_PRESENCE {
+            break;
+        }
+        let mut person = json!({
+            "id": presence_id(id),
+            "name": att.author.name,
+            "kind": att.author.kind,
+        });
+        if let Some(selected) = &att.selected {
+            person["selectedPersonId"] = json!(selected);
+        }
+        people.push(person);
+    }
+    json!({ "type": "presence", "people": people }).to_string()
 }
 
 /// Sent to every socket: `redacted` to hide-living sockets, `full` to all others.
@@ -247,14 +311,53 @@ impl<S: RoomStore> RoomCore<S> {
             ClientMessage::Hello {
                 last_version,
                 pending,
+                name,
             } => {
                 if !self.admit(att, now_ms) {
                     return reply(busy());
                 }
-                return reply(
+                let mut out = reply(
                     self.welcome(att, last_version, &pending)
                         .unwrap_or_else(|_| busy_for(STORE_RETRY_S)),
                 );
+                let mut named = att.clone();
+                named.joined = true;
+                if typed_name_allowed(att)
+                    && let Some(name) = name
+                {
+                    named.author.name = clean_name(&name);
+                }
+                out.attachment = Some(named);
+                out.presence = true;
+                return out;
+            }
+            ClientMessage::Name { name } => {
+                if !self.admit(att, now_ms) {
+                    return reply(busy());
+                }
+                // Owners, and link users signed in with Google, are named by their account.
+                if !typed_name_allowed(att) {
+                    return Outbox::default();
+                }
+                let mut named = att.clone();
+                named.author.name = clean_name(&name);
+                return Outbox {
+                    attachment: Some(named),
+                    presence: true,
+                    ..Outbox::default()
+                };
+            }
+            ClientMessage::Presence { selected_person_id } => {
+                if !self.admit(att, now_ms) {
+                    return reply(busy());
+                }
+                let mut moved = att.clone();
+                moved.selected = selected_person_id.filter(|id| self.doc.persons.contains_key(id));
+                return Outbox {
+                    attachment: Some(moved),
+                    presence: true,
+                    ..Outbox::default()
+                };
             }
             ClientMessage::Op { op_id, cmd } => {
                 let outcome = self.edit(att, &op_id, now_ms, |doc| {
@@ -439,6 +542,7 @@ impl<S: RoomStore> RoomCore<S> {
                 full: applied_message(self.version, op_id, &att.author, &changes),
                 redacted: applied_message(self.version, op_id, &att.author, &redacted),
             }),
+            ..Outbox::default()
         }
     }
 
@@ -468,7 +572,7 @@ fn busy_for(seconds: u64) -> String {
 fn reply(text: String) -> Outbox {
     Outbox {
         reply: vec![text],
-        broadcast: None,
+        ..Outbox::default()
     }
 }
 

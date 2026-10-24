@@ -11,6 +11,8 @@ export type AvatarProps = {
    * because the name is almost always written next to it.
    */
   label?: string;
+  /** The background hue, when it should not come from the name. */
+  hue?: number;
   className?: string;
 };
 
@@ -18,12 +20,12 @@ export type AvatarProps = {
  * A person's face: their photo in a circle, or their initials on a warm album hue picked from the
  * name (the same hue as their card's disc on the canvas).
  */
-export function Avatar({ name, photoUrl, size = "md", label, className }: AvatarProps) {
+export function Avatar({ name, photoUrl, size = "md", label, hue, className }: AvatarProps) {
   const a11y = label ? { role: "img", "aria-label": label } : { "aria-hidden": true as const };
   return (
     <span
       className={cx("avatar", size !== "md" && `avatar--${size}`, className)}
-      data-hue={photoUrl ? undefined : avatarHue(name)}
+      data-hue={photoUrl ? undefined : (hue ?? avatarHue(name))}
       {...a11y}
     >
       {photoUrl ? (

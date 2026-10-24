@@ -732,6 +732,8 @@
     "createLink": "Create link",
     "commentRow": "Can comment",
     "editRow": "Can edit",
+    "editHint": "Edits the tree with you, live. Anyone with this link can change the tree: send it only to people you trust.",
+    "editLinkLabel": "Edit link",
     "comingSoon": "Coming soon",
     "stopSharing": "Stop sharing and delete cloud copy",
     "retry": "Retry",
@@ -780,5 +782,18 @@
     "busy": "Too many tries just now. Wait a minute, then open the link again.",
     "offline": "Connect to the internet to open this link.",
     "back": "Go to your trees"
+  },
+  "presence": {
+    "label": "Also here: {{names}}",
+    "more": "+{{count}}",
+    "guest": "Guest",
+    "owner": "{{name}} (owner)"
+  },
+  "namePrompt": {
+    "title": "What should we call you?",
+    "label": "Your name",
+    "hint": "Others see it next to your changes and on your avatar.",
+    "save": "Save",
+    "skip": "Not now"
   }
 }

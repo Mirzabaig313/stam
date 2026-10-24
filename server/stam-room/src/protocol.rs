@@ -44,6 +44,12 @@ pub struct Attachment {
     pub link_id: Option<String>,
     pub hide_living: bool,
     pub author: Author,
+    /// Said `hello`: listed in presence from then on.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub joined: bool,
+    /// The person this socket's user has selected (presence).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selected: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +65,18 @@ pub enum ClientMessage {
         /// The client's unconfirmed op ids; the welcome names those already applied.
         #[serde(default)]
         pending: Vec<String>,
+        /// A link user's display name (owners are named by their account).
+        #[serde(default)]
+        name: Option<String>,
+    },
+    /// A link user names themselves after joining (the first edit asks).
+    Name {
+        name: String,
+    },
+    /// Which person this user has selected; none clears it.
+    Presence {
+        #[serde(default)]
+        selected_person_id: Option<String>,
     },
     Op {
         op_id: String,

@@ -88,8 +88,9 @@ describe("load and save", () => {
       colorMode: "branch",
       treeDirection: "rtl",
     };
-    await saveSettings(repo, s);
-    expect(repo.store.get("ui")).toEqual(s);
+    await saveSettings(repo, s, { savedAt: 1234 });
+    // With when they were chosen, so the newer of this device's and the account's copy wins.
+    expect(repo.store.get("ui")).toEqual({ ...s, savedAt: 1234 });
     expect(JSON.parse(localStorage.getItem(SETTINGS_CACHE_KEY)!)).toEqual(s);
     expect(cachedSettings()).toEqual(s);
   });
@@ -137,7 +138,7 @@ describe("the landing page's theme: only an explicit choice is cached for it", (
     const repo = memoryRepo();
     await saveSettings(repo, { ...DEFAULT_SETTINGS, theme: "light" }, { themeChosen: true });
     expect(cache()).toEqual({ ...DEFAULT_SETTINGS, themeChosen: true });
-    expect(repo.store.get("ui")).toEqual({ ...DEFAULT_SETTINGS, themeChosen: true });
+    expect(repo.store.get("ui")).toMatchObject({ ...DEFAULT_SETTINGS, themeChosen: true });
     // A fresh cache (another browser profile, cleared storage) learns it from the repo.
     localStorage.clear();
     expect(await loadSettings(repo)).toEqual(DEFAULT_SETTINGS);

@@ -6,9 +6,13 @@ import { type SessionStore, sessionStore } from "./session";
 // The REST side of the backend (spec §7). In production the API is on another site than the app:
 // requests go to API_ORIGIN and carry the owner's token (see ./session), not a cookie.
 
+/** App settings kept with the account, and when they were chosen (ms). */
+export type AccountSettings = { settings: Record<string, unknown>; savedAt: number };
+
 export type Me = {
   user: { id: string; name: string; email: string };
   trees: { id: string; name: string; createdAt: string }[];
+  settings?: AccountSettings | null;
 };
 
 export type Link = {
@@ -96,14 +100,21 @@ export function createApi(
       json<{ id: string; version: number }>("POST", "/api/trees", { doc }),
     deleteCloudTree: async (id: string) => void (await request("DELETE", `/api/trees/${id}`)),
     listLinks: (id: string) => json<Link[]>("GET", `/api/trees/${id}/links`),
-    createLink: (id: string, link: { role: "view"; hideLiving: boolean }) =>
+    createLink: (id: string, link: { role: "view" | "edit"; hideLiving: boolean }) =>
       json<Link>("POST", `/api/trees/${id}/links`, link),
     deleteLink: async (id: string, linkId: string) =>
       void (await request("DELETE", `/api/trees/${id}/links/${linkId}`)),
     resolveLink: (token: string) =>
       json<ResolvedLink>("GET", `/api/s/${encodeURIComponent(token)}`),
-    async uploadPhoto(treeId: string, photoId: string, blob: Blob): Promise<void> {
-      const res = await fetchFn(`${base}/api/trees/${treeId}/photos/${photoId}`, {
+    /** Uploads a photo the tree uses: the owner with the session, an edit link with its token. */
+    async uploadPhoto(
+      treeId: string,
+      photoId: string,
+      blob: Blob,
+      linkToken?: string,
+    ): Promise<void> {
+      const query = linkToken ? `?t=${encodeURIComponent(linkToken)}` : "";
+      const res = await fetchFn(`${base}/api/trees/${treeId}/photos/${photoId}${query}`, {
         method: "PUT",
         headers: { ...auth(), "content-type": "image/webp" },
         body: blob,
@@ -127,6 +138,8 @@ export function createApi(
         }
       ).token,
     signOut: async () => void (await request("POST", "/api/auth/signout")),
+    saveSettings: async (saved: AccountSettings) =>
+      void (await request("PUT", "/api/me/settings", saved)),
   };
 }
 

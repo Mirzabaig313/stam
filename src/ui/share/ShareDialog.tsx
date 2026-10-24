@@ -13,11 +13,15 @@ import { useRepo } from "@/ui/app/RepoContext";
 import { Button, Chip } from "@/ui/design";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 
-type Confirm = "reset" | "hide" | "turnOff" | "stop" | null;
+/** The links the dialog makes (comment links come with P3). */
+type LinkRole = "view" | "edit";
+
+type Confirm = { kind: "reset" | "hide" | "turnOff"; role: LinkRole } | { kind: "stop" } | null;
 
 /**
  * Sharing a tree (spec §9): sign in, save the tree to the account (upload), then make, copy,
- * reset or turn off its view link, or stop sharing. `mode="account"` only saves to the account.
+ * reset or turn off its view and edit links, or stop sharing. `mode="account"` only saves to the
+ * account.
  */
 export function ShareDialog({
   onClose,
@@ -42,11 +46,11 @@ export function ShareDialog({
   const [failed, setFailed] = useState<string | null>(null);
   const [failedPhotos, setFailedPhotos] = useState<string[]>([]);
   const [hideLiving, setHideLiving] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<LinkRole | null>(null);
   const [confirm, setConfirm] = useState<Confirm>(null);
   const treeId = doc?.id;
   const owned = cloud?.role === "owner";
-  const view = links?.find((l) => l.role === "view");
+  const linkOf = (role: LinkRole) => links?.find((l) => l.role === role);
 
   useEffect(() => {
     void auth.getState().refresh();
@@ -86,7 +90,7 @@ export function ShareDialog({
 
   useEffect(() => {
     if (!copied) return;
-    const timer = setTimeout(() => setCopied(false), 2000);
+    const timer = setTimeout(() => setCopied(null), 2000);
     return () => clearTimeout(timer);
   }, [copied]);
 
@@ -121,19 +125,20 @@ export function ShareDialog({
       if (treeId) setFailedPhotos(await retryPhotos(treeId, failedPhotos, { repo, api }));
     });
 
-  const createLink = (hide: boolean) =>
+  const createLink = (role: LinkRole, hide: boolean) =>
     act(async () => {
       if (!treeId) return;
-      const link = await api.createLink(treeId, { role: "view", hideLiving: hide });
-      setLinks((list) => [...(list ?? []).filter((l) => l.role !== "view"), link]);
-      setHideLiving(hide);
+      const link = await api.createLink(treeId, { role, hideLiving: role === "view" && hide });
+      setLinks((list) => [...(list ?? []).filter((l) => l.role !== role), link]);
+      if (role === "view") setHideLiving(hide);
     });
 
-  const turnOff = () =>
+  const turnOff = (role: LinkRole) =>
     act(async () => {
-      if (!treeId || !view) return;
-      await api.deleteLink(treeId, view.id);
-      setLinks((list) => (list ?? []).filter((l) => l.id !== view.id));
+      const link = linkOf(role);
+      if (!treeId || !link) return;
+      await api.deleteLink(treeId, link.id);
+      setLinks((list) => (list ?? []).filter((l) => l.id !== link.id));
     });
 
   const stopSharing = () =>
@@ -144,14 +149,59 @@ export function ShareDialog({
       onClose();
     });
 
-  async function copy() {
-    if (!view?.url) return;
+  async function copy(role: LinkRole) {
+    const url = linkOf(role)?.url;
+    if (!url) return;
     try {
-      await navigator.clipboard.writeText(view.url);
-      setCopied(true);
+      await navigator.clipboard.writeText(url);
+      setCopied(role);
     } catch {
       setFailed(t("share.copyFailed"));
     }
+  }
+
+  /** A made link: its address, and copy, reset and turn off; or the button that makes it. */
+  function linkControls(role: LinkRole) {
+    const link = linkOf(role);
+    if (!link) {
+      return (
+        <Button
+          variant="primary"
+          disabled={busy || links === null}
+          // The edit row's warning ("anyone with this link can change the tree") is read with it.
+          {...(role === "edit" ? { "aria-describedby": "share-edit-hint" } : {})}
+          onClick={() => void createLink(role, hideLiving)}
+        >
+          {t("share.createLink")}
+        </Button>
+      );
+    }
+    return (
+      <div className="share-link">
+        {link.url ? (
+          <input
+            className="field share-link__url"
+            readOnly
+            value={link.url}
+            aria-label={t(role === "edit" ? "share.editLinkLabel" : "share.linkLabel")}
+          />
+        ) : (
+          <p className="share-note">{t("share.noUrl")}</p>
+        )}
+        <div className="share-actions">
+          <Button variant="primary" disabled={busy || !link.url} onClick={() => void copy(role)}>
+            {t("share.copy")}
+          </Button>
+          <output>{copied === role && <Chip>{t("share.copied")}</Chip>}</output>
+          <Button disabled={busy} onClick={() => setConfirm({ kind: "reset", role })}>
+            {t("share.reset")}
+          </Button>
+          <Button disabled={busy} onClick={() => setConfirm({ kind: "turnOff", role })}>
+            {t("share.turnOff")}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   let body;
@@ -197,56 +247,32 @@ export function ShareDialog({
               type="checkbox"
               checked={hideLiving}
               disabled={busy}
-              onChange={(e) => (view ? setConfirm("hide") : setHideLiving(e.currentTarget.checked))}
+              onChange={(e) =>
+                linkOf("view")
+                  ? setConfirm({ kind: "hide", role: "view" })
+                  : setHideLiving(e.currentTarget.checked)
+              }
             />
             <span>{t("share.hideLiving")}</span>
           </label>
           <p className="share-note">{t("share.hideLivingHint")}</p>
-          {view ? (
-            <div className="share-link">
-              {view.url ? (
-                <input
-                  className="field share-link__url"
-                  readOnly
-                  value={view.url}
-                  aria-label={t("share.linkLabel")}
-                />
-              ) : (
-                <p className="share-note">{t("share.noUrl")}</p>
-              )}
-              <div className="share-actions">
-                <Button variant="primary" disabled={busy || !view.url} onClick={() => void copy()}>
-                  {t("share.copy")}
-                </Button>
-                <output>{copied && <Chip>{t("share.copied")}</Chip>}</output>
-                <Button disabled={busy} onClick={() => setConfirm("reset")}>
-                  {t("share.reset")}
-                </Button>
-                <Button disabled={busy} onClick={() => setConfirm("turnOff")}>
-                  {t("share.turnOff")}
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              variant="primary"
-              disabled={busy || links === null}
-              onClick={() => void createLink(hideLiving)}
-            >
-              {t("share.createLink")}
-            </Button>
-          )}
+          {linkControls("view")}
         </section>
-        {(["commentRow", "editRow"] as const).map((row) => (
-          <section key={row} className="share-row share-row--soon">
-            <div className="share-row__head">
-              <h3>{t(`share.${row}`)}</h3>
-              <Chip>{t("share.comingSoon")}</Chip>
-            </div>
-          </section>
-        ))}
+        <section className="share-row" aria-labelledby="share-edit">
+          <div className="share-row__head">
+            <h3 id="share-edit">{t("share.editRow")}</h3>
+            <p id="share-edit-hint">{t("share.editHint")}</p>
+          </div>
+          {linkControls("edit")}
+        </section>
+        <section className="share-row share-row--soon" aria-labelledby="share-comment">
+          <div className="share-row__head">
+            <h3 id="share-comment">{t("share.commentRow")}</h3>
+            <Chip>{t("share.comingSoon")}</Chip>
+          </div>
+        </section>
         <section className="share-danger">
-          <Button variant="danger" disabled={busy} onClick={() => setConfirm("stop")}>
+          <Button variant="danger" disabled={busy} onClick={() => setConfirm({ kind: "stop" })}>
             {t("share.stopSharing")}
           </Button>
         </section>
@@ -281,32 +307,33 @@ export function ShareDialog({
           </p>
         )}
       </div>
-      {confirm === "reset" || confirm === "hide" ? (
+      {confirm && (confirm.kind === "reset" || confirm.kind === "hide") ? (
         <ConfirmDialog
           title={t("share.resetConfirmTitle")}
           message={t("share.resetConfirmBody")}
           confirmLabel={t("share.reset")}
           onClose={() => setConfirm(null)}
           onConfirm={() => {
-            const hide = confirm === "hide" ? !hideLiving : hideLiving;
+            const hide = confirm.kind === "hide" ? !hideLiving : hideLiving;
             setConfirm(null);
-            void createLink(hide);
+            void createLink(confirm.role, hide);
           }}
         />
       ) : null}
-      {confirm === "turnOff" && (
+      {confirm?.kind === "turnOff" && (
         <ConfirmDialog
           title={t("share.turnOffConfirmTitle")}
           message={t("share.turnOffConfirmBody")}
           confirmLabel={t("share.turnOff")}
           onClose={() => setConfirm(null)}
           onConfirm={() => {
+            const { role } = confirm;
             setConfirm(null);
-            void turnOff();
+            void turnOff(role);
           }}
         />
       )}
-      {confirm === "stop" && (
+      {confirm?.kind === "stop" && (
         <ConfirmDialog
           title={t("share.stopConfirmTitle")}
           message={t("share.stopConfirmBody")}

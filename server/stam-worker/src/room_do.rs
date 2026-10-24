@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use stam_core::{TreeDocument, photo_owner};
 use stam_room::{
     Attachment, Author, PhotoAccess, RoomCore, RoomError, RoomStore, Snapshot, StoreError,
-    StoreResult, StoredOp,
+    StoreResult, StoredOp, presence_message,
 };
 use worker::{
     DurableObject, Env, Method, Request, Response, ResponseBuilder, Result, SqlStorage,
@@ -361,14 +361,39 @@ impl TreeRoom {
         Ok(res.empty())
     }
 
+    /// Tells every socket who else is in the room (without the sockets `leaving`). Each gets its
+    /// own list, without itself, so no client needs to know which entry is its own.
+    fn send_presence(&self, leaving: &[&str]) {
+        let sockets = self.state.get_websockets();
+        let attachments: Vec<Option<Attachment>> = sockets
+            .iter()
+            .map(|ws| ws.deserialize_attachment::<Attachment>().ok().flatten())
+            .collect();
+        for (ws, att) in sockets.iter().zip(&attachments) {
+            let Some(att) = att else { continue };
+            if leaving.contains(&att.socket_id.as_str()) {
+                continue;
+            }
+            let msg = presence_message(attachments.iter().flatten(), &att.socket_id, leaving);
+            let _ = ws.send_with_str(&msg);
+        }
+    }
+
     /// Closes sockets with a close code, saying so in a `closed` message first: a close frame does
     /// not always reach the client (it does not through `wrangler dev`), a message does.
     fn close_all(&self, sockets: Vec<WebSocket>, code: u16, reason: &str) {
         let notice = json!({ "type": "closed", "code": code, "reason": reason }).to_string();
+        let mut closed = vec![];
         for ws in sockets {
+            if let Ok(Some(att)) = ws.deserialize_attachment::<Attachment>() {
+                closed.push(att.socket_id);
+            }
             let _ = ws.send_with_str(&notice);
             let _ = ws.close(Some(code), Some(reason));
         }
+        // Whoever stays sees them go now, not only when the close handler runs.
+        let leaving: Vec<&str> = closed.iter().map(String::as_str).collect();
+        self.send_presence(&leaving);
     }
 
     async fn close_link(&self, mut req: Request) -> Result<Response> {
@@ -524,6 +549,13 @@ impl DurableObject for TreeRoom {
         for reply in &out.reply {
             ws.send_with_str(reply)?;
         }
+        // A name, clientId or selection is kept with the socket (it survives hibernation).
+        if let Some(updated) = &out.attachment {
+            ws.serialize_attachment(updated)?;
+        }
+        if out.presence {
+            self.send_presence(&[]);
+        }
         if let Some(b) = out.broadcast {
             for socket in self.state.get_websockets() {
                 let hidden = socket
@@ -552,6 +584,8 @@ impl DurableObject for TreeRoom {
     ) -> Result<()> {
         if let Ok(Some(att)) = ws.deserialize_attachment::<Attachment>() {
             let _ = self.with_core(|core| core.on_close(&att.socket_id));
+            // Whoever stays sees this person leave.
+            self.send_presence(&[att.socket_id.as_str()]);
         }
         let _ = ws.close(Some(1000), Some("closed"));
         Ok(())

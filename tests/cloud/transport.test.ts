@@ -90,10 +90,11 @@ describe("who the socket says it is", () => {
     expect(url).not.toContain("sess");
   });
 
-  test("a link socket carries the link token and never the owner's session", () => {
-    const { protocols, url } = protocolsFor("linktok", "sess");
-    expect(protocols).toEqual(["stam"]);
-    expect(url).toEndWith("/api/trees/t1/ws?t=linktok");
+  test("a link socket carries the link token, and the session when signed in (for the name)", () => {
+    const signedIn = protocolsFor("linktok", "sess");
+    expect(signedIn.protocols).toEqual(["stam", "stam-auth.sess"]);
+    expect(signedIn.url).toEndWith("/api/trees/t1/ws?t=linktok");
+    expect(protocolsFor("linktok", null).protocols).toEqual(["stam"]);
   });
 });
 

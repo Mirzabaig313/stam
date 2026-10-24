@@ -209,10 +209,12 @@ pub async fn create_link(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
     let Ok(body) = req.json::<NewLink>().await else {
         return error(400, "BAD_REQUEST");
     };
-    // P1 shares view links only; comment and edit links come with P3 and P2.
-    if body.role != "view" {
+    // View and edit links; comment links come with P3. Hiding living people only fits viewing:
+    // an editor works on the whole tree.
+    if body.role != "view" && body.role != "edit" {
         return error(400, "NOT_AVAILABLE");
     }
+    let hide_living = body.role == "view" && body.hide_living;
     let db = env.d1("DB")?;
     let now = iso(now_ms());
     if let Some(old) = db::revoke_role(&db, &id, &body.role, &now).await? {
@@ -228,7 +230,7 @@ pub async fn create_link(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
         &link_id,
         &id,
         &body.role,
-        body.hide_living,
+        hide_living,
         &sha256_b64(&token),
         &cipher,
         &now,
@@ -237,7 +239,7 @@ pub async fn create_link(mut req: Request, ctx: RouteContext<()>) -> Result<Resp
     let out = json!({
         "id": link_id,
         "role": body.role,
-        "hideLiving": body.hide_living,
+        "hideLiving": hide_living,
         "url": link_url(env, &token)?,
         "createdAt": now,
     });
@@ -302,18 +304,35 @@ async fn attachment_for(req: &Request, env: &Env, tree_id: &str) -> Result<Optio
         .map(|(_, v)| v.into_owned());
     if let Some(token) = token {
         let link = db::resolve_link(&env.d1("DB")?, &sha256_b64(&token)).await?;
-        return Ok(link.filter(|l| l.tree_id == tree_id).and_then(|l| {
-            Some(Attachment {
-                socket_id: random_id(),
-                role: role_of(&l.role)?,
-                link_id: Some(l.id),
-                hide_living: l.hide_living != 0,
-                author: Author {
-                    kind: AuthorKind::Link,
-                    id: String::new(),
-                    name: String::new(),
-                },
-            })
+        let Some(link) = link.filter(|l| l.tree_id == tree_id) else {
+            return Ok(None);
+        };
+        let Some(role) = role_of(&link.role) else {
+            return Ok(None);
+        };
+        // Someone signed in with Google who opens a link is named from their account (the room
+        // then ignores a typed name). Only sockets carry names, so other requests skip the lookup.
+        let is_socket = req
+            .headers()
+            .get("upgrade")?
+            .is_some_and(|u| u.eq_ignore_ascii_case("websocket"));
+        let user = if is_socket {
+            current_user(req, env).await?
+        } else {
+            None
+        };
+        return Ok(Some(Attachment {
+            socket_id: random_id(),
+            role,
+            link_id: Some(link.id),
+            hide_living: link.hide_living != 0,
+            joined: false,
+            selected: None,
+            author: Author {
+                kind: AuthorKind::Link,
+                id: user.as_ref().map(|u| u.id.clone()).unwrap_or_default(),
+                name: user.map(|u| u.name).unwrap_or_default(),
+            },
         }));
     }
     Ok(owner_of(req, env, tree_id)
@@ -324,6 +343,8 @@ async fn attachment_for(req: &Request, env: &Env, tree_id: &str) -> Result<Optio
             role: Role::Owner,
             link_id: None,
             hide_living: false,
+            joined: false,
+            selected: None,
             author: Author {
                 kind: AuthorKind::Owner,
                 id: user.id,

@@ -196,7 +196,7 @@ export const privacySection = {
     },
     {
       term: "No tracking",
-      text: "No analytics and no tracking scripts. A cookie is set only if you sign in.",
+      text: "No analytics and no tracking scripts. Nothing is stored for sign-in unless you sign in.",
     },
     {
       term: "Your backup",
@@ -245,7 +245,7 @@ export const privacyPage = {
       heading: "What is never collected",
       answer: "Everything else",
       body: [
-        "There are no analytics, no advertising and no third-party scripts. The pages load only files from this site. Cookies are used only to keep you signed in, and only if you sign in.",
+        "There are no analytics, no advertising and no third-party scripts. The pages load only files from this site and its own server. Only if you sign in does your browser keep a sign-in key, and the server sets a cookie for the minutes the Google sign-in takes.",
       ],
     },
     {
@@ -253,7 +253,7 @@ export const privacyPage = {
       answer: "Only what you share",
       body: [
         `When you sign in with Google and share a tree or save it to your account, that tree and its photos are uploaded to ${APP_NAME}'s server so the people you share a link with can see it. Your other trees stay on this device.`,
-        "Signing in uses your Google account's name and email address. A sign-in cookie keeps you signed in for 30 days.",
+        "Signing in uses your Google account's name and email address. A sign-in key kept in your browser keeps you signed in for 30 days, renewed while you use it. Your settings (language, theme, colours, direction) are kept with your account so your other devices start with them.",
         "A view link can hide living people's details: the server then sends only their names to people with that link.",
         "Stop sharing a tree, or remove it from your account, and its copy on the server and its links are deleted.",
       ],

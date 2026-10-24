@@ -147,10 +147,10 @@ describeWorker("shared trees and view links", () => {
     expect(await res.json()).toEqual({ error: "LINK_OFF" });
   });
 
-  test("comment and edit roles are not available yet", async () => {
+  test("comment links are not available yet, and owner links never", async () => {
     const owner = await signIn("zane");
     const doc = await upload(owner);
-    for (const role of ["comment", "edit", "owner"]) {
+    for (const role of ["comment", "owner"]) {
       expect((await post(`/api/trees/${doc.id}/links`, owner, { role })).status).toBe(400);
     }
   });

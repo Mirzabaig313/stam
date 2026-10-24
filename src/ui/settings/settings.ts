@@ -134,17 +134,37 @@ export async function loadSettings(repo: {
 
 /**
  * Saves the settings to the repo and the cache. `themeChosen` when the user has just picked the
- * theme; an earlier choice is kept.
+ * theme; an earlier choice is kept. `savedAt` (ms) says when they were chosen, so the newer of
+ * this device's and the account's copy wins (src/cloud/settingsSync.ts); now by default.
  */
 export async function saveSettings(
   repo: { setSetting(k: string, v: unknown): Promise<void> },
   s: Settings,
-  opts: { themeChosen?: boolean } = {},
+  opts: { themeChosen?: boolean; savedAt?: number } = {},
 ): Promise<void> {
   const clean = normalizeSettings(s);
   const chosen = opts.themeChosen === true || cachedThemeChosen();
   writeCache(clean, chosen);
-  await repo.setSetting(SETTINGS_KEY, withChoice(clean, chosen));
+  await repo.setSetting(SETTINGS_KEY, {
+    ...withChoice(clean, chosen),
+    savedAt: opts.savedAt ?? Date.now(),
+  });
+}
+
+/** When the stored settings were chosen (ms); 0 when never (or stored before this was kept). */
+export async function settingsSavedAt(repo: {
+  getSetting<T>(k: string): Promise<T | undefined>;
+}): Promise<number> {
+  const raw = await repo.getSetting<{ savedAt?: unknown }>(SETTINGS_KEY).catch(() => undefined);
+  return typeof raw?.savedAt === "number" ? raw.savedAt : 0;
+}
+
+/** Told each time the user changes a setting here (not when one arrives from the account). */
+const savedListeners = new Set<(s: Settings, savedAt: number) => void>();
+
+export function onSettingsChosen(listener: (s: Settings, savedAt: number) => void): () => void {
+  savedListeners.add(listener);
+  return () => savedListeners.delete(listener);
 }
 
 /** Sets lang, dir (via i18n), data-theme and data-color-mode, and the browser's theme colour. */
@@ -213,8 +233,10 @@ export function useSettings(): [Settings, (patch: Partial<Settings>) => void] {
       const next = normalizeSettings({ ...current, ...patch });
       setCurrentSettings(next);
       const themeChosen = patch.theme !== undefined;
-      if (repo) saveSettings(repo, next, { themeChosen }).catch(() => {});
+      const savedAt = Date.now();
+      if (repo) saveSettings(repo, next, { themeChosen, savedAt }).catch(() => {});
       else writeCache(next, themeChosen || cachedThemeChosen());
+      for (const listener of savedListeners) listener(next, savedAt);
     },
     [repo],
   );

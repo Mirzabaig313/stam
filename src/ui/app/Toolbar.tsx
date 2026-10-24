@@ -12,6 +12,8 @@ import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
 import { AddPersonButton } from "./AddPerson";
+import { PresenceAvatars } from "@/ui/share/Presence";
+
 import { CloudStatus } from "./CloudStatus";
 import { Icon, type IconName } from "./Icon";
 import { MoreMenu } from "./MoreMenu";
@@ -222,6 +224,7 @@ export function Toolbar({
         )}
         <SaveStatus autosaver={autosaver} />
         <CloudStatus />
+        <PresenceAvatars />
       </div>
 
       <div className="toolbar-dock">

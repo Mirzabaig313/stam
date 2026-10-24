@@ -91,7 +91,8 @@ describe("share dialog", () => {
       },
     });
     await user.click(await screen.findByRole("button", { name: "Upload and share" }));
-    await screen.findByRole("button", { name: "Create link" });
+    // One row for each link: view and edit.
+    expect(await screen.findAllByRole("button", { name: "Create link" })).toHaveLength(2);
     expect(calls.some((c) => c.method === "POST" && c.path === "/api/trees")).toBe(true);
     expect(store.getState().cloud?.role).toBe("owner");
     expect(doc.id).toBe(famSimple().id);
@@ -171,6 +172,68 @@ describe("share dialog", () => {
     await user.click(await screen.findByRole("button", { name: "Turn off" }));
     const confirm = await screen.findAllByRole("button", { name: "Turn off" });
     await user.click(confirm.at(-1)!);
-    await screen.findByRole("button", { name: "Create link" });
+    // Both rows offer a new link now: view and edit.
+    await waitFor(() =>
+      expect(screen.getAllByRole("button", { name: "Create link" })).toHaveLength(2),
+    );
+  });
+
+  test("an edit link never hides living people, even with the box ticked", async () => {
+    const user = userEvent.setup();
+    const { calls } = await setup({
+      cloud: { role: "owner", version: 0 },
+      routes: {
+        [`GET /api/trees/${famSimple().id}/links`]: () => json([]),
+        [`POST /api/trees/${famSimple().id}/links`]: (body) =>
+          json({ ...LINK, ...(body as object), id: "l9", url: "https://stam.test/s/e" }, 201),
+      },
+    });
+    await user.click(await screen.findByRole("checkbox", { name: "Hide living people's details" }));
+    const [, editCreate] = await screen.findAllByRole("button", { name: "Create link" });
+    expect(editCreate!.getAttribute("aria-describedby")).toBe("share-edit-hint");
+    await user.click(editCreate!);
+    await screen.findByRole("textbox", { name: "Edit link" });
+    expect(calls.at(-1)).toMatchObject({ body: { role: "edit", hideLiving: false } });
+  });
+
+  test("turning off the edit link leaves the view link", async () => {
+    const user = userEvent.setup();
+    const EDIT = { ...LINK, id: "l5", role: "edit" as const, url: "https://stam.test/s/edit5" };
+    await setup({
+      cloud: { role: "owner", version: 0 },
+      routes: {
+        [`GET /api/trees/${famSimple().id}/links`]: () => json([LINK, EDIT]),
+        [`DELETE /api/trees/${famSimple().id}/links/l5`]: () => new Response(null, { status: 204 }),
+      },
+    });
+    const turnOffs = await screen.findAllByRole("button", { name: "Turn off" });
+    await user.click(turnOffs[1]!); // the edit row's
+    const confirm = await screen.findAllByRole("button", { name: "Turn off" });
+    await user.click(confirm.at(-1)!);
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: "Edit link" })).toBeNull());
+    expect(screen.getByRole("textbox", { name: "Share link" })).toHaveProperty("value", LINK.url);
+  });
+
+  test("the edit row makes an edit link, beside the view link", async () => {
+    const user = userEvent.setup();
+    const { calls } = await setup({
+      cloud: { role: "owner", version: 0 },
+      routes: {
+        [`GET /api/trees/${famSimple().id}/links`]: () => json([LINK]),
+        [`POST /api/trees/${famSimple().id}/links`]: () =>
+          json({ ...LINK, id: "l3", role: "edit", url: "https://stam.test/s/edit1" }, 201),
+      },
+    });
+    expect(await screen.findByRole("heading", { name: "Can edit" })).toBeDefined();
+    await user.click(await screen.findByRole("button", { name: "Create link" }));
+    expect(await screen.findByRole("textbox", { name: "Edit link" })).toHaveProperty(
+      "value",
+      "https://stam.test/s/edit1",
+    );
+    expect(screen.getByRole("textbox", { name: "Share link" })).toHaveProperty("value", LINK.url);
+    expect(calls.at(-1)).toMatchObject({
+      method: "POST",
+      body: { role: "edit", hideLiving: false },
+    });
   });
 });

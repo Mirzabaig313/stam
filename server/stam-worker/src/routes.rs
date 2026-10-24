@@ -73,6 +73,7 @@ async fn route(req: Request, env: Env) -> Result<Response> {
         .post_async("/api/auth/exchange", auth::exchange)
         .post_async("/api/auth/signout", auth::sign_out)
         .get_async("/api/me", auth::me)
+        .put_async("/api/me/settings", auth::put_settings)
         .post_async("/api/trees", trees::create)
         .delete_async("/api/trees/:id", trees::delete)
         .get_async("/api/trees/:id/links", trees::list_links)

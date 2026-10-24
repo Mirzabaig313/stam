@@ -13,6 +13,7 @@ import type { Autosaver } from "@/storage/autosave";
 import type { Journal } from "@/storage/journal";
 import type { SaveGuard } from "@/storage/saveGuard";
 import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
+import type { PresencePerson } from "@/sync/protocol";
 import type { EntityChange } from "@/sync/revert";
 import type { DroppedEdit, PendingOp } from "@/sync/syncClient";
 
@@ -85,6 +86,8 @@ export type EditorState = {
     closed: number | null;
     /** Own edits that could not be applied after others' edits came in. */
     dropped: DroppedEdit[];
+    /** Who else has the tree open (this tab left out). */
+    presence: PresencePerson[];
   } | null;
 };
 
@@ -120,6 +123,8 @@ export type EditorActions = {
   undo(): void;
   redo(): void;
   select(id: string | null): void;
+  /** A link user's name in a shared tree (told to the room; see `cloudSession.setName`). */
+  setDisplayName(name: string): void;
   /** Null shows the tree from `doc.rootPersonId` again. */
   setViewRoot(id: string | null): void;
   toggleCollapse(personId: string): void;
@@ -262,6 +267,8 @@ export function createEditorStore({
         canUndo: history.canUndo,
         canRedo: history.canRedo,
       });
+      // A selected person who was deleted is no longer selected, for the others too.
+      if (s.selectedId !== null && get().selectedId === null) session?.select(null);
       // The journal is a synchronous copy that survives a page closing mid-debounce. A cloud tree
       // needs none: its edits wait in the session until the room has them.
       if (!session) journal?.touch(doc);
@@ -367,6 +374,7 @@ export function createEditorStore({
           pendingCount: 0,
           closed: null,
           dropped: [],
+          presence: [],
         },
       });
       session = openCloud!({
@@ -385,6 +393,7 @@ export function createEditorStore({
             set({ error: "DROPPED" });
           },
           onStatus: (status, pendingCount) => patchCloud({ status, pendingCount }),
+          onPresence: (presence) => patchCloud({ presence }),
           onClosed: (code) => {
             // Nothing may save this tree again: a link tree's copy is being removed.
             autosaver.stop();
@@ -486,7 +495,12 @@ export function createEditorStore({
       undo: () => (pendingAdd ? cancelAndClose() : step("undo")),
       redo: () => (pendingAdd ? cancelAndClose() : step("redo")),
 
-      select: (id) => set({ selectedId: id }),
+      select: (id) => {
+        set({ selectedId: id });
+        // Others in a shared tree see who has whom selected.
+        session?.select(id);
+      },
+      setDisplayName: (name) => session?.setName(name),
 
       setViewRoot(id) {
         set({ viewRootId: id, ...relayout(get().doc, { viewRootId: id }) });

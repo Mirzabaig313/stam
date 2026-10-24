@@ -36,6 +36,8 @@ fn att(socket: &str, role: Role, hide_living: bool) -> Attachment {
                 String::new()
             },
         },
+        joined: false,
+        selected: None,
     }
 }
 

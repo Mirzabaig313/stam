@@ -422,8 +422,44 @@ pub async fn me(req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let Some(user) = current_user(&req, &ctx.env).await? else {
         return error(401, "SIGNED_OUT");
     };
-    let trees = db::user_trees(&ctx.env.d1("DB")?, &user.id).await?;
+    let db = ctx.env.d1("DB")?;
+    let trees = db::user_trees(&db, &user.id).await?;
+    let settings = db::user_settings(&db, &user.id)
+        .await?
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
     no_store(Response::from_json(
-        &json!({ "user": user, "trees": trees }),
+        &json!({ "user": user, "trees": trees, "settings": settings }),
     )?)
+}
+
+/// Settings JSON larger than this is refused: the four settings take about 100 bytes.
+const MAX_SETTINGS_BYTES: usize = 2048;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SavedSettings {
+    settings: serde_json::Map<String, serde_json::Value>,
+    saved_at: f64,
+}
+
+/// `PUT /api/me/settings` `{settings, savedAt}`: the user's app settings, kept as they are (the
+/// app reads them back through its own checks). `savedAt` says which copy is newer.
+pub async fn put_settings(mut req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    let env = &ctx.env;
+    if !from_app(&req, env) {
+        return error(403, "FORBIDDEN");
+    }
+    let Some(user) = current_user(&req, env).await? else {
+        return error(401, "SIGNED_OUT");
+    };
+    let body = req.bytes().await?;
+    if body.len() > MAX_SETTINGS_BYTES {
+        return error(413, "TOO_LARGE");
+    }
+    let Ok(saved) = serde_json::from_slice::<SavedSettings>(&body) else {
+        return error(400, "BAD_REQUEST");
+    };
+    let stored = json!({ "settings": saved.settings, "savedAt": saved.saved_at });
+    db::set_user_settings(&env.d1("DB")?, &user.id, &stored.to_string()).await?;
+    Response::empty().map(|r| r.with_status(204))
 }

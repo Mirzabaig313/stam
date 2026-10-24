@@ -90,6 +90,30 @@ The sections below are updated to match; this list says what changed and why.
     carry it as a subprotocol. CORS is answered for `SITE_ORIGIN` only. Owners download photos
     they lack with the token and keep them; link users' photos load by `?t=` URL.
 16. **Per-IP rate limits** moved forward from P3 into P1 (Cloudflare rate-limit bindings).
+17. **P2 (2026-10-24).**
+    - Edit links never hide living people: an editor works on the whole tree.
+    - The name prompt shows when an edit link opens without a name, not at the first edit. It
+      is simpler and does not interrupt an edit. "Not now" keeps the user unnamed ("Guest").
+    - A `name {name}` message lets a link user name themselves after `hello`, without
+      reconnecting.
+    - Presence is `presence {people: [{id, name, kind, selectedPersonId?}]}`, sent when someone
+      joins, leaves, renames or selects, or a link is turned off. It is not part of `welcome`.
+      Each socket gets its own list, without itself. The `id` is made by the room from the socket,
+      so nobody can take another person's entry, and no lasting id is shared between trees. Names
+      and selections live in the socket attachment, so they survive hibernation. Names are cut to
+      40 characters; the list is capped at 50.
+    - Someone signed in with Google who opens a link is named from their account; the room then
+      ignores a typed name, and the name prompt is not shown. The owner is marked in the avatars.
+    - Selections go to the room at most twice a second. "Not now" on the name prompt is
+      remembered on the device.
+    - Settings follow the account (asked for after P2): a signed-in user's app settings
+      (language, theme, colour mode, direction) are kept in D1 (`user.settings`, migration 0003)
+      with when they were chosen. `GET /api/me` returns them and `PUT /api/me/settings` saves
+      them (at most 2 KB). After sign-in the newer copy wins, and each change made while signed in
+      is sent up. Signed-out browsers still send nothing. The Look panel's per-tree choices are
+      not included.
+    - Rings on selected people are a style rule on the card's `data-person-id`, so the canvas
+      code does not know about presence.
 
 ## 3. Architecture
 
@@ -190,7 +214,8 @@ adapts it to Durable Object storage, sockets and alarms.
 - A new IndexedDB store holds each cloud tree's pending ops.
 - The cloud tree's local copy is a cache: confirmed tree plus pending ops. The v1 compare-and-swap
   save guard and the journal apply to local-only trees only.
-- Link users' `clientId` (random) and display name live in `localStorage`.
+- A link user's display name lives in `localStorage`. There is no lasting client id (P2): the
+  room names each connection itself, so nothing ties one browser's visits to different trees.
 
 ## 5. Sync
 

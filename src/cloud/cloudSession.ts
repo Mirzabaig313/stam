@@ -1,11 +1,13 @@
 import type { Command, CommandResult } from "@/core/commands/types";
 import type { TreeDocument } from "@/core/model/types";
 import { type CloudMeta, photoIdsOf, type TreeRepo } from "@/storage/treeRepo";
+import type { PresencePerson } from "@/sync/protocol";
 import type { EntityChange } from "@/sync/revert";
 import { type DroppedEdit, type PendingOp, SyncClient } from "@/sync/syncClient";
 
 import { type Api, ApiError } from "./api";
 import type { createAuthStore } from "./auth";
+import { type Identity, identity as defaultIdentity } from "./identity";
 import { connectRoom, type RoomConnection } from "./transport";
 
 export type CloudStatus = "connecting" | "live" | "offline" | "signedOut" | "closed";
@@ -17,7 +19,12 @@ export type CloudSessionHandlers = {
   onStatus(status: CloudStatus, pendingCount: number): void;
   /** The room ended this tree for this browser: 4401 link off, 4404 deleted. */
   onClosed(code: number): void;
+  /** Who else is in the tree (the room leaves this tab out), whenever it changes. */
+  onPresence?(people: PresencePerson[]): void;
 };
+
+/** Selections go to the room at most this often (spec §5.3: 2 per second). */
+export const PRESENCE_EVERY_MS = 500;
 
 export type CloudSession = {
   readonly role: CloudMeta["role"];
@@ -30,6 +37,10 @@ export type CloudSession = {
   submitRevert(entries: EntityChange[], direction: "undo" | "redo"): TreeDocument;
   /** Connects again (after signing in again). */
   reconnect(): void;
+  /** Tells the others which person this user has selected (throttled). */
+  select(personId: string | null): void;
+  /** A link user's name: kept on this device and told to the room. */
+  setName(name: string): void;
   stop(): void;
 };
 
@@ -56,9 +67,19 @@ export function createCloudSession(deps: {
   connect?: typeof connectRoom;
   now?: () => Date;
   newOpId?: () => string;
+  identity?: Identity;
+  /** Runs `fn` after `ms` (the presence throttle); tests pass a manual clock. */
+  schedule?: (fn: () => void, ms: number) => void;
 }): CloudSession {
   const { treeId, cloud, repo, api, auth, handlers } = deps;
   const connect = deps.connect ?? connectRoom;
+  const self = deps.identity ?? defaultIdentity;
+  const schedule = deps.schedule ?? ((fn, ms) => void setTimeout(fn, ms));
+  const isLink = cloud.role !== "owner";
+  /** The selection to tell the room, and whether a send is already scheduled. */
+  let selected: string | null = null;
+  let selectionScheduled = false;
+  let live = false;
   let status: CloudStatus = "connecting";
   let room: RoomConnection | null = null;
 
@@ -87,7 +108,7 @@ export function createCloudSession(deps: {
         for (const photoId of fresh) {
           try {
             const blob = await repo.getPhoto(photoId);
-            if (blob) await api.uploadPhoto(treeId, photoId, blob);
+            if (blob) await api.uploadPhoto(treeId, photoId, blob, cloud.token);
           } catch {
             failed.push(photoId);
           }
@@ -119,14 +140,41 @@ export function createCloudSession(deps: {
     },
     ...(deps.now ? { now: deps.now } : {}),
     ...(deps.newOpId ? { newOpId: deps.newOpId } : {}),
+    // Owners are named by their account; a link user says the name they typed, if any.
+    identity: () => {
+      const name = isLink ? self.name() : "";
+      return name ? { name } : {};
+    },
   });
+
+  /**
+   * Sends the selection, then waits half a second before the next send; changes in that time go
+   * out together at its end (and start the next wait), so at most 2 sends a second.
+   */
+  function flushSelection() {
+    sendSelection();
+    const sent = selected;
+    selectionScheduled = true;
+    schedule(() => {
+      selectionScheduled = false;
+      if (selected !== sent) flushSelection();
+    }, PRESENCE_EVERY_MS);
+  }
+
+  function sendSelection() {
+    if (!live) return;
+    room?.send(selected ? { type: "presence", selectedPersonId: selected } : { type: "presence" });
+  }
   sync.start(deps.doc, deps.version, cloud.hideLiving ?? false, deps.pending ?? [], deps.epoch);
 
   /** The room says this browser is done with the tree. */
   async function closed(code: number) {
     room?.stop();
     room = null;
+    live = false;
     sync.disconnected();
+    // This browser no longer hears who is here: nobody shows as present.
+    handlers.onPresence?.([]);
     if (code === 4401 && cloud.role === "owner") {
       // The owner's session is gone: sign in again; the pending edits wait.
       auth.getState().sessionLost();
@@ -180,11 +228,22 @@ export function createCloudSession(deps: {
       handlers: {
         onOpen: () => {
           sync.connected();
+          live = true;
+          // The room forgot this socket's selection with the old one.
+          if (selected) sendSelection();
           setStatus("live");
         },
-        onMessage: (msg) => sync.receive(msg),
+        onMessage: (msg) => {
+          if (msg.type === "presence") {
+            handlers.onPresence?.(msg.people);
+            return;
+          }
+          sync.receive(msg);
+        },
         onDown: () => {
           sync.disconnected();
+          live = false;
+          handlers.onPresence?.([]);
           setStatus("offline");
         },
         onClosed: (code) => void closed(code),
@@ -220,10 +279,22 @@ export function createCloudSession(deps: {
       room?.stop();
       open();
     },
+    select(personId) {
+      if (personId === selected) return;
+      selected = personId;
+      if (!selectionScheduled) flushSelection();
+    },
+    setName(name) {
+      if (!isLink) return;
+      self.setName(name);
+      if (live) room?.send({ type: "name", name: self.name() });
+    },
     stop() {
       room?.stop();
       room = null;
+      live = false;
       sync.disconnected();
+      handlers.onPresence?.([]);
     },
   };
 }

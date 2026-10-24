@@ -136,6 +136,28 @@ pub async fn delete_session(db: &D1Database, token_hash: &str) -> Result<()> {
     Ok(())
 }
 
+/// The user's saved app settings (JSON), if any.
+pub async fn user_settings(db: &D1Database, user_id: &str) -> Result<Option<String>> {
+    #[derive(Deserialize)]
+    struct Row {
+        settings: Option<String>,
+    }
+    let row = db
+        .prepare("SELECT settings FROM user WHERE id = ?1")
+        .bind(&[text(user_id)])?
+        .first::<Row>(None)
+        .await?;
+    Ok(row.and_then(|r| r.settings))
+}
+
+pub async fn set_user_settings(db: &D1Database, user_id: &str, settings: &str) -> Result<()> {
+    db.prepare("UPDATE user SET settings = ?2 WHERE id = ?1")
+        .bind(&[text(user_id), text(settings)])?
+        .run()
+        .await?;
+    Ok(())
+}
+
 /// The user's shared trees, newest first.
 pub async fn user_trees(db: &D1Database, user_id: &str) -> Result<Vec<TreeRow>> {
     db.prepare(

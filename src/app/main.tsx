@@ -8,6 +8,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 
 import { authStore } from "@/cloud/auth";
+import { startSettingsSync } from "@/cloud/settingsSync";
 import { i18n } from "@/i18n";
 import { registerShellWorker } from "@/offline/register";
 import { openStamDb } from "@/storage/db";
@@ -88,6 +89,8 @@ const repo = await openRepo();
 // What the repo holds wins over the cache (another device's cache, or a cleared one).
 // Either way, the first render waits for the chosen language's strings (Urdu and Arabic load on demand).
 await (repo ? Promise.all([startSettings(repo), startMotion(repo)]) : cachedReady);
+// Signed in: the settings follow the account to other devices (only then is anything sent).
+if (repo) startSettingsSync({ repo, auth: authStore });
 
 root.render(
   <StrictMode>

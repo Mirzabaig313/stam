@@ -117,3 +117,28 @@
   background: var(--tint);
   color: var(--ink);
 }
+
+/* Who else has the tree open (Presence.tsx): overlapping avatars, each ringed in its colour. */
+.presence {
+  display: inline-flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.presence__person {
+  display: inline-flex;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--surface-1, var(--paper, #fff));
+}
+
+.presence__person + .presence__person {
+  margin-inline-start: -6px;
+}
+
+.presence__more {
+  margin-inline-start: var(--space-1, 4px);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--ink-2);
+}

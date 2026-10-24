@@ -61,7 +61,8 @@ describe("cloud session", () => {
   test("connects, says hello, and goes live", async () => {
     const { room, session, statuses } = await setup({ role: "owner", version: 4 });
     room.open();
-    expect(room.state.sent[0]).toEqual({ type: "hello", lastVersion: 4, pending: [] });
+    expect(room.state.sent[0]).toMatchObject({ type: "hello", lastVersion: 4, pending: [] });
+    expect(room.state.sent[0]).not.toHaveProperty("clientId");
     expect(session.status).toBe("live");
     expect(statuses.at(-1)).toBe("live");
   });
@@ -123,6 +124,37 @@ describe("cloud session", () => {
     });
     await Bun.sleep(20);
     expect((await repo.getMeta(doc.id))?.cloud?.failedPhotos).toEqual(["photo00002"]);
+  });
+
+  test("an edit link uploads the photos it adds with its token", async () => {
+    const { doc, room, session, calls } = await setup(
+      { role: "edit", token: "edit tok", version: 0 },
+      {
+        [`PUT /api/trees/${famSimple().id}/photos/photo00003`]: () =>
+          new Response(null, { status: 204 }),
+      },
+    );
+    room.open();
+    room.receive({ type: "welcome", role: "edit", hideLiving: false, version: 0, ops: [] });
+    const [personId] = Object.keys(doc.persons);
+    await repo.putPhoto("photo00003", new Blob(["img"]));
+    const cmd = {
+      type: "updatePerson",
+      personId: personId!,
+      patch: { photoId: "photo00003" },
+    } as const;
+    session.submit(cmd);
+    room.receive({
+      type: "applied",
+      version: 1,
+      opId: "op00000000",
+      author: { kind: "link", name: "Ali" },
+      changes: diffDocs(doc, applyCommand(doc, cmd, { now: NOW }).doc),
+    });
+    await Bun.sleep(20);
+    expect(calls.filter((c) => c.method === "PUT").map((c) => c.path)).toEqual([
+      `/api/trees/${doc.id}/photos/photo00003?t=edit%20tok`,
+    ]);
   });
 
   test("4401 deletes the cached link tree", async () => {

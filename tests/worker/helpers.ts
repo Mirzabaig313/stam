@@ -143,11 +143,21 @@ export async function upload(
 }
 
 /** Creates a view link; returns its id and token. */
-export async function viewLink(session: string, treeId: string, hideLiving = false) {
+export function viewLink(session: string, treeId: string, hideLiving = false) {
+  return makeLink(session, treeId, "view", hideLiving);
+}
+
+/** Creates a link of `role`; returns its id, url and token. */
+export async function makeLink(
+  session: string,
+  treeId: string,
+  role: "view" | "edit",
+  hideLiving = false,
+) {
   const res = await api(`/api/trees/${treeId}/links`, {
     method: "POST",
     session,
-    body: JSON.stringify({ role: "view", hideLiving }),
+    body: JSON.stringify({ role, hideLiving }),
   });
   if (res.status !== 201) throw new Error(`link failed: ${res.status} ${await res.text()}`);
   const link = (await res.json()) as { id: string; url: string };

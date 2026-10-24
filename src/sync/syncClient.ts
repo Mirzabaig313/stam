@@ -27,6 +27,8 @@ export type SyncClientOptions = {
   newOpId?: () => string;
   /** Runs `fn` after `ms` (busy retries); tests pass a manual clock. */
   schedule?: (fn: () => void, ms: number) => void;
+  /** Who this browser is, said in every `hello` (presence and link users' names). */
+  identity?: () => { name?: string };
   /**
    * Keeps what must survive a reload (spec §5.4): each unconfirmed edit, and the confirmed tree
    * with its version. Without it the client lives in memory only.
@@ -45,7 +47,8 @@ export type SyncClientOptions = {
  * longer applies is dropped and reported.
  */
 export class SyncClient {
-  #opts: Required<Omit<SyncClientOptions, "persist">> & Pick<SyncClientOptions, "persist">;
+  #opts: Required<Omit<SyncClientOptions, "persist" | "identity">> &
+    Pick<SyncClientOptions, "persist" | "identity">;
   #confirmed!: TreeDocument;
   #version = 0;
   #pending: PendingOp[] = [];
@@ -165,8 +168,11 @@ export class SyncClient {
   #hello(fresh = false): void {
     this.#awaitingWelcome = true;
     const pending = this.#pending.map((p) => p.opId);
+    const who = this.#opts.identity?.() ?? {};
     this.#opts.send(
-      fresh ? { type: "hello", pending } : { type: "hello", lastVersion: this.#version, pending },
+      fresh
+        ? { type: "hello", pending, ...who }
+        : { type: "hello", lastVersion: this.#version, pending, ...who },
     );
   }
 
@@ -251,6 +257,9 @@ export class SyncClient {
       }
       case "closed":
         // The transport ends the connection (see src/cloud/transport.ts).
+        return;
+      case "presence":
+        // Who is here is the session's business (src/cloud/cloudSession.ts), not the tree's.
         return;
       case "busy": {
         // The room refuses this socket until retryAfter, so nothing after the refused op was
