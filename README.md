@@ -44,6 +44,22 @@ referees a shared tree (`server/stam-room`) and the Worker itself (`server/stam-
 design is in `docs/superpowers/specs/2026-10-24-stam-backend-design.md`; setup and deploy steps in
 `docs/deploy.md`.
 
+### Running the backend locally
+
+1. Once: `cp .dev.vars.example .dev.vars` and fill it in (`.dev.vars` is never committed):
+   - `LINK_KEY`: `openssl rand -base64 32`
+   - `SESSION_SECRET`: any long random string (`openssl rand -base64 48`)
+   - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`: only for real Google sign-in. Add
+     `http://localhost:3000/api/auth/google/callback` as a redirect URI on the OAuth client.
+2. Terminal 1: `bun run dev:worker`. It builds the site, sets up the local D1 database and runs
+   the Worker on http://localhost:8787 (the first run compiles the Rust code: a few minutes).
+3. Terminal 2: `bun dev`, then open http://localhost:3000/app. Its `/api` requests go to the
+   Worker.
+
+If the app runs on another port, set `SITE_ORIGIN` in `.dev.vars` to match (and use that port in
+the Google redirect URI). `bun run test:worker` needs none of this: it starts its own Worker on
+port 8788 with a stand-in for Google.
+
 ## Hosting (Cloudflare Pages, before the backend)
 
 The Worker (see `docs/deploy.md`) replaces this once it is deployed.
