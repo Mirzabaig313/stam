@@ -373,6 +373,12 @@ impl DurableObject for TreeRoom {
                 Ok(Response::empty()?.with_status(204))
             }
             (Method::Post, "/destroy") => self.destroy().await,
+            // Tests only (the Worker routes here only in dev): forget the room in memory, as
+            // hibernation does, so the next message reloads it from SQLite.
+            (Method::Post, "/evict") => {
+                *self.core.borrow_mut() = None;
+                Ok(Response::empty()?.with_status(204))
+            }
             (_, p) if p.starts_with("/photo/") => {
                 let id = p.trim_start_matches("/photo/").to_owned();
                 self.photo(req, &id).await

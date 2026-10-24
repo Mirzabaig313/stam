@@ -30,6 +30,7 @@ pub async fn handle(req: Request, env: Env) -> Result<Response> {
         .get_async("/api/trees/:id/photos/:photoId", trees::photo)
         .put_async("/api/trees/:id/photos/:photoId", trees::photo)
         .get_async("/api/s/:token", trees::resolve)
+        .post_async("/api/__test/evict/:id", trees::evict)
         .get_async("/app", serve_app)
         .get_async("/app/*path", serve_app)
         .get_async("/s/*path", serve_app)

@@ -253,6 +253,18 @@ pub async fn delete_link(req: Request, ctx: RouteContext<()>) -> Result<Response
     Ok(Response::empty()?.with_status(204))
 }
 
+/// `POST /api/__test/evict/:id` (dev only): the owner's room forgets its memory (see TreeRoom).
+pub async fn evict(req: Request, ctx: RouteContext<()>) -> Result<Response> {
+    if !crate::headers::is_dev(&ctx.env) || !same_origin(&req) {
+        return error(404, "NOT_FOUND");
+    }
+    let id = param(&ctx, "id").to_owned();
+    if let Err(refused) = owner_of(&req, &ctx.env, &id).await? {
+        return Ok(refused);
+    }
+    room_json(&ctx.env, &id, "/evict", &json!({})).await
+}
+
 /// `GET /api/s/:token`: what a link opens.
 pub async fn resolve(_req: Request, ctx: RouteContext<()>) -> Result<Response> {
     let token = param(&ctx, "token");

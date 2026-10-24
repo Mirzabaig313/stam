@@ -107,6 +107,31 @@ describeWorker("live tree rooms", () => {
     expect(await v.next("closed")).toMatchObject({ code: 4404 });
   });
 
+  test("a room reloaded from storage (as after hibernation) keeps every op and goes on", async () => {
+    const owner = await signIn("jon");
+    const doc = await upload(owner);
+    const a = new Socket(`/api/trees/${doc.id}/ws`, owner);
+    await a.opened;
+    for (const [i, name] of ["One", "Two", "Three"].entries()) {
+      a.send(rename(`ffffffff0${i}`, name));
+      await a.next("applied");
+    }
+    const evict = await api(`/api/__test/evict/${doc.id}`, { method: "POST", session: owner });
+    expect(evict.status).toBe(204);
+    a.send({ type: "hello", lastVersion: 1 });
+    const welcome = await a.next("welcome");
+    expect(welcome.version).toBe(3);
+    expect((welcome.ops as { opId: string }[]).map((o) => o.opId)).toEqual([
+      "ffffffff01",
+      "ffffffff02",
+    ]);
+    a.send(rename("ffffffff03", "Four"));
+    expect(await a.next("applied")).toMatchObject({ version: 4 });
+    a.send({ type: "hello" });
+    expect(await a.next("welcome")).toMatchObject({ version: 4, doc: { name: "Four" } });
+    a.close();
+  });
+
   test("a reconnecting owner gets the ops it missed", async () => {
     const owner = await signIn("ivy");
     const doc = await upload(owner);
