@@ -17,7 +17,7 @@ export function canonicalJson(value: unknown): string {
     v !== null && typeof v === "object" && !Array.isArray(v)
       ? Object.fromEntries(
           Object.keys(v)
-            .sort()
+            .toSorted()
             .map((k) => [k, (v as Record<string, unknown>)[k]]),
         )
       : v,
