@@ -1,4 +1,4 @@
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useParams } from "react-router";
 
@@ -10,11 +10,13 @@ import { createJournal } from "@/storage/journal";
 import { createTabSync } from "@/storage/multitab";
 import { createSaveGuard } from "@/storage/saveGuard";
 import { StaleWriteError } from "@/storage/treeRepo";
+import { CloudNotice } from "@/ui/app/CloudStatus";
 import { Canvas, type CanvasHandle } from "@/ui/canvas/Canvas";
 import { useTreeDir } from "@/ui/canvas/treeDirection";
 import { ExportDialog } from "@/ui/export/ExportDialog";
 import { visibleWorldRect } from "@/ui/export/gatherInput";
 import { usePrintFit } from "@/ui/export/usePrintFit";
+import { CloudPhotoContext } from "@/ui/photos/usePhotoUrl";
 import "@/ui/export/export.css";
 import { StartCard } from "@/ui/cards/StartCard";
 import { UnionChooser } from "@/ui/cards/UnionChooser";
@@ -59,6 +61,17 @@ export type EditorPageProps = {
   renderers?: ViewRenderers;
   kinship?: KinshipFns;
 };
+
+/** A cloud tree's photos come from the server when this device does not have them. */
+function CloudPhotos({ treeId, children }: { treeId: string; children: ReactNode }) {
+  const cloud = useEditor((s) => s.cloud !== null);
+  const token = useEditor((s) => s.cloud?.token);
+  const value = useMemo(
+    () => (cloud ? { treeId, ...(token ? { token } : {}) } : null),
+    [cloud, token, treeId],
+  );
+  return <CloudPhotoContext.Provider value={value}>{children}</CloudPhotoContext.Provider>;
+}
 
 export function EditorPage(props: EditorPageProps = {}) {
   const { treeId } = useParams();
@@ -157,13 +170,15 @@ function EditorSession({
 
   return (
     <EditorContext.Provider value={store}>
-      <EditorFrame
-        autosaver={autosaver}
-        centerOnRef={centerOnRef}
-        today={today}
-        renderers={renderers}
-        kinship={kinship}
-      />
+      <CloudPhotos treeId={treeId}>
+        <EditorFrame
+          autosaver={autosaver}
+          centerOnRef={centerOnRef}
+          today={today}
+          renderers={renderers}
+          kinship={kinship}
+        />
+      </CloudPhotos>
     </EditorContext.Provider>
   );
 }
@@ -234,7 +249,13 @@ function EditorFrame({
   const deleteDialog = useDeleteDialog();
   const { dialog } = deleteDialog;
   // Fan and timeline are read-only like a locked tree: no handles, no dragging, no deleting.
-  const readOnly = locked !== null || isReadOnlyView(viewMode);
+  // A view (or comment) link only reads; a cloud tree the room closed is over too.
+  const cloudReadOnly = useEditor(
+    (s) =>
+      s.cloud !== null &&
+      (s.cloud.closed !== null || (s.cloud.role !== "owner" && s.cloud.role !== "edit")),
+  );
+  const readOnly = locked !== null || isReadOnlyView(viewMode) || cloudReadOnly;
   /** Read-only: nothing may be deleted (the dialog would only be refused). */
   const requestDelete = (personId: string) => {
     const s = store.getState();
@@ -376,6 +397,7 @@ function EditorFrame({
           </button>
         </div>
       )}
+      <CloudNotice />
       {locked === "changed" && (
         <div className="banner banner-warn">
           <output>{t("banner.otherTab")}</output>

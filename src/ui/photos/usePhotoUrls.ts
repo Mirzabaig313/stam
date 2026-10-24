@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useRef, useState } from "react";
 
+import { api } from "@/cloud/api";
 import type { TreeDocument } from "@/core/model/types";
 import { useRepo } from "@/ui/app/RepoContext";
+
+import { CloudPhotoContext } from "./usePhotoUrl";
 
 /**
  * Object URLs for every photo in the document, for the canvas, which draws many cards at once.
@@ -12,6 +15,7 @@ import { useRepo } from "@/ui/app/RepoContext";
  */
 export function usePhotoUrls(doc: TreeDocument | null): (photoId: string) => string | undefined {
   const repo = useRepo();
+  const cloud = useContext(CloudPhotoContext);
   const urls = useRef(new Map<string, string>());
   const [version, setVersion] = useState(0);
 
@@ -60,5 +64,11 @@ export function usePhotoUrls(doc: TreeDocument | null): (photoId: string) => str
 
   // `version` is the signal that `urls` changed.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
-  return useCallback((photoId: string) => urls.current.get(photoId), [version]);
+  return useCallback(
+    (photoId: string) =>
+      urls.current.get(photoId) ??
+      (cloud ? api.photoUrl(cloud.treeId, photoId, cloud.token) : undefined),
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [version, cloud],
+  );
 }

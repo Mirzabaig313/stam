@@ -180,6 +180,7 @@ describe("accessibility", () => {
     const names = items.map((item) => item.textContent?.replace(/⌘E|Ctrl\+E/, "").trim());
     expect(names).toEqual([
       "Focus mode",
+      "Save to my account",
       "Download backup (.json)",
       "Download backup with photos",
       "Settings",

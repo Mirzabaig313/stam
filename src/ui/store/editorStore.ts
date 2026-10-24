@@ -77,6 +77,8 @@ export type EditorState = {
   /** Set for a cloud tree (spec §5.4): who this browser is on it and how the link is. */
   cloud: {
     role: CloudMeta["role"];
+    /** The link token, for trees opened by a link (photos are fetched with it). */
+    token?: string;
     status: CloudStatus;
     pendingCount: number;
     /** The room ended this tree for this browser: 4401 link off, 4404 deleted. */
@@ -347,6 +349,7 @@ export function createEditorStore({
       set({
         cloud: {
           role: cloud.role,
+          ...(cloud.token ? { token: cloud.token } : {}),
           status: "connecting",
           pendingCount: 0,
           closed: null,

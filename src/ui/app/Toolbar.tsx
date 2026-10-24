@@ -7,10 +7,12 @@ import { Link } from "react-router";
 import { displayName } from "@/core/model/tree";
 import type { Autosaver } from "@/storage/autosave";
 import { SettingsDialog } from "@/ui/settings/SettingsDialog";
+import { ShareDialog } from "@/ui/share/ShareDialog";
 import { useEditor, useEditorStore } from "@/ui/store/useEditor";
 import { isReadOnlyView } from "@/ui/store/viewLayouts";
 
 import { AddPersonButton } from "./AddPerson";
+import { CloudStatus } from "./CloudStatus";
 import { Icon, type IconName } from "./Icon";
 import { MoreMenu } from "./MoreMenu";
 import { SaveStatus } from "./SaveStatus";
@@ -168,6 +170,14 @@ export function Toolbar({
   const { t } = useTranslation();
   const store = useEditorStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // Back from Google sign-in with `?share=1`: the share dialog opens again where it was.
+  const [sharing, setSharing] = useState<"share" | "account" | null>(() =>
+    typeof location !== "undefined" && new URLSearchParams(location.search).get("share") === "1"
+      ? "share"
+      : null,
+  );
+  // People who opened a view (or comment) link cannot share the tree on.
+  const canShare = useEditor((s) => !s.cloud || s.cloud.role === "owner");
   const canUndo = useEditor((s) => s.canUndo);
   const canRedo = useEditor((s) => s.canRedo);
   // Fan and timeline are read-only: nothing to undo. They zoom and fit through their own handle.
@@ -207,6 +217,7 @@ export function Toolbar({
           </button>
         )}
         <SaveStatus autosaver={autosaver} />
+        <CloudStatus />
       </div>
 
       <div className="toolbar-dock">
@@ -270,7 +281,16 @@ export function Toolbar({
             onClick={() => store.getState().redo()}
           />
         </div>
+        {canShare && (
+          <IconButton
+            icon="share"
+            label={t("share.button")}
+            hint={t("share.hint")}
+            onClick={() => setSharing("share")}
+          />
+        )}
         <MoreMenu
+          onSaveToAccount={canShare ? () => setSharing("account") : undefined}
           onOpenExport={onOpenExport}
           onOpenSettings={() => setSettingsOpen(true)}
           onToggleRelation={onToggleRelation}
@@ -293,6 +313,7 @@ export function Toolbar({
         <FanGenerations />
       </div>
       {settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
+      {sharing && <ShareDialog mode={sharing} onClose={() => setSharing(null)} />}
     </header>
   );
 }

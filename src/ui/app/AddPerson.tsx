@@ -40,7 +40,12 @@ export function AddPersonButton() {
   const [at, setAt] = useState<{ point: [number, number]; above: boolean } | null>(null);
   const [refused, setRefused] = useState<string | null>(null);
   const empty = useEditor((s) => !s.doc || Object.keys(s.doc.persons).length === 0);
-  const disabled = useEditor((s) => s.locked !== null || isReadOnlyView(s.viewMode));
+  const disabled = useEditor(
+    (s) =>
+      s.locked !== null ||
+      isReadOnlyView(s.viewMode) ||
+      (s.cloud !== null && s.cloud.role !== "owner" && s.cloud.role !== "edit"),
+  );
   const doc = useEditor((s) => s.doc);
   const layout = useEditor((s) => s.layout);
   const viewMode = useEditor((s) => s.viewMode);

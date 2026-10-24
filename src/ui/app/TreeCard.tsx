@@ -3,13 +3,14 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 import type { TreeMeta } from "@/storage/treeRepo";
-import { IconButton, Menu, MenuItem, MenuSeparator } from "@/ui/design";
+import { Chip, IconButton, Menu, MenuItem, MenuSeparator } from "@/ui/design";
 
 import { relativeTime } from "./relativeTime";
 import { useRepo } from "./RepoContext";
 import { cachedPreview, type PreviewDrawing, previewOf, type TreePreview } from "./treePreview";
 
-export type TreeAction = "rename" | "duplicate" | "backup" | "delete";
+export type TreeAction =
+  "rename" | "duplicate" | "backup" | "delete" | "saveToAccount" | "removeFromAccount";
 
 /** Reads the tree once per edit and returns its thumbnail; undefined while it loads. */
 function useTreePreview(tree: TreeMeta): TreePreview | undefined {
@@ -51,7 +52,7 @@ export function TreeCard({
   const [menuAt, setMenuAt] = useState<[number, number] | null>(null);
   const moreRef = useRef<HTMLButtonElement>(null);
   /** When the menu last closed: a press on "⋯" closes it first, and must not reopen it. */
-  const closedAt = useRef(0);
+  const closedAt = useRef(Number.NEGATIVE_INFINITY);
 
   function closeMenu() {
     closedAt.current = performance.now();
@@ -92,6 +93,15 @@ export function TreeCard({
           )}
           <span>{t("treeList.edited", { when: relativeTime(tree.updatedAt, i18n.language) })}</span>
         </p>
+        {tree.cloud && (
+          <p className="tree-card__chips">
+            <Chip>
+              {tree.cloud.role === "owner"
+                ? t("cloud.savedChip")
+                : t(`cloud.role.${tree.cloud.role}`)}
+            </Chip>
+          </p>
+        )}
       </div>
       <IconButton
         ref={moreRef}
@@ -116,9 +126,21 @@ export function TreeCard({
           <MenuItem icon="download" onClick={() => choose("backup")}>
             {t("treeList.downloadBackup")}
           </MenuItem>
+          {!tree.cloud && (
+            <MenuItem icon="cloud" onClick={() => choose("saveToAccount")}>
+              {t("cloud.saveToAccount")}
+            </MenuItem>
+          )}
+          {tree.cloud?.role === "owner" && (
+            <MenuItem icon="cloud" onClick={() => choose("removeFromAccount")}>
+              {t("cloud.removeFromAccount")}
+            </MenuItem>
+          )}
           <MenuSeparator />
           <MenuItem icon="trash" danger onClick={() => choose("delete")}>
-            {t("common.delete")}
+            {tree.cloud && tree.cloud.role !== "owner"
+              ? t("treeList.removeFromDevice")
+              : t("common.delete")}
           </MenuItem>
         </Menu>
       )}

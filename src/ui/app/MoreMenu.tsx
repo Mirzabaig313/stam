@@ -12,6 +12,8 @@ import { shortcutLabel, Tip } from "./Tip";
 
 export type MoreMenuProps = {
   onOpenExport?: () => void;
+  /** Saves the tree to the signed-in account (spec D13); absent where it does not apply. */
+  onSaveToAccount?: () => void;
   onOpenSettings: () => void;
   /** Opens (or closes) the "How are we related?" panel; without it there is no item. */
   onToggleRelation?: () => void;
@@ -30,6 +32,7 @@ const FAILED_MS = 6000;
  */
 export function MoreMenu({
   onOpenExport,
+  onSaveToAccount,
   onOpenSettings,
   onToggleRelation,
   onShowPerson,
@@ -154,6 +157,11 @@ export function MoreMenu({
             </MenuItem>
           )}
           <MenuSeparator />
+          {onSaveToAccount && (
+            <MenuItem icon="cloud" onClick={run(onSaveToAccount)}>
+              {t("cloud.saveToAccount")}
+            </MenuItem>
+          )}
           {onOpenExport && (
             <MenuItem icon="export" onClick={run(onOpenExport)}>
               <span className="menu-item__label">{t("toolbar.export")}</span>

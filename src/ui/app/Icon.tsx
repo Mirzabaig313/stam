@@ -37,6 +37,10 @@ const PATHS = {
   copy: "M5.5 5.5h8v8h-8zM10.5 5.5v-3h-8v8h3",
   download: "M8 2.5v8M4.5 7 8 10.5 11.5 7M2.5 13.5h11",
   upload: "M8 10.5v-8M4.5 6 8 2.5 11.5 6M2.5 13.5h11",
+  // Sharing and the account.
+  share:
+    "M11.5 5.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM4.5 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM11.5 14.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM6.3 7l3.4-2M6.3 9l3.4 2",
+  cloud: "M4.5 12.5h7a3 3 0 0 0 .4-6 4 4 0 0 0-7.7.9A2.6 2.6 0 0 0 4.5 12.5Z",
 } as const;
 
 export type IconName = keyof typeof PATHS;

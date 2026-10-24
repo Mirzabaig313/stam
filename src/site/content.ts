@@ -3,7 +3,7 @@
 //
 // Assumptions (mirrored in the M5 report):
 // - The sample family (Linden, Haddad, ...) is invented and labelled as a sample on the page.
-// - Hosting facts on /privacy assume Cloudflare Pages with no extra logging or analytics.
+// - Hosting facts on /privacy assume the Cloudflare Worker with no extra logging or analytics.
 // - The contact address is stam@mirzalabs.in; no source link is published yet.
 
 import { APP_NAME } from "@/config";
@@ -37,12 +37,12 @@ export const meta = {
     path: "/",
     title: `${APP_NAME}: a free family tree builder, one generation per row`,
     description:
-      "Build your family tree in the browser. Add a person and the layout puts each generation on its own row. Free, no account, and your data stays on your device.",
+      "Build your family tree in the browser. Add a person and the layout puts each generation on its own row. Free, no account needed, and your data stays on your device unless you share it.",
   },
   privacy: {
     path: "/privacy",
     title: `Privacy at ${APP_NAME}: your family tree stays in your browser`,
-    description: `${APP_NAME} has no accounts, no server storage and no cookies. Your family tree is saved in your own browser, and you can download a backup at any time.`,
+    description: `${APP_NAME} needs no account. Your family tree is saved in your own browser unless you choose to share it, and you can download a backup at any time.`,
   },
   notFound: {
     path: "/404",
@@ -55,7 +55,7 @@ export const hero = {
   titleLines: ["Every family", "fits on rows."],
   lede: "A free family tree builder that runs in your browser. Add one person, then their family, and every generation gets its own row.",
   secondary: "See how it builds",
-  facts: ["Free", "No account", "Stays on your device"],
+  facts: ["Free", "No account needed", "Local by default"],
   treeLabel: "A sample family drawn by the layout engine",
 };
 
@@ -184,16 +184,19 @@ export const calculator = {
 };
 
 export const privacySection = {
-  heading: "Your family stays on your device.",
+  heading: "Local by default. Nothing leaves your device unless you share a tree.",
   facts: [
-    { term: "No account", text: "There is nothing to sign up for. Open it and start." },
     {
-      term: "No server",
-      text: "Your tree is saved in this browser's own storage. It is never uploaded.",
+      term: "No account needed",
+      text: "Open it and start. Sign in only to save a tree to your account or share it.",
     },
     {
-      term: "No cookies",
-      text: "No cookies, no analytics, no tracking scripts. Not on this page either.",
+      term: "Local by default",
+      text: "Your tree is saved in this browser's own storage. It is uploaded only when you share it.",
+    },
+    {
+      term: "No tracking",
+      text: "No analytics and no tracking scripts. A cookie is set only if you sign in.",
     },
     {
       term: "Your backup",
@@ -219,8 +222,8 @@ export const footer = {
 
 export const privacyPage = {
   title: "Privacy",
-  lede: `${APP_NAME} is built so that your family's details never leave your device. Here is exactly what that means.`,
-  updated: "Last updated 23 October 2026",
+  lede: `${APP_NAME} keeps your family's details on your device unless you choose to share a tree. Here is exactly what that means.`,
+  updated: "Last updated 24 October 2026",
   columns: ["Question", "In short", "In detail"],
   sections: [
     {
@@ -232,9 +235,9 @@ export const privacyPage = {
     },
     {
       heading: "Where it is stored",
-      answer: "This browser",
+      answer: "This browser, unless you share",
       body: [
-        "In your browser's own storage (IndexedDB) on this device. Nothing is sent to a server, because there is no server that could receive it.",
+        "In your browser's own storage (IndexedDB) on this device. A tree you never share or save to your account is never sent anywhere.",
         "That also means clearing your browser's site data deletes your trees. Download a backup now and then; the app reminds you.",
       ],
     },
@@ -242,11 +245,21 @@ export const privacyPage = {
       heading: "What is never collected",
       answer: "Everything else",
       body: [
-        "There are no accounts, no cookies, no analytics, no advertising and no third-party scripts. The pages load only files from this site.",
+        "There are no analytics, no advertising and no third-party scripts. The pages load only files from this site. Cookies are used only to keep you signed in, and only if you sign in.",
       ],
     },
     {
-      heading: "Backups and sharing",
+      heading: "Sharing and your account",
+      answer: "Only what you share",
+      body: [
+        `When you sign in with Google and share a tree or save it to your account, that tree and its photos are uploaded to ${APP_NAME}'s server so the people you share a link with can see it. Your other trees stay on this device.`,
+        "Signing in uses your Google account's name and email address. A sign-in cookie keeps you signed in for 30 days.",
+        "A view link can hide living people's details: the server then sends only their names to people with that link.",
+        "Stop sharing a tree, or remove it from your account, and its copy on the server and its links are deleted.",
+      ],
+    },
+    {
+      heading: "Backups",
       answer: "A file you keep",
       body: [
         "A backup is a file you download and keep. It goes wherever you put it. You can open it again in the app on any device.",
@@ -256,7 +269,7 @@ export const privacyPage = {
       heading: "Hosting",
       answer: "Static files",
       body: [
-        "The site is served as static files by Cloudflare Pages. Like any web host, Cloudflare handles your IP address to deliver the files and protect the service. The site itself keeps no logs and sees none of your tree.",
+        "The site and its server run on Cloudflare. Like any web host, Cloudflare handles your IP address to deliver the pages and protect the service. Trees you share are stored with Cloudflare; trees you keep local never reach it.",
       ],
     },
   ],

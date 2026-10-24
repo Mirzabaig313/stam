@@ -492,7 +492,9 @@ describe("TreeListPage: the first run", () => {
     renderList();
     const title = await screen.findByRole("heading", { name: "Start your family tree" });
     const invite = title.closest("section")!;
-    expect(invite.textContent).toContain("Everything stays on this device. Nothing is uploaded.");
+    expect(invite.textContent).toContain(
+      "Everything stays on this device unless you share a tree.",
+    );
     expect(within(invite).getByRole("button", { name: "New tree" })).toBeTruthy();
     expect(within(invite).getByLabelText("Import")).toBeTruthy();
     // The header keeps only what the invitation does not offer: one New tree, one Import.
@@ -558,7 +560,7 @@ describe("TreeListPage: tree cards", () => {
     expect(await screen.findByText("1 generation")).toBeTruthy();
   });
 
-  test("the ⋯ menu lists Rename, Duplicate, Download backup and a destructive Delete", async () => {
+  test("the ⋯ menu lists Rename, Duplicate, Download backup, Save to my account and a destructive Delete", async () => {
     await env.repo.saveTree({ ...famSimple(), id: "t1", name: "Khans" });
     renderList();
     const user = userEvent.setup();
@@ -573,9 +575,10 @@ describe("TreeListPage: tree cards", () => {
       "Rename",
       "Duplicate",
       "Download backup",
+      "Save to my account",
       "Delete",
     ]);
-    expect(items[3]!.className).toContain("menu-item--danger");
+    expect(items[4]!.className).toContain("menu-item--danger");
     // The first item takes the focus; Escape closes and gives the focus back to the button.
     expect(document.activeElement).toBe(items[0]!);
     await user.keyboard("{Escape}");
