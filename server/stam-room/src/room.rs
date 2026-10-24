@@ -74,6 +74,9 @@ pub struct RoomCore<S: RoomStore> {
     /// The tree's JSON passed `MAX_TREE_BYTES` when it was last written.
     over_size: bool,
     buckets: HashMap<String, Bucket>,
+    /// The tree as JSON for welcomes, full and cut for hide-living, at the version it was made:
+    /// many people joining after one edit cost one serialization.
+    welcome_docs: [Option<(u64, String)>; 2],
 }
 
 fn to_json<T: serde::Serialize>(value: &T) -> String {
@@ -138,6 +141,7 @@ impl<S: RoomStore> RoomCore<S> {
             catch_up: CATCH_UP_OPS,
             over_size: doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
+            welcome_docs: [None, None],
         })
     }
 
@@ -162,6 +166,7 @@ impl<S: RoomStore> RoomCore<S> {
             catch_up: CATCH_UP_OPS,
             over_size: snap.doc_json.len() > MAX_TREE_BYTES,
             buckets: HashMap::new(),
+            welcome_docs: [None, None],
         })
     }
 
@@ -277,8 +282,23 @@ impl<S: RoomStore> RoomCore<S> {
             .admit(now_ms)
     }
 
+    /// The tree's JSON for a welcome, from the cache when it is still this version's.
+    fn welcome_doc(&mut self, hide_living: bool) -> &str {
+        let slot = usize::from(hide_living);
+        let fresh = matches!(&self.welcome_docs[slot], Some((v, _)) if *v == self.version);
+        if !fresh {
+            let json = if hide_living {
+                to_json(&apply_privacy(&self.doc))
+            } else {
+                to_json(&self.doc)
+            };
+            self.welcome_docs[slot] = Some((self.version, json));
+        }
+        &self.welcome_docs[slot].as_ref().expect("just filled").1
+    }
+
     fn welcome(
-        &self,
+        &mut self,
         att: &Attachment,
         last_version: Option<u64>,
         pending: &[String],
@@ -320,8 +340,12 @@ impl<S: RoomStore> RoomCore<S> {
                     .collect();
                 msg["ops"] = Value::Array(ops);
             }
-            None if att.hide_living => msg["doc"] = json!(apply_privacy(&self.doc)),
-            None => msg["doc"] = json!(self.doc),
+            None => {
+                // The tree goes in as already-serialized JSON, spliced after the other fields.
+                let head = msg.to_string();
+                let doc = self.welcome_doc(att.hide_living);
+                return Ok(format!("{},\"doc\":{doc}}}", &head[..head.len() - 1]));
+            }
         }
         Ok(msg.to_string())
     }

@@ -17,7 +17,8 @@
     "test:parity": "bun run wasm && PROPERTY_RUNS=10000 bun test --timeout 60000 tests/parity",
     "verify:server": "cargo fmt --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && bun run test:worker",
     "dev:worker": "bun run build && wrangler d1 migrations apply stam --local && wrangler dev --port 8787",
-    "test:worker": "bun run scripts/test-worker.ts"
+    "test:worker": "bun run scripts/test-worker.ts",
+    "deploy": "bun run build && wrangler d1 migrations apply stam --remote && wrangler deploy"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

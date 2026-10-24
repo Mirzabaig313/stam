@@ -1,10 +1,12 @@
 # Stam
 
-A browser-based family tree builder. Everything stays on your device.
+A browser-based family tree builder. Local by default: nothing leaves your device unless you share
+a tree.
 
 ## Requirements
 
-Bun 1.4.4 or newer.
+Bun 1.4.4 or newer. For the backend: Rust (stable, with the `wasm32-unknown-unknown` target) and
+`cargo install wasm-pack worker-build`.
 
 ## Commands
 
@@ -19,7 +21,13 @@ Bun 1.4.4 or newer.
 | `bun test`                  | Run unit and property tests                                        |
 | `bun scripts/serve-dist.ts` | Serve `dist/` on http://localhost:4400 with production routing     |
 | `bun run bench`             | Run layout benchmarks                                              |
-| `bun run verify`            | Type check, format check, lint and tests (10000 property runs)     |
+| `bun run verify`            | WASM build, type check, format check, lint, tests (10000 runs)     |
+| `bun run wasm`              | Build the Rust core and room to WASM for the parity suites         |
+| `bun run test:parity`       | TS and Rust rules agree (10000 runs)                               |
+| `bun run verify:server`     | cargo fmt, clippy, cargo test, then `bun run test:worker`          |
+| `bun run test:worker`       | Start a local Worker (port 8788) and run `tests/worker` against it |
+| `bun run dev:worker`        | The Worker on http://localhost:8787 (`bun dev` proxies `/api`)     |
+| `bun run deploy`            | Build, apply D1 migrations, deploy the Worker                      |
 
 ## Public pages
 
@@ -28,7 +36,17 @@ design system in `DESIGN.md`). `scripts/prerender.ts` renders them to static HTM
 is built; the client bundle hydrates them and adds motion (GSAP and Lenis, landing only). The dev
 server renders them on the client.
 
-## Hosting (Cloudflare Pages)
+## Backend
+
+Sharing, accounts and live editing run on one Cloudflare Worker written in Rust (`server/`): the
+tree rules (`server/stam-core`, a port of `src/core` held to it by `tests/parity`), the room that
+referees a shared tree (`server/stam-room`) and the Worker itself (`server/stam-worker`). The
+design is in `docs/superpowers/specs/2026-10-24-stam-backend-design.md`; setup and deploy steps in
+`docs/deploy.md`.
+
+## Hosting (Cloudflare Pages, before the backend)
+
+The Worker (see `docs/deploy.md`) replaces this once it is deployed.
 
 | Setting                | Value               |
 | ---------------------- | ------------------- |
