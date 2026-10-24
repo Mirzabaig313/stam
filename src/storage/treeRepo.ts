@@ -5,6 +5,18 @@ import { newId } from "@/core/model/ids";
 import type { TreeDocument } from "@/core/model/types";
 import { parseTreeDocument } from "@/io/json/parseTree";
 
+/** A tree that lives in the cloud too (spec §4.4): this browser's copy is its cache. */
+export type CloudMeta = {
+  /** `owner` for the signed-in owner's trees; otherwise the role of the link it was opened by. */
+  role: "owner" | "view" | "comment" | "edit";
+  /** The link token, for trees opened by a link. */
+  token?: string;
+  /** The link hides living people's details, so this copy lacks them. */
+  hideLiving?: boolean;
+  /** The last version the room confirmed. */
+  version: number;
+};
+
 export type TreeMeta = {
   id: string;
   name: string;
@@ -21,6 +33,8 @@ export type TreeMeta = {
    * save clears it.
    */
   recoveredFrom?: string;
+  /** Set for cloud trees (see `setCloud`); local-only trees have none. */
+  cloud?: CloudMeta;
 };
 
 /**
@@ -77,6 +91,9 @@ export type TreeRepo = {
    * Removes the tree, its meta row and its snapshots. Its photos stay until `deleteUnusedPhotos`.
    */
   deleteTree(id: string): Promise<void>;
+  getMeta(id: string): Promise<TreeMeta | undefined>;
+  /** Marks the tree as a cloud tree (or, with null, local-only again). Saves keep it. */
+  setCloud(id: string, cloud: CloudMeta | null): Promise<void>;
   duplicateTree(id: string, name: string): Promise<TreeDocument>;
   putPhoto(id: string, blob: Blob): Promise<void>;
   getPhoto(id: string): Promise<Blob | undefined>;
@@ -127,7 +144,12 @@ async function inTransaction(
   }
 }
 
-function metaOf(doc: TreeDocument, savedAt: number, recoveredFrom?: string): TreeMeta {
+function metaOf(
+  doc: TreeDocument,
+  savedAt: number,
+  recoveredFrom?: string,
+  cloud?: CloudMeta,
+): TreeMeta {
   return {
     id: doc.id,
     name: doc.name,
@@ -135,6 +157,7 @@ function metaOf(doc: TreeDocument, savedAt: number, recoveredFrom?: string): Tre
     updatedAt: doc.updatedAt,
     savedAt,
     ...(recoveredFrom === undefined ? {} : { recoveredFrom }),
+    ...(cloud === undefined ? {} : { cloud }),
   };
 }
 
@@ -203,7 +226,7 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
         savedAt = Math.max(opts.capturedAt ?? Date.now(), (savedAtOf(current) ?? 0) + 1);
         await Promise.all([
           tx.objectStore("trees").put(doc),
-          metaStore.put(metaOf(doc, savedAt, opts.recoveredFrom)),
+          metaStore.put(metaOf(doc, savedAt, opts.recoveredFrom, current?.cloud)),
         ]);
       });
       return savedAt;
@@ -218,6 +241,20 @@ export function createTreeRepo(db: IDBPDatabase): TreeRepo {
           tx.objectStore("meta").delete(id),
           ...snapshotKeys.map((key) => snapshots.delete(key)),
         ]);
+      });
+    },
+
+    async getMeta(id) {
+      return (await db.get("meta", id)) as TreeMeta | undefined;
+    },
+
+    async setCloud(id, cloud) {
+      await inTransaction(db, ["meta"], async (tx) => {
+        const store = tx.objectStore("meta");
+        const meta = (await store.get(id)) as TreeMeta | undefined;
+        if (!meta) return;
+        const { cloud: _old, ...rest } = meta;
+        await store.put(cloud === null ? rest : { ...rest, cloud });
       });
     },
 

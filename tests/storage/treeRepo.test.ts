@@ -331,3 +331,22 @@ describe("treeRepo", () => {
     expect(await repo.getSetting<{ a: number[] }>("x")).toEqual({ a: [1, 2] });
   });
 });
+
+describe("cloud trees", () => {
+  test("setCloud records the cloud record, saves keep it, null removes it", async () => {
+    const doc = famSimple();
+    await repo.saveTree(doc);
+    await repo.setCloud(doc.id, { role: "owner", version: 3 });
+    expect((await repo.getMeta(doc.id))?.cloud).toEqual({ role: "owner", version: 3 });
+    await repo.saveTree({ ...doc, name: "Renamed" });
+    const meta = (await repo.listTrees()).find((m) => m.id === doc.id)!;
+    expect(meta.cloud).toEqual({ role: "owner", version: 3 });
+    expect(meta.name).toBe("Renamed");
+    await repo.setCloud(doc.id, null);
+    expect((await repo.getMeta(doc.id))?.cloud).toBeUndefined();
+  });
+
+  test("getMeta of an unknown tree is undefined", async () => {
+    expect(await repo.getMeta("nope")).toBeUndefined();
+  });
+});

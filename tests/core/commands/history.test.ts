@@ -213,3 +213,42 @@ describe("History", () => {
     });
   });
 });
+
+describe("History for cloud trees", () => {
+  test("peek shows the entry without moving it; shift moves it", () => {
+    const h = new History();
+    h.push({ label: "a", patches: [], inversePatches: [] });
+    expect(h.peek("undo")?.label).toBe("a");
+    expect(h.peek("redo")).toBeNull();
+    expect(h.canUndo).toBe(true);
+    expect(h.shift("undo")?.label).toBe("a");
+    expect(h.canUndo).toBe(false);
+    expect(h.peek("redo")?.label).toBe("a");
+    h.shift("redo");
+    expect(h.canUndo).toBe(true);
+  });
+
+  test("amend joins entity changes: first before, last after", () => {
+    const h = new History();
+    const key = "persons/p1" as const;
+    h.push({
+      label: "add",
+      patches: [],
+      inversePatches: [],
+      entities: [{ key, before: null, after: { v: 1 } }],
+    });
+    h.amend({
+      label: "name",
+      patches: [],
+      inversePatches: [],
+      entities: [
+        { key, before: { v: 1 }, after: { v: 2 } },
+        { key: "tree/name", before: "A", after: "B" },
+      ],
+    });
+    expect(h.peek("undo")?.entities).toEqual([
+      { key, before: null, after: { v: 2 } },
+      { key: "tree/name", before: "A", after: "B" },
+    ]);
+  });
+});
