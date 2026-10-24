@@ -9,6 +9,7 @@ mod db;
 mod headers;
 mod room_do;
 mod routes;
+mod trees;
 
 #[event(fetch)]
 async fn fetch(req: Request, env: Env, _ctx: Context) -> Result<Response> {

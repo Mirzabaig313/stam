@@ -31,9 +31,11 @@ export type ServerMessage =
     }
   | ({ type: "applied" } & AppliedOp)
   | { type: "rejected"; opId?: string; code: string; key?: string }
-  | { type: "busy"; retryAfter: number };
+  | { type: "busy"; retryAfter: number }
+  /** Sent just before the room closes the socket (4401 link off or session gone, 4404 deleted). */
+  | { type: "closed"; code: number; reason: string };
 
-const TYPES = new Set(["welcome", "applied", "rejected", "busy"]);
+const TYPES = new Set(["welcome", "applied", "rejected", "busy", "closed"]);
 
 /** Reads a message from the room; throws on anything that is not one. */
 export function parseServerMessage(text: string): ServerMessage {

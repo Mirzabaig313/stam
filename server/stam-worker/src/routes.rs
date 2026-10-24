@@ -4,8 +4,8 @@
 use serde_json::json;
 use worker::{Env, Request, Response, Result, RouteContext, Router};
 
-use crate::auth;
 use crate::headers::{is_dev, security_headers};
+use crate::{auth, trees};
 
 /// A JSON error body: `{"error": code}`.
 pub fn error(status: u16, code: &str) -> Result<Response> {
@@ -21,6 +21,15 @@ pub async fn handle(req: Request, env: Env) -> Result<Response> {
         .get_async("/api/auth/google/callback", auth::callback)
         .post_async("/api/auth/signout", auth::sign_out)
         .get_async("/api/me", auth::me)
+        .post_async("/api/trees", trees::create)
+        .delete_async("/api/trees/:id", trees::delete)
+        .get_async("/api/trees/:id/links", trees::list_links)
+        .post_async("/api/trees/:id/links", trees::create_link)
+        .delete_async("/api/trees/:id/links/:linkId", trees::delete_link)
+        .get_async("/api/trees/:id/ws", trees::socket)
+        .get_async("/api/trees/:id/photos/:photoId", trees::photo)
+        .put_async("/api/trees/:id/photos/:photoId", trees::photo)
+        .get_async("/api/s/:token", trees::resolve)
         .get_async("/app", serve_app)
         .get_async("/app/*path", serve_app)
         .get_async("/s/*path", serve_app)

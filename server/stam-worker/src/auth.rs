@@ -36,7 +36,7 @@ fn var(env: &Env, name: &str) -> Result<String> {
     Ok(env.var(name)?.to_string())
 }
 
-fn secret(env: &Env, name: &str) -> Result<String> {
+pub fn secret(env: &Env, name: &str) -> Result<String> {
     Ok(env.secret(name).or_else(|_| env.var(name))?.to_string())
 }
 

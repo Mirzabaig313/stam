@@ -39,7 +39,7 @@ const google = startGoogleMock();
 const varArgs = Object.entries(VARS).flatMap(([k, v]) => ["--var", `${k}:${v}`]);
 const worker = Bun.spawn(
   ["bunx", "wrangler", "dev", "--port", String(PORT), "--persist-to", state, ...varArgs],
-  { cwd: root, stdout: "pipe", stderr: "inherit" },
+  { cwd: root, stdout: process.env.WORKER_LOGS === "1" ? "inherit" : "pipe", stderr: "inherit" },
 );
 
 let code = 1;

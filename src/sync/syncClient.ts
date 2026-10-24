@@ -190,6 +190,9 @@ export class SyncClient {
         this.#rebuild("remote");
         return;
       }
+      case "closed":
+        // The transport ends the connection (see src/cloud/transport.ts).
+        return;
       case "busy": {
         // The room refuses this socket until retryAfter, so nothing after the refused op was
         // applied: resend everything still pending, in order (ones it did apply are re-acked).
