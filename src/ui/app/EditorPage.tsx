@@ -2,6 +2,9 @@ import { type RefObject, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, Navigate, useParams } from "react-router";
 
+import { api } from "@/cloud/api";
+import { authStore } from "@/cloud/auth";
+import { createCloudSession } from "@/cloud/cloudSession";
 import { createAutosaver } from "@/storage/autosave";
 import { createJournal } from "@/storage/journal";
 import { createTabSync } from "@/storage/multitab";
@@ -78,6 +81,11 @@ function EditorSession({
     const wal = createJournal();
     const guard = createSaveGuard(repo);
     const saver = createAutosaver(async (doc) => {
+      // A cloud tree's copy here is a cache of the room's: saved as is, no guard or journal.
+      if (editor.getState().cloud) {
+        await repo.saveTree(doc);
+        return;
+      }
       // The autosaver has just taken `doc`: anything journaled from now on is newer than it.
       const capturedAt = Date.now();
       let savedAt: number;
@@ -98,12 +106,14 @@ function EditorSession({
       journal: wal,
       guard,
       ...(layouts ? { layouts } : {}),
+      openCloud: (args) => createCloudSession({ ...args, repo, api, auth: authStore }),
     });
     return { autosaver: saver, journal: wal, store: editor };
   });
 
   useEffect(() => {
     void store.getState().load(treeId);
+    return () => store.getState().dispose();
   }, [store, treeId]);
 
   // FR-S5: tell other tabs about our saves, hear about theirs. Saving also counts as an edit

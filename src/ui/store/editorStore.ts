@@ -1,5 +1,6 @@
 import { createStore, type StoreApi } from "zustand/vanilla";
 
+import type { CloudSession, CloudSessionHandlers, CloudStatus } from "@/cloud/cloudSession";
 import { applyCommand } from "@/core/commands/apply";
 import { CommandError } from "@/core/commands/errors";
 import { History } from "@/core/commands/history";
@@ -11,7 +12,9 @@ import type { FanLayout, TimelineLayout, ViewMode } from "@/core/views/types";
 import type { Autosaver } from "@/storage/autosave";
 import type { Journal } from "@/storage/journal";
 import type { SaveGuard } from "@/storage/saveGuard";
-import type { TreeRepo } from "@/storage/treeRepo";
+import type { CloudMeta, TreeRepo } from "@/storage/treeRepo";
+import type { EntityChange } from "@/sync/revert";
+import type { DroppedEdit } from "@/sync/syncClient";
 
 import {
   clampFanGenerations,
@@ -71,7 +74,25 @@ export type EditorState = {
    * this copy is stale and saving it would overwrite newer work. Only a reload edits again.
    */
   locked: "changed" | "deleted" | null;
+  /** Set for a cloud tree (spec §5.4): who this browser is on it and how the link is. */
+  cloud: {
+    role: CloudMeta["role"];
+    status: CloudStatus;
+    pendingCount: number;
+    /** The room ended this tree for this browser: 4401 link off, 4404 deleted. */
+    closed: number | null;
+    /** Own edits that could not be applied after others' edits came in. */
+    dropped: DroppedEdit[];
+  } | null;
 };
+
+/** Starts the live session of a cloud tree (see `src/cloud/cloudSession`). */
+export type OpenCloud = (args: {
+  treeId: string;
+  cloud: CloudMeta;
+  doc: TreeDocument;
+  handlers: CloudSessionHandlers;
+}) => CloudSession;
 
 export type EditorActions = {
   load(treeId: string): Promise<void>;
@@ -123,6 +144,8 @@ export type EditorActions = {
    * stays, for recovery to judge against the stored save), closes any inline edit. `deleted` is final; a later `changed` does not replace it.
    */
   lock(reason: "changed" | "deleted"): void;
+  /** Ends the tree's cloud session, if any (the editor page closing). */
+  dispose(): void;
 };
 
 export type EditorStore = StoreApi<EditorState & EditorActions>;
@@ -137,6 +160,8 @@ export type EditorDeps = {
   now?: () => Date;
   /** The layout functions; tests pass fakes for the views they do not exercise. */
   layouts?: ViewLayoutFns;
+  /** Opens cloud trees live; without it every tree is edited as a local one. */
+  openCloud?: OpenCloud;
 };
 
 const INITIAL: EditorState = {
@@ -160,6 +185,7 @@ const INITIAL: EditorState = {
   canRedo: false,
   error: null,
   locked: null,
+  cloud: null,
 };
 
 export function createEditorStore({
@@ -169,8 +195,11 @@ export function createEditorStore({
   guard,
   now = () => new Date(),
   layouts = realLayouts,
+  openCloud,
 }: EditorDeps) {
   const history = new History();
+  /** The live session while a cloud tree is open. */
+  let session: CloudSession | null = null;
   let lastSnapshotAt = 0;
   let loadSeq = 0;
   /**
@@ -225,8 +254,9 @@ export function createEditorStore({
         canUndo: history.canUndo,
         canRedo: history.canRedo,
       });
-      // The journal is a synchronous copy that survives a page closing mid-debounce.
-      journal?.touch(doc);
+      // The journal is a synchronous copy that survives a page closing mid-debounce. A cloud tree
+      // needs none: its edits wait in the session until the room has them.
+      if (!session) journal?.touch(doc);
       autosaver.schedule(doc);
       snapshotIfDue(doc);
     }
@@ -236,7 +266,7 @@ export function createEditorStore({
       const doc = get().doc;
       if (!doc) return null;
       try {
-        return applyCommand(doc, cmd, now());
+        return session ? session.submit(cmd) : applyCommand(doc, cmd, now());
       } catch (e) {
         if (e instanceof CommandError) {
           set({ error: e.code });
@@ -248,11 +278,17 @@ export function createEditorStore({
 
     function record(cmd: Command, label: string, write: "push" | "amend"): string[] | null {
       if (get().locked) return null;
+      if (session && !session.canEdit) return null;
       // Fan and timeline only show the tree; the tree's name is the one thing they let through.
       if (isReadOnlyView(get().viewMode) && cmd.type !== "renameTree") return null;
       const result = run(cmd);
       if (!result) return null;
-      history[write]({ label, patches: result.patches, inversePatches: result.inversePatches });
+      history[write]({
+        label,
+        patches: result.patches,
+        inversePatches: result.inversePatches,
+        ...("entities" in result ? { entities: result.entities as EntityChange[] } : {}),
+      });
       // Only a plain dispatch that created people opens an add; an amendment closes it.
       pendingAdd = write === "push" && result.createdIds.length > 0;
       set({ error: null });
@@ -263,10 +299,76 @@ export function createEditorStore({
     function step(move: "undo" | "redo"): void {
       const doc = get().doc;
       if (!doc || get().locked || isReadOnlyView(get().viewMode)) return;
+      if (session) {
+        cloudStep(session, move);
+        return;
+      }
       const next = history[move](doc);
       if (!next) return;
       pendingAdd = false;
       commit(next);
+    }
+
+    /**
+     * Undo and redo on a cloud tree revert one's own edit through the room: refused with
+     * CONFLICT when someone changed the same people since, leaving both stacks as they were.
+     */
+    function cloudStep(live: CloudSession, move: "undo" | "redo"): void {
+      if (!live.canEdit) return;
+      const entry = history.peek(move);
+      if (!entry) return;
+      pendingAdd = false;
+      if (!entry.entities || entry.entities.length === 0) {
+        // The edit changed nothing that could be undone (only the time stamp).
+        history.shift(move);
+        set({ canUndo: history.canUndo, canRedo: history.canRedo });
+        return;
+      }
+      let next: TreeDocument;
+      try {
+        next = live.submitRevert(entry.entities, move);
+      } catch (e) {
+        if (e instanceof CommandError) {
+          set({ error: e.code });
+          return;
+        }
+        throw e;
+      }
+      history.shift(move);
+      set({ error: null });
+      commit(next);
+    }
+
+    function startCloud(treeId: string, cloud: CloudMeta, doc: TreeDocument): void {
+      const patchCloud = (patch: Partial<NonNullable<EditorState["cloud"]>>) => {
+        const current = get().cloud;
+        if (current) set({ cloud: { ...current, ...patch } });
+      };
+      set({
+        cloud: {
+          role: cloud.role,
+          status: "connecting",
+          pendingCount: 0,
+          closed: null,
+          dropped: [],
+        },
+      });
+      session = openCloud!({
+        treeId,
+        cloud,
+        doc,
+        handlers: {
+          onView: (next) => {
+            if (get().doc) commit(next);
+          },
+          onDropped: (dropped) => {
+            patchCloud({ dropped });
+            set({ error: "DROPPED" });
+          },
+          onStatus: (status, pendingCount) => patchCloud({ status, pendingCount }),
+          onClosed: (code) => patchCloud({ closed: code }),
+        },
+      });
     }
 
     function cancelLastAdd(): void {
@@ -288,6 +390,8 @@ export function createEditorStore({
         const seq = ++loadSeq;
         history.clear();
         pendingAdd = false;
+        session?.stop();
+        session = null;
         // A lock outlives a reload of the store: the autosaver it stopped stays stopped.
         set({ ...INITIAL, status: "loading", locked: get().locked });
         let found: Awaited<ReturnType<TreeRepo["getTree"]>>;
@@ -299,6 +403,26 @@ export function createEditorStore({
         if (seq !== loadSeq) return; // a newer load took over
         if (!found) {
           set({ status: "failed" });
+          return;
+        }
+        const cloud = openCloud
+          ? (await repo.getMeta(treeId).catch(() => undefined))?.cloud
+          : undefined;
+        if (seq !== loadSeq) return;
+        if (cloud) {
+          // A cloud tree: the room holds the truth; this copy is its cache, no journal or guard.
+          set({
+            status: "ready",
+            doc: found.doc,
+            recoveredFromSnapshot: found.recoveredFromSnapshot,
+            ...computeViews(
+              layouts,
+              found.doc,
+              { ...INITIAL, collapsed: INITIAL.collapsed },
+              now(),
+            ),
+          });
+          startCloud(treeId, cloud, found.doc);
           return;
         }
         // Edits the last session journaled but never got into IndexedDB come back first.
@@ -416,10 +540,16 @@ export function createEditorStore({
         });
       },
       closeRelation: () => set({ relation: null }),
+      dispose() {
+        session?.stop();
+        session = null;
+      },
       startEditing: (editing) => set({ editing }),
       stopEditing: () => set({ editing: null }),
 
       lock(reason) {
+        // Another tab saving a cloud tree's cache is not a conflict: the room keeps them in step.
+        if (session) return;
         if (get().locked === "deleted") return;
         autosaver.stop();
         journal?.discard();
